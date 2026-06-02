@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0058a3">
+<title>Buitenkeuken Bouwgids</title>
+<style>
+  :root{
+    --bg:#f4f4f4; --card:#ffffff; --card2:#f5f5f5; --line:#dfdfdf;
+    --txt:#111111; --muted:#5a5a5a; --accent:#0058a3; --accent2:#003e72;
+    --yellow:#ffdb00; --warn:#c25400; --danger:#cc0008; --radius:8px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--txt);
+    font-family:"Noto Sans",Verdana,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;padding-bottom:90px;
+  }
+  header{
+    position:sticky;top:0;z-index:50;background:var(--accent);
+    border-bottom:3px solid var(--yellow);
+    padding:14px 16px calc(10px + env(safe-area-inset-top)) 16px;padding-top:calc(14px + env(safe-area-inset-top));
+  }
+  .htop{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px;color:#fff}
+  h1 span{color:var(--yellow)}
+  .reset{background:none;border:1px solid rgba(255,255,255,.55);color:#fff;font-size:12px;
+    padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:600}
+  .progwrap{margin-top:10px}
+  .progbar{height:8px;background:rgba(255,255,255,.25);border-radius:8px;overflow:hidden}
+  .progfill{height:100%;width:0;background:var(--yellow);transition:width .35s}
+  .proglabel{font-size:12px;color:rgba(255,255,255,.85);margin-top:6px}
+  main{padding:16px;max-width:780px;margin:0 auto}
+  section{display:none;animation:fade .25s}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h2{font-size:16px;margin:4px 0 12px;color:var(--accent)}
+  h3{font-size:15px;margin:18px 0 8px}
+  p{margin:6px 0;color:var(--txt)}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin:10px 0}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .kv:last-child{border-bottom:none}
+  .kv b{color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:20px;
+    padding:3px 10px;font-size:12px;color:var(--muted);margin:2px 4px 2px 0}
+  .note{border-left:3px solid var(--accent);background:var(--card2);padding:10px 12px;border-radius:8px;margin:10px 0;font-size:14px}
+  .note.warn{border-left-color:var(--warn)}
+  .note.danger{border-left-color:var(--danger)}
+  .note b{color:var(--txt)}
+  /* checklist items */
+  .item{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:12px 14px;margin:8px 0;cursor:pointer;transition:background .15s,border-color .15s}
+  .item:active{background:var(--card2)}
+  .item.done{opacity:.55}
+  .item.done .itxt{text-decoration:line-through}
+  .box{flex:0 0 24px;width:24px;height:24px;border:2px solid var(--accent);border-radius:6px;margin-top:1px;
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;transition:.15s}
+  .item.done .box{background:var(--accent);border-color:var(--accent)}
+  .box svg{width:14px;height:14px;opacity:0}
+  .item.done .box svg{opacity:1}
+  .itxt{flex:1}
+  .itxt .lbl{font-size:14px}
+  .itxt .meta{font-size:12px;color:var(--muted);margin-top:3px}
+  .itxt .meta b{color:var(--accent)}
+  /* phase accordion */
+  .phase{border:1px solid var(--line);border-radius:var(--radius);margin:10px 0;overflow:hidden;background:var(--card)}
+  .phead{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none}
+  .phead .pn{flex:0 0 28px;width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .phead .pt{flex:1}
+  .phead .pt .pttl{font-size:15px;font-weight:600}
+  .phead .pt .psub{font-size:12px;color:var(--muted);margin-top:2px}
+  .phead .chev{transition:transform .2s;color:var(--muted)}
+  .phase.open .chev{transform:rotate(90deg)}
+  .pbody{display:none;padding:0 14px 12px}
+  .phase.open .pbody{display:block}
+  .pmini{height:5px;background:var(--card2);border-radius:5px;margin:0 16px 10px;overflow:hidden}
+  .pmini > div{height:100%;width:0;background:var(--accent);transition:width .3s}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600}
+  td b{color:var(--accent);font-variant-numeric:tabular-nums}
+  .diagram{width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px;margin:10px 0}
+  /* IKEA-stijl stap-kaarten */
+  .step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;cursor:pointer;transition:border-color .15s}
+  .step:active{border-color:var(--accent2)}
+  .step.done{opacity:.5}
+  .step.done .stitle{text-decoration:line-through}
+  .step.next{border:2px solid var(--accent);box-shadow:0 0 0 4px rgba(0,88,163,.12)}
+  .nextchip{display:inline-block;background:var(--yellow);color:#111;font-size:11px;font-weight:700;
+    border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+  .gobtn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;
+    padding:14px 16px;font-size:15px;font-weight:700;cursor:pointer;margin:4px 0 14px;
+    display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 8px rgba(0,88,163,.25)}
+  .gobtn:active{background:var(--accent2)}
+  .gobtn.done{background:#2e9e6b}
+  .srow{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .snum{flex:0 0 36px;width:36px;height:36px;border-radius:8px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+  .srow .stitle{flex:1;font-size:15.5px;font-weight:600;line-height:1.25}
+  .sbox{flex:0 0 28px;width:28px;height:28px;border:2px solid var(--accent);border-radius:6px;
+    display:flex;align-items:center;justify-content:center;color:#fff;transition:.15s}
+  .step.done .sbox{background:var(--accent);border-color:var(--accent)}
+  .sbox svg{width:16px;height:16px;opacity:0}
+  .step.done .sbox svg{opacity:1}
+  .sillu{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:10px;display:block}
+  .sillu svg{width:100%;height:auto;display:block}
+  .sdetail{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .sneed{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .sneed .nlab{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-right:2px}
+  .chip{display:inline-flex;align-items:center;background:var(--card2);border:1px solid var(--line);
+    border-radius:8px;padding:4px 9px;font-size:12px;color:var(--txt)}
+  .chip.tool{border-color:var(--accent);color:var(--accent)}
+  .chip.warnchip{border-color:var(--warn);color:var(--warn)}
+  /* bottom nav */
+  nav{position:fixed;bottom:0;left:0;right:0;z-index:60;display:flex;background:#fff;
+    border-top:1px solid var(--line);box-shadow:0 -2px 10px rgba(0,0,0,.05);padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;background:none;border:none;color:var(--muted);font-size:10.5px;padding:9px 2px 8px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+  nav button.active{color:var(--accent);font-weight:700}
+  nav button svg{width:21px;height:21px}
+  .legend{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+  <div class="htop">
+    <h1>🔥 Buitenkeuken <span>Bouwgids</span></h1>
+    <button class="reset" onclick="resetAll()">Reset</button>
+  </div>
+  <div class="progwrap">
+    <div class="progbar"><div class="progfill" id="progfill"></div></div>
+    <div class="proglabel" id="proglabel">0 / 0 stappen afgevinkt</div>
+  </div>
+</header>
+
+<main>
+  <!-- OVERZICHT -->
+  <section id="s-overzicht" class="active">
+    <h2>Overzicht & ontwerp</h2>
+    <div class="card">
+      <p>Een recht keukenblok in <b>houtskeletbouw</b> (Douglas-frame én Douglas bekleding, van nature weerbestendig), staand onder je overkapping van 360 cm. Werkblad in <b>compact-HPL</b>. De Kamado staat in een open vak op een laag, onbrandbaar plateau (géén blad erover); de pizza-oven en inductie staan los op het blad.</p>
+    </div>
+    <div class="card">
+      <div class="kv"><span>Totale lengte blok</span><b>358 cm</b></div>
+      <div class="kv"><span>Diepte (karkas / blad)</span><b>60 / 65 cm</b></div>
+      <div class="kv"><span>Werkhoogte (bovenkant blad)</span><b>90 cm</b></div>
+      <div class="kv"><span>Plint / schopruimte</span><b>10 cm</b></div>
+      <div class="kv"><span>Links</span><b>tegen de muur (geen vrije ruimte)</b></div>
+      <div class="kv"><span>Rechts</span><b>±2 cm speling tot staander</b></div>
+    </div>
+
+    <h3>Indeling links → rechts</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 600 170" width="100%" role="img" aria-label="Plattegrond keukenblok">
+        <rect x="2" y="2" width="596" height="120" rx="6" fill="#ffffff" stroke="#dfdfdf"/>
+        <!-- modules: 75,65,60,60,40 of 300 -> scale 596/300=1.987 -->
+        <g font-size="10.5" fill="#111111" font-family="sans-serif" text-anchor="middle">
+          <rect x="2" y="2" width="125" height="120" fill="#cfe3f5" stroke="#dfdfdf"/>
+          <text x="64" y="55">Kamado</text><text x="64" y="70">open</text><text x="64" y="92" fill="#0058a3" font-weight="700">75 cm</text>
+          <rect x="127" y="2" width="100" height="120" fill="#eef1f4" stroke="#dfdfdf"/>
+          <text x="177" y="55">Prep</text><text x="177" y="92" fill="#0058a3" font-weight="700">60 cm</text>
+          <rect x="227" y="2" width="100" height="120" fill="#cfe3f5" stroke="#dfdfdf"/>
+          <text x="277" y="55">Spoelbak</text><text x="277" y="92" fill="#0058a3" font-weight="700">60 cm</text>
+          <rect x="327" y="2" width="100" height="120" fill="#eef1f4" stroke="#dfdfdf"/>
+          <text x="377" y="55">Koelkast</text><text x="377" y="92" fill="#0058a3" font-weight="700">60 cm</text>
+          <rect x="427" y="2" width="67" height="120" fill="#cfe3f5" stroke="#dfdfdf"/>
+          <text x="460" y="55">Lade</text><text x="460" y="70">inductie</text><text x="460" y="92" fill="#0058a3" font-weight="700">40 cm</text>
+          <rect x="494" y="2" width="104" height="120" fill="#eef1f4" stroke="#dfdfdf"/>
+          <text x="546" y="55">Pizza</text><text x="546" y="70">+ prep</text><text x="546" y="92" fill="#0058a3" font-weight="700">63 cm</text>
+        </g>
+        <text x="300" y="145" text-anchor="middle" font-size="12" fill="#5a5a5a" font-family="sans-serif">← 358 cm totaal (links tegen muur) →</text>
+        <text x="300" y="163" text-anchor="middle" font-size="11" fill="#5a5a5a" font-family="sans-serif">diepte 65 cm · werkhoogte 90 cm</text>
+      </svg>
+    </div>
+
+    <h3>Onderdelen</h3>
+    <div>
+      <span class="pill">Kamado Joe Classic II (inbouw)</span>
+      <span class="pill">Pizza-oven 40×60 cm</span>
+      <span class="pill">RVS spoelbak + kraan</span>
+      <span class="pill">Buitenkoelkast (onderbouw)</span>
+      <span class="pill">Inductie (los, opbergbaar)</span>
+      <span class="pill">Werkblad + opbergruimte</span>
+    </div>
+
+    <div class="note warn"><b>Lees eerst het tabblad Veiligheid.</b> Kamado-inbouwmaten, brandwerende afstanden en de aansluiting van water & elektra bepalen het hele ontwerp — check ze vóór je gaat zagen.</div>
+    <div class="note"><b>Tip:</b> Vink stappen af terwijl je werkt — je voortgang blijft op deze telefoon bewaard, ook offline.</div>
+  </section>
+
+  <!-- MAATVOERING -->
+  <section id="s-maat">
+    <h2>Maatvoering per module</h2>
+    <p class="muted">Alle maten zijn buitenwerks karkas, tenzij anders vermeld. Maat altijd je eigen apparaten na vóór je zaagt.</p>
+
+    <div class="card">
+      <h3 style="margin-top:0">Algemene maten</h3>
+      <div class="kv"><span>Werkhoogte (bovenkant blad)</span><b>900 mm</b></div>
+      <div class="kv"><span>Plint / schopruimte hoog</span><b>100 mm</b></div>
+      <div class="kv"><span>Karkashoogte (excl. blad)</span><b>770 mm</b></div>
+      <div class="kv"><span>Onderregel boven vloer</span><b>30 mm (op rubber/stelpoten)</b></div>
+      <div class="kv"><span>Bladopbouw</span><b>18 mm multiplex + 8 mm HPL</b></div>
+      <div class="kv"><span>Karkasdiepte</span><b>600 mm</b></div>
+      <div class="kv"><span>Bladdiepte (20 mm overstek vóór)</span><b>650 mm</b></div>
+      <div class="kv"><span>Stijl-/regelhout</span><b>45 × 70 mm Douglas</b></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">1 · Kamado-bay — 750 mm (links, tegen muur)</h3>
+      <div class="kv"><span>Open vak, géén werkblad erover</span><b>dome vrij boven</b></div>
+      <div class="kv"><span>Laag plateau (dragend), hoogte</span><b>±250 mm vanaf vloer*</b></div>
+      <div class="kv"><span>Belasting plateau</span><b>min. 120 kg</b></div>
+      <div class="kv"><span>Plateau-bovenkant</span><b>onbrandbaar (vezelcement/tegel)</b></div>
+      <div class="kv"><span>Vrije ruimte tot brandbaar</span><b>min. 200 mm rondom*</b></div>
+      <div class="kv"><span>Bay-wanden bekleden met</span><b>onbrandbare plaat</b></div>
+      <div class="kv"><span>Ventilatie</span><b>open (dome + onderlucht vrij)</b></div>
+      <div class="note" style="margin-bottom:0">*Kies de plateauhoogte zodat het rooster prettig werkt (±200–300 mm). Controleer de buitenmaat van je Classic II zodat hij ruim in de 750 mm bay past.</div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">2 · Prep-/aanrechtzone — 600 mm</h3>
+      <div class="kv"><span>Vrij werkblad (naast Kamado)</span><b>600 mm breed</b></div>
+      <div class="kv"><span>Kast/lades eronder</span><b>open vak of deur</b></div>
+      <div class="kv"><span>Functie</span><b>snijden, borden, hot-landing Kamado</b></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">3 · Spoelbak — 600 mm</h3>
+      <div class="kv"><span>RVS spoelbak (typisch)</span><b>±400 × 340 mm</b></div>
+      <div class="kv"><span>Uitsparing blad</span><b>volgens mal spoelbak</b></div>
+      <div class="kv"><span>Koudwatertoevoer</span><b>vaste aansluiting + aftapkraan</b></div>
+      <div class="kv"><span>Warm water</span><b>keukenboiler 10 L onder spoelbak</b></div>
+      <div class="kv"><span>Boiler aansluiting</span><b>230V, ±2 kW, eigen stopcontact</b></div>
+      <div class="kv"><span>Afvoer</span><b>40 mm sifon → riool/grind</b></div>
+      <div class="kv"><span>Kraan</span><b>1-gats mengkraan (warm + koud)</b></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">4 · Koelkast — 600 mm</h3>
+      <div class="kv"><span>Nis (b × h × d)</span><b>600 × 870 × 600 mm</b></div>
+      <div class="kv"><span>Koelkast (buitenmodel, typ.)</span><b>595 × 820 mm</b></div>
+      <div class="kv"><span>Ventilatie</span><b>via voorzijde (rooster plint)</b></div>
+      <div class="kv"><span>Stopcontact</span><b>spatwaterdicht, achter de kast</b></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">5 · Lade-/opbergmodule — 400 mm</h3>
+      <div class="kv"><span>Inductie (Inventum VKI6010)</span><b>590 × 520 × 85 mm</b></div>
+      <div class="kv"><span>Opbergen: rechtop in gleuf</span><b>±120 mm breed, 540 mm hoog</b></div>
+      <div class="kv"><span>Rest van module</span><b>lades voor klein materiaal</b></div>
+      <div class="kv"><span>In gebruik: vrij blad nodig</span><b>min. 600 × 550 mm</b></div>
+      <div class="kv"><span>Stopcontact ≤ 1,8 m (snoer)</span><b>16A spatwaterdicht</b></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">6 · Pizza-oven + prep — 630 mm (rechts)</h3>
+      <div class="kv"><span>Oven (b × d)</span><b>400 × 600 mm</b></div>
+      <div class="kv"><span>Hitteschild onder oven</span><b>natuursteen/keramiek 20 mm</b></div>
+      <div class="kv"><span>Onder hitteschild</span><b>12 mm vezelcement + luchtspleet</b></div>
+      <div class="kv"><span>Vrije ruimte achter/naast oven</span><b>min. 100–150 mm</b></div>
+      <div class="kv"><span>Kast eronder</span><b>open vak / deur</b></div>
+    </div>
+  </section>
+
+  <!-- MATERIALEN -->
+  <section id="s-mat">
+    <h2>Materialenlijst</h2>
+    <p class="muted">Hoeveelheden zijn richtwaarden voor dit ontwerp. Vink af tijdens het inkopen.</p>
+    <div id="matlist"></div>
+  </section>
+
+  <!-- GEREEDSCHAP -->
+  <section id="s-ger">
+    <h2>Gereedschap</h2>
+    <div id="gerlist"></div>
+  </section>
+
+  <!-- STAPPEN -->
+  <section id="s-stap">
+    <h2>Stappenplan</h2>
+    <p class="muted">Tik op een fase om te openen. Elke stap heeft één tekening met maten. Tik op de stap om af te vinken.</p>
+    <button id="nextbtn" class="gobtn" onclick="gotoNext()"></button>
+    <div id="phases"></div>
+  </section>
+
+  <!-- ZAAGLIJST -->
+  <section id="s-zaag">
+    <h2>Zaaglijst (frame)</h2>
+    <p class="muted">Douglas 45 × 70 mm. Aantallen voor 6 modules (358 cm). Controleer altijd na inmeten op locatie.</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>Onderdeel</th><th>Lengte</th><th>Aantal</th></tr></thead>
+        <tbody>
+          <tr><td>Onderregel (lengte, voor+achter)</td><td><b>3580 mm</b></td><td>2</td></tr>
+          <tr><td>Bovenregel (lengte, voor+achter)</td><td><b>3580 mm</b></td><td>2</td></tr>
+          <tr><td>Onder-/bovenregel diepte (dwars)</td><td><b>510 mm</b></td><td>14</td></tr>
+          <tr><td>Verticale stijlen (770 mm)</td><td><b>770 mm</b></td><td>14</td></tr>
+          <tr><td>Tussenregel plateau Kamado (±250 mm h)</td><td><b>510 mm</b></td><td>3</td></tr>
+          <tr><td>Steunregels koelkastnis</td><td><b>600 mm</b></td><td>4</td></tr>
+          <tr><td>Plintregels</td><td><b>3580 mm</b></td><td>2</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="font-size:12px">Stijlen op ±400 mm h.o.h. plaatsen, extra stijl bij elke moduleovergang en weerszijden van de Kamado-uitsparing.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Plaatmateriaal (zaagmaten globaal)</h3>
+      <table>
+        <thead><tr><th>Plaat</th><th>Toepassing</th></tr></thead>
+        <tbody>
+          <tr><td><b>18 mm WBP multiplex</b></td><td>Subblad, bodems, legbord Kamado (dubbel)</td></tr>
+          <tr><td><b>8 mm compact-HPL</b></td><td>Werkblad 655 × 2830 mm (modules 2–6, niet over Kamado)</td></tr>
+          <tr><td><b>12 mm vezelcement</b></td><td>Kamado-nis bekleden + onder hitteschild</td></tr>
+          <tr><td><b>Douglas rabat (bekleding)</b></td><td>Buitenzijde betimmering</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- VEILIGHEID -->
+  <section id="s-vei">
+    <h2>Veiligheid & techniek</h2>
+    <div class="note danger"><b>Kamado bij hout = brandgevaar.</b> Bekleed de bay-wanden en het plateau met onbrandbare plaat (vezelcement/Promat/Fermacell) en houd min. 200 mm vrij tot kaal hout. De bay blijft van boven open zodat de dome vrijkomt en de warmte weg kan.</div>
+    <div class="note danger"><b>Dragend plateau.</b> Het keramiek van de Classic II weegt ±90–100 kg. Het plateau (dubbel 18 mm multiplex op dwarsregels, of staal/cementdrager) moet dit ruim dragen. Plaats de Kamado met 2 personen.</div>
+    <div class="note warn"><b>Elektra (laat aansluiten door erkend installateur).</b> De Inventum VKI6010 heeft een gewone 230V-stekker maar trekt vol <b>3500 W ≈ 16A</b>. Geef 'm een <b>eigen 16A-groep</b> met een spatwaterdicht stopcontact binnen 1,8 m (snoerlengte); deel die groep niet met zware verbruikers. Alles op een aardlekschakelaar 30 mA, spatwaterdichte buitendozen (min. IP44/IP65), kabel UV-/vochtbestendig.</div>
+    <div class="note warn"><b>Water & vorst.</b> Plaats een <b>aftapkraan</b> in de toevoer zodat je 's winters kunt aftappen. Gebruik buitengeschikte leiding en isoleer waar mogelijk. Afvoer met sifon (stankslot) richting riool of grindkoffer.</div>
+    <div class="note warn"><b>Warm water (keukenboiler).</b> Close-in boiler 10 L (±2 kW) onder de spoelbak op de koudwatertoevoer; warme uitgang naar de mengkraan. <b>Eerst vullen met water, dán stroom</b> (anders brandt het element door). Geef de boiler een eigen stopcontact — niet samen met de inductie op vol vermogen. 's Winters de boiler aftappen of vorstvrij houden.</div>
+    <div class="note danger"><b>Muur links (Kamado-kant).</b> Is de muur steen/beton (huismuur), dan is dat onbrandbaar en prima. Is het een houten wand/schutting, bekleed het muurvlak achter de Kamado dan óók met onbrandbare plaat en houd de fabrieksafstand aan.</div>
+    <div class="note warn"><b>Pizza-oven rechts bij de staander.</b> Het blok loopt rechts bijna tot de houten overkappingsstaander. Plaats de oven zo ver mogelijk naar links binnen zijn module en bekleed het staandervlak naast de oven met onbrandbare plaat, of houd hier toch ruimte vrij.</div>
+    <div class="note"><b>Pizza-oven (gas).</b> Houd de minimale vrije afstanden van de fabrikant aan. Onbrandbare onderplaat + luchtspleet, en zet 'm nooit dicht tegen brandbare betimmering. Gasslang/regelaar jaarlijks controleren.</div>
+    <div class="note"><b>Hout & vocht.</b> Frame op rubber/stelpoten van de vloer, geen hout direct in plasvocht. Gebruik RVS schroeven/beslag. Werk alles waterkerend af en kit naden bij apparaten.</div>
+    <div class="note"><b>Stabiliteit.</b> Anker het blok aan de muur of overkappingsstaanders als het vrijstaand is en topzwaar wordt door de Kamado.</div>
+  </section>
+</main>
+
+<nav id="nav"></nav>
+
+<script>
+const TABS=[
+ {id:'overzicht',l:'Overzicht',icon:'M3 12l9-9 9 9M5 10v10h14V10'},
+ {id:'maat',l:'Maten',icon:'M3 7h18M3 12h18M3 17h18'},
+ {id:'mat',l:'Materiaal',icon:'M4 6h16v12H4zM4 10h16'},
+ {id:'ger',l:'Gereedschap',icon:'M14 7l3 3-9 9-3-1 1-3z M14 7l3-3 3 3-3 3'},
+ {id:'stap',l:'Stappen',icon:'M9 11l3 3 8-8M4 12l3 3'},
+ {id:'zaag',l:'Zaaglijst',icon:'M3 17l6-6 4 4 8-8'},
+ {id:'vei',l:'Veiligheid',icon:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'},
+];
+
+// ---------- DATA ----------
+const MATERIALEN=[
+ {c:'Hout & plaat',items:[
+   ['Douglas 45×70 mm (frame)','±22 latten van 3 m'],
+   ['WBP multiplex 18 mm','2 platen 122×244'],
+   ['Compact-HPL 8 mm (buiten)','blad ±655×2830 mm (modules 2–6)'],
+   ['Vezelcementplaat 12 mm','1 plaat (nis + hitteschild)'],
+   ['Douglas rabat/zweeds rabat (bekleding)','±10 m²'],
+   ['Douglas tengels/regellatten (luchtspouw)','±10 m'],
+   ['RVS schroeven (i.v.m. looizuur Douglas)','div. 5×60 / 4×40'],
+ ]},
+ {c:'Apparaten',items:[
+   ['Kamado Joe Classic II','1'],
+   ['Gas pizza-oven 40×60 cm','1'],
+   ['Buitenkoelkast onderbouw (±595 mm)','1'],
+   ['Inductie Inventum VKI6010 (590×520×85, 3500W)','1'],
+   ['RVS spoelbak 1 bak + mengkraan','1'],
+ ]},
+ {c:'Sanitair',items:[
+   ['Keukenboiler 10 L (close-in, ±2 kW)','1'],
+   ['Aftapkraan + koppelingen','1 set'],
+   ['Buiten-watertoevoerleiding','naar behoefte'],
+   ['Flexibele aansluitslangen boiler↔kraan','1 set'],
+   ['Sifon 40 mm + afvoerslang','1 set'],
+   ['Teflontape / fittingen','1 set'],
+ ]},
+ {c:'Elektra (door installateur)',items:[
+   ['Spatwaterdichte stopcontacten IP44+','3'],
+   ['UV-/vochtbestendige kabel','naar behoefte'],
+   ['Aardlekschakelaar 30 mA','1 (controle)'],
+ ]},
+ {c:'Bevestiging & afwerking',items:[
+   ['RVS houtschroeven 5×60 / 4×40','2 dozen'],
+   ['Constructieschroeven / hoekankers','1 set'],
+   ['Stelpoten / rubber pads','8'],
+   ['Buiten-/sanitairkit (neutraal)','3 kokers'],
+   ['Beits/olie voor bekleding','1 bus'],
+   ['Ventilatieroosters RVS','2'],
+ ]},
+];
+
+const GEREEDSCHAP=[
+ ['Accuschroefmachine + bitset','boren & schroeven'],
+ ['Cirkelzaag of invalzaag + geleiderail','rechte sneden plaat/hout'],
+ ['Decoupeerzaag','uitsparingen spoelbak & Kamado'],
+ ['Waterpas (lang) + kruislaser','blok haaks & vlak stellen'],
+ ['Rolmaat, potlood, winkelhaak','aftekenen'],
+ ['Schuurmachine','kanten afwerken'],
+ ['Kitspuit','naden afdichten'],
+ ['Gatzaag / boorset','leidingdoorvoeren'],
+ ['Handschoenen + veiligheidsbril + stofmasker','PBM'],
+ ['2e persoon','Kamado plaatsen (zwaar!)'],
+];
+
+// ---------- ILLUSTRATIE-HELPERS (IKEA-stijl lijntekeningen) ----------
+const INK='#111111', DIM='#0058a3', WARM='#c25400', PANEL='#eef1f4', GRN='#cfe3f5', HL='#0058a3';
+function S(inner,h){return `<svg viewBox="0 0 320 ${h||120}" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" font-family="-apple-system,sans-serif">${inner}</svg>`;}
+function tx(x,y,t,c,sz,a){return `<text x="${x}" y="${y}" fill="${c||INK}" stroke="none" font-size="${sz||10}" text-anchor="${a||'middle'}">${t}</text>`;}
+function dimH(x1,x2,y,t){return `<g stroke="${DIM}" stroke-width="1.3"><line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/><path d="M${x1+7} ${y-4} L${x1} ${y} L${x1+7} ${y+4}"/><path d="M${x2-7} ${y-4} L${x2} ${y} L${x2-7} ${y+4}"/></g>${tx((x1+x2)/2,y-6,t,DIM,11)}`;}
+function dimV(y1,y2,x,t){return `<g stroke="${DIM}" stroke-width="1.3"><line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/><path d="M${x-4} ${y1+7} L${x} ${y1} L${x+4} ${y1+7}"/><path d="M${x-4} ${y2-7} L${x} ${y2} L${x+4} ${y2-7}"/></g>${tx(x+5,(y1+y2)/2+4,t,DIM,11,'start')}`;}
+function down(x,y1,y2,c){return `<g stroke="${c||HL}" stroke-width="2.6"><line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}"/><path d="M${x-6} ${y2-9} L${x} ${y2} L${x+6} ${y2-9}"/></g>`;}
+function screw(x,y){return `<g stroke="${HL}" stroke-width="1.8" fill="#fff"><circle cx="${x}" cy="${y}" r="5"/><line x1="${x-2.6}" y1="${y}" x2="${x+2.6}" y2="${y}"/><line x1="${x}" y1="${y-2.6}" x2="${x}" y2="${y+2.6}"/></g>`;}
+function strip(hi){const m=[['Kamado',75],['Prep',60],['Spoel',60],['Koel',60],['Lade',40],['Pizza',63]];const tot=358,W=288,ox=18,oy=14,H=58,sc=W/tot;let x=ox,s='';m.forEach((d,i)=>{const w=d[1]*sc;s+=`<rect x="${x.toFixed(1)}" y="${oy}" width="${w.toFixed(1)}" height="${H}" fill="${i===hi?GRN:PANEL}" stroke="${INK}" stroke-width="1.5"/>`+tx(x+w/2,oy+H/2-1,d[0],INK,8.5)+tx(x+w/2,oy+H/2+11,d[1],DIM,8.5);x+=w;});s+=`<line x1="${ox-5}" y1="${oy-3}" x2="${ox-5}" y2="${oy+H+3}" stroke="${INK}" stroke-width="4"/>`+tx(ox-3,oy+H+14,'muur',INK,8.5,'start')+dimH(ox,ox+W,oy+H+22,'358 cm');return S(s,112);}
+
+const PHASES=[
+ {t:'Voorbereiding & maatvoering',sub:'meten, controleren, intekenen',steps:[
+   {t:'Meet de ruimte onder de overkapping',d:'Overkapping is 360 cm incl. staanders. Links komt het blok tegen de muur, rechts ±2 cm speling tot de staander → blok wordt 358 cm.',
+    svg:S(`<line x1="14" y1="104" x2="306" y2="104"/><rect x="16" y="34" width="9" height="70" fill="${PANEL}"/>${tx(20,30,'muur',INK,9)}<rect x="295" y="48" width="9" height="56" fill="${PANEL}"/>${tx(299,44,'staander',INK,8.5)}<rect x="28" y="58" width="262" height="46" fill="${GRN}" stroke="${INK}" stroke-width="1.5"/>${tx(159,84,'keukenblok',INK,11)}${dimH(28,290,118,'358 cm')}`,130),
+    tools:['Rolmaat','Potlood']},
+   {t:'Check vaste water + stroom',d:'Controleer of de vaste wateraansluiting en de 16A-groep aanwezig en bereikbaar zijn op de plek van het blok.',
+    svg:S(`<path d="M95 40 v36" /><path d="M95 44 h26"/><path d="M121 44 v12"/><path d="M121 64 q4 6 0 11 q-4 -5 0 -11 z" fill="${DIM}" stroke="none"/>${tx(105,92,'water',INK,10)}<rect x="188" y="42" width="50" height="42" rx="7" fill="${PANEL}"/><circle cx="205" cy="63" r="3.2" fill="${INK}" stroke="none"/><circle cx="221" cy="63" r="3.2" fill="${INK}" stroke="none"/>${tx(213,98,'230V · 16A',INK,10)}`,112)},
+   {t:'Zoek de Kamado-inbouwmaat op',d:'Pak het officiële Kamado Joe "Built-In Dimensions"-blad voor de Classic II. Noteer de buitenmaat en de brandwerende afstanden — dit is veiligheidsbepalend.',
+    svg:S(`<rect x="118" y="24" width="84" height="74" rx="4" fill="${PANEL}"/><line x1="130" y1="40" x2="190" y2="40"/><line x1="130" y1="52" x2="190" y2="52"/><path d="M138 92 q22 -40 44 0 z" fill="${GRN}" stroke="${INK}" stroke-width="1.5"/>${tx(160,110,'inbouwmaat + afstanden',INK,10)}`,124),
+    warn:'fabrikantspec geldt boven alles'},
+   {t:'Meet je eigen apparaten na',d:'Koelkast, spoelbak, pizza-oven en de inductie (Inventum VKI6010, 59×52 cm): meet de echte maten en schrijf ze op vóór je zaagt.',
+    svg:S(`<rect x="120" y="44" width="80" height="48" fill="${PANEL}"/>${dimH(120,200,108,'? mm')}${dimV(44,92,210,'? mm')}${tx(160,34,'echte maat noteren',INK,10)}`,124),
+    tools:['Rolmaat']},
+   {t:'Teken de moduleverdeling af',d:'Zet de 6 modules af op de grond/muur, van links (muur) naar rechts: 75 / 60 / 60 / 60 / 40 / 63 cm = 358 cm.',
+    svg:strip(-1),tools:['Rolmaat','Potlood','Winkelhaak']},
+ ]},
+ {t:'Fundering & onderframe',sub:'vlak, stabiel, van de vloer af',steps:[
+   {t:'Controleer de ondergrond',d:'Tegels of beton zijn ideaal. Leg zo nodig eerst betontegels en zorg dat het vlak en draagkrachtig is.',
+    svg:S(`<rect x="30" y="88" width="260" height="14" fill="${PANEL}"/><rect x="108" y="68" width="104" height="14" rx="3" fill="${GRN}"/><circle cx="160" cy="75" r="5" fill="none" stroke="${INK}" stroke-width="1.6"/>${tx(160,58,'vlak & draagkrachtig',INK,10)}`,112),
+    tools:['Waterpas']},
+   {t:'Zaag de delen van het onderframe',d:'Douglas 45×70 mm: 2 lange regels van 3580 mm (voor + achter) en dwarsregels van 510 mm. Boor bij de uiteinden voor, Douglas splijt makkelijk.',
+    svg:S(`<rect x="20" y="30" width="280" height="14" fill="${PANEL}"/>${dimH(20,300,26,'3580 mm — 2×')}<rect x="20" y="70" width="72" height="14" fill="${PANEL}"/>${dimH(20,92,66,'510 mm')}`,108),
+    need:['Douglas 45×70'],tools:['Cirkelzaag']},
+   {t:'Schroef tot een rechthoek',d:'Schroef de lange regels en dwarsregels tot een liggend frame van 3580 × 510 mm. Dwarsregels h.o.h. ±400 mm.',
+    svg:S(`<rect x="28" y="30" width="264" height="62" fill="${PANEL}"/><rect x="38" y="40" width="244" height="42" fill="#fff"/><line x1="118" y1="40" x2="118" y2="82"/><line x1="198" y1="40" x2="198" y2="82"/>${screw(38,40)}${screw(282,40)}${screw(38,82)}${screw(282,82)}${dimH(28,292,106,'3580 mm')}`,116),
+    need:['Vuren 45×70','RVS schroeven 5×60'],tools:['Accuschroefmachine']},
+   {t:'Zet op stelpoten, 30 mm vrij',d:'Plaats het frame op rubber pads / stelpoten zodat het hout ±30 mm vrij van de vloer blijft (tegen vocht). Stel daarna waterpas in beide richtingen.',
+    svg:S(`<line x1="18" y1="104" x2="302" y2="104"/><rect x="40" y="64" width="240" height="18" fill="${PANEL}"/><rect x="58" y="82" width="14" height="22" fill="${PANEL}"/><rect x="248" y="82" width="14" height="22" fill="${PANEL}"/><rect x="120" y="50" width="80" height="12" rx="3" fill="${GRN}"/><circle cx="160" cy="56" r="4" fill="none" stroke="${INK}" stroke-width="1.5"/>${dimV(82,104,290,'≥30')}`,116),
+    need:['Stelpoten/pads'],tools:['Waterpas']},
+ ]},
+ {t:'Houtskelet opbouwen',sub:'stijlen, regels, moduleverdeling',steps:[
+   {t:'Zet de verticale stijlen (770 mm)',d:'Schroef de staande stijlen op het onderframe. Een stijl bij elke moduleovergang en aan weerszijden van openingen.',
+    svg:S(`<rect x="20" y="98" width="280" height="12" fill="${PANEL}"/><rect x="34" y="30" width="12" height="68" fill="${PANEL}"/><rect x="114" y="30" width="12" height="68" fill="${PANEL}"/><rect x="194" y="30" width="12" height="68" fill="${PANEL}"/><rect x="274" y="30" width="12" height="68" fill="${PANEL}"/>${dimV(30,98,14,'770')}${dimH(46,114,118,'±400')}`,128),
+    need:['Douglas 45×70'],tools:['Accuschroefmachine','Waterpas']},
+   {t:'Monteer de boven- en onderregels',d:'Verbind de stijlen boven en onder met regels van 3580 mm. Houd alles haaks en in lijn.',
+    svg:S(`<rect x="20" y="24" width="280" height="12" fill="${GRN}"/><rect x="34" y="36" width="12" height="64" fill="${PANEL}"/><rect x="114" y="36" width="12" height="64" fill="${PANEL}"/><rect x="194" y="36" width="12" height="64" fill="${PANEL}"/><rect x="274" y="36" width="12" height="64" fill="${PANEL}"/><rect x="20" y="100" width="280" height="12" fill="${PANEL}"/>${dimH(20,300,20,'3580 mm')}`,124),
+    need:['Douglas 45×70'],tools:['Accuschroefmachine']},
+   {t:'Maak de moduleschotten',d:'Plaats een schot op elke modulelijn, zodat je 6 vakken krijgt: Kamado / Prep / Spoel / Koel / Lade / Pizza.',
+    svg:strip(-1)},
+   {t:'Bouw de koelkastnis (600×870×600)',d:'Maak het vak voor de buitenkoelkast op maat, met een ventilatie-opening onderin/aan de voorzijde.',
+    svg:S(`<rect x="64" y="18" width="192" height="118" fill="${PANEL}"/><rect x="80" y="28" width="148" height="98" fill="#fff" stroke="${INK}" stroke-width="1.6"/><rect x="92" y="118" width="124" height="6" fill="${INK}" stroke="none"/>${tx(154,134,'ventilatie',INK,8.5)}${dimV(28,126,52,'870')}${dimH(80,228,150,'600')}`,160),
+    need:['Douglas 45×70'],warn:'ventilatie vrijhouden'},
+   {t:'Controleer haaks & vlak',d:'Meet beide diagonalen — ze moeten gelijk zijn. Corrigeer nu, voordat je verder bouwt.',
+    svg:S(`<rect x="60" y="26" width="200" height="84" fill="${PANEL}"/><line x1="60" y1="26" x2="260" y2="110" stroke="${DIM}" stroke-width="1.6"/><line x1="260" y1="26" x2="60" y2="110" stroke="${DIM}" stroke-width="1.6"/>${tx(160,124,'diagonaal A = B',DIM,11)}`,134),
+    tools:['Rolmaat','Waterpas']},
+ ]},
+ {t:'Kamado-bay (brandveilig)',sub:'open vak + dragend plateau',steps:[
+   {t:'Bouw het plateau-frame op ±250 mm',d:'Maak in de linker bay een laag, stevig draagframe op ±250 mm hoogte. Kies de hoogte zo dat het rooster van de Kamado straks prettig werkt.',
+    svg:S(`<line x1="20" y1="118" x2="300" y2="118"/><rect x="58" y="72" width="12" height="46" fill="${PANEL}"/><rect x="250" y="72" width="12" height="46" fill="${PANEL}"/><rect x="50" y="60" width="220" height="14" fill="${PANEL}"/>${dimV(74,118,284,'±250')}`,128),
+    need:['Douglas 45×70'],tools:['Accuschroefmachine']},
+   {t:'Leg een dragend plateau (2× 18 mm)',d:'Dubbel 18 mm multiplex op de dwarsregels. Het keramiek weegt ±90–100 kg, dus het plateau moet minstens 120 kg dragen.',
+    svg:S(`<rect x="80" y="62" width="160" height="12" fill="${PANEL}"/><rect x="80" y="74" width="160" height="12" fill="${PANEL}"/>${down(160,28,58)}${tx(160,22,'≥120 kg',HL,11)}`,112),
+    need:['Multiplex 18 mm (2×)'],tools:['Accuschroefmachine'],warn:'min. 120 kg dragend'},
+   {t:'Werk de bovenkant onbrandbaar af',d:'Leg op het plateau een onbrandbare laag (vezelcement of een tegel). Hierop komt de Kamado te staan.',
+    svg:S(`<rect x="80" y="66" width="160" height="20" fill="${PANEL}"/><rect x="80" y="54" width="160" height="12" fill="#cfd8cf"/><line x1="88" y1="60" x2="232" y2="60" stroke="${INK}" stroke-width="0.8"/>${tx(160,44,'vezelcement / tegel',INK,10)}`,108),
+    need:['Vezelcement 12 mm']},
+   {t:'Bekleed de bay-wanden onbrandbaar',d:'Bekleed de wanden van de bay met vezelcement. Houd minstens 200 mm vrij tot kaal hout.',
+    svg:S(`<path d="M72 28 V120 H248 V28" fill="none" stroke="${INK}" stroke-width="3"/><path d="M86 40 V120 M86 110 H234 M234 120 V40" stroke="${DIM}" stroke-width="1.4" fill="none"/>${dimH(86,118,64,'200')}${tx(160,18,'onbrandbare plaat',INK,10)}`,128),
+    need:['Vezelcement 12 mm'],warn:'geen kaal hout binnen 200 mm'},
+   {t:'Houd de bay van boven open',d:'Géén werkblad over de Kamado. De bovenkant blijft open zodat de dome vrijkomt en de warmte weg kan. (Kamado plaatsen we later.)',
+    svg:S(`<line x1="70" y1="42" x2="70" y2="124"/><line x1="250" y1="42" x2="250" y2="124"/><line x1="70" y1="124" x2="250" y2="124"/><path d="M112 112 q48 -86 96 0" fill="${GRN}" stroke="${INK}" stroke-width="1.6"/><line x1="112" y1="112" x2="208" y2="112"/>${tx(160,30,'open — dome vrij',INK,10)}`,134)},
+ ]},
+ {t:'Ruwbouw water & elektra',sub:'leidingen vóór de betimmering',steps:[
+   {t:'Koudwaterleiding + aftapkraan',d:'Trek de koudwaterleiding naar de spoelbakmodule en zet er een aftapkraan in, zodat je het systeem ’s winters kunt aftappen.',
+    svg:S(`<path d="M40 64 H210" stroke="${INK}"/><circle cx="150" cy="64" r="11" fill="${PANEL}"/><line x1="150" y1="53" x2="150" y2="40"/><line x1="140" y1="40" x2="160" y2="40"/>${tx(150,92,'aftapkraan',INK,10)}`,112),
+    need:['Watertoevoerleiding','Aftapkraan'],warn:'vorstvrij in de winter'},
+   {t:'Afvoer + sifon (40 mm)',d:'Maak de afvoer met een sifon (stankslot) en afschot richting riool of grindkoffer.',
+    svg:S(`<path d="M150 34 V58 H118 V80 a18 18 0 0 0 36 0 V70 H210" fill="none" stroke="${INK}" stroke-width="2.4"/>${tx(160,112,'40 mm sifon · afschot',INK,10)}`,120),
+    need:['Sifon 40 mm']},
+   {t:'Hang de boiler onder de spoelbak',d:'Close-in keukenboiler 10 L op de koudwatertoevoer; de warme uitgang gaat naar de mengkraan.',
+    svg:S(`<line x1="60" y1="34" x2="260" y2="34" stroke="${INK}"/><rect x="120" y="52" width="80" height="62" rx="9" fill="${PANEL}"/>${tx(160,86,'10 L · ±2 kW',INK,10)}<line x1="140" y1="114" x2="140" y2="130" stroke="${DIM}" stroke-width="2.4"/>${tx(140,142,'koud in',DIM,8.5)}<line x1="180" y1="52" x2="180" y2="38" stroke="${WARM}" stroke-width="2.4"/>${tx(180,142,'warm uit',WARM,8.5)}`,150),
+    need:['Keukenboiler 10 L','Aansluitslangen'],warn:'eerst vullen, dán stroom'},
+   {t:'Elektra laten aanleggen',d:'Door een erkend installateur: stopcontact voor koelkast + boiler (±2 kW) en een eigen 16A-groep voor de inductie. Alles IP44+, aardlek 30 mA.',
+    svg:S(`<rect x="116" y="30" width="88" height="44" rx="5" fill="${PANEL}"/><rect x="150" y="38" width="20" height="28" rx="3" fill="#fff" stroke="${INK}"/><line x1="160" y1="74" x2="160" y2="92"/><rect x="138" y="92" width="44" height="20" rx="4" fill="${PANEL}"/>${tx(160,126,'eigen 16A · aardlek 30 mA',INK,10)}`,134),
+    warn:'door erkend installateur'},
+   {t:'Test water + stroom',d:'Controleer alles op lekkage en werking vóórdat je dichttimmert. Laat de boiler eerst vollopen met water voordat hij stroom krijgt.',
+    svg:S(`<circle cx="160" cy="62" r="34" fill="${GRN}"/><path d="M143 62 l11 13 l24 -30" stroke="${HL}" stroke-width="5" fill="none"/>${tx(160,112,'testen vóór dichttimmeren',INK,10)}`,126)},
+ ]},
+ {t:'Betimmering / bekleding',sub:'weerbestendig afwerken',steps:[
+   {t:'Breng tengels aan (luchtspouw)',d:'Schroef tengels op de stijlen. Die maken een luchtspouw achter de bekleding, zodat vocht weg kan.',
+    svg:S(`<rect x="92" y="28" width="14" height="84" fill="${PANEL}"/>${tx(99,122,'stijl',INK,8)}<rect x="106" y="28" width="8" height="84" fill="#cfd8cf"/>${tx(110,20,'tengel',INK,8)}<rect x="120" y="28" width="10" height="84" fill="${PANEL}"/>${dimH(114,120,70,'spouw')}`,132),
+    need:['Douglas tengels']},
+   {t:'Monteer de Douglas bekleding',d:'Schroef de Douglas rabatdelen met RVS schroeven (gewoon staal verkleurt door het looizuur). Laat de plint- en ventilatieopeningen vrij.',
+    svg:S(`<rect x="60" y="32" width="200" height="16" fill="${PANEL}"/><rect x="60" y="50" width="200" height="16" fill="${PANEL}"/><rect x="60" y="68" width="200" height="16" fill="${PANEL}"/>${screw(80,40)}${screw(240,40)}${screw(80,58)}${screw(240,58)}${screw(80,76)}${screw(240,76)}${tx(160,104,'RVS schroeven',INK,10)}`,116),
+    need:['Douglas rabat','RVS schroeven']},
+   {t:'Maak de plint (100 mm, terug)',d:'Zet de plint/schopruimte ±100 mm hoog en iets teruggezet, zodat je comfortabel bij het blad kunt staan.',
+    svg:S(`<rect x="80" y="34" width="160" height="52" fill="${PANEL}"/><rect x="92" y="86" width="136" height="22" fill="#cfd8cf"/>${dimV(86,108,250,'100')}${tx(160,124,'schopruimte',INK,10)}`,134)},
+   {t:'Olie de Douglas (of laat vergrijzen)',d:'Douglas mag onbehandeld blijven (vergrijst mooi) of behandel met UV-werende Douglas-/buitenolie voor kleurbehoud. Geen impregneren nodig.',
+    svg:S(`<rect x="70" y="60" width="180" height="40" fill="${PANEL}"/><rect x="150" y="30" width="10" height="26" fill="${INK}"/><rect x="138" y="54" width="34" height="12" fill="${GRN}" stroke="${INK}" stroke-width="1.4"/>${tx(160,118,'beschermen tegen weer',INK,10)}`,128),
+    need:['Douglas-olie (optioneel)']},
+ ]},
+ {t:'Werkblad (HPL)',sub:'subblad + compact-HPL, niet over Kamado-bay',steps:[
+   {t:'Leg het subblad (18 mm)',d:'Leg 18 mm multiplex als subblad over modules 2–6 (±2830 mm), diepte 650 mm met 20 mm overstek vóór. Niet over de Kamado-bay.',
+    svg:S(`<rect x="18" y="28" width="44" height="60" fill="#fff" stroke="${INK}" stroke-dasharray="5 4"/>${tx(40,60,'Kamado',INK,8)}${tx(40,72,'(open)',INK,8)}<rect x="62" y="28" width="228" height="60" fill="${GRN}" stroke="${INK}" stroke-width="1.5"/>${dimH(62,290,104,'2830 mm')}${dimV(28,88,300,'650')}`,120),
+    need:['Multiplex 18 mm']},
+   {t:'Teken de spoelbak-uitsparing af',d:'Leg de meegeleverde mal van je spoelbak op het blad en teken de uitsparing af.',
+    svg:S(`<rect x="60" y="30" width="200" height="78" fill="${PANEL}"/><rect x="120" y="48" width="80" height="46" fill="#fff" stroke="${DIM}" stroke-width="1.8" stroke-dasharray="6 5"/>${tx(160,124,'aftekenen volgens mal',INK,10)}`,134),
+    tools:['Potlood']},
+   {t:'Zaag de uitsparing',d:'Boor eerst startgaten in de hoeken, zaag daarna met de decoupeerzaag langs de lijn.',
+    svg:S(`<rect x="60" y="30" width="200" height="78" fill="${PANEL}"/><rect x="120" y="48" width="80" height="46" fill="#fff" stroke="${INK}" stroke-width="1.6"/><circle cx="120" cy="48" r="4" fill="#fff"/><circle cx="200" cy="48" r="4" fill="#fff"/><circle cx="120" cy="94" r="4" fill="#fff"/><circle cx="200" cy="94" r="4" fill="#fff"/>${tx(160,124,'startgaten + decoupeerzaag',INK,10)}`,134),
+    tools:['Boor','Decoupeerzaag']},
+   {t:'Plaats het compact-HPL-blad',d:'Lijm/schroef het 8 mm compact-HPL op het subblad. Werk de kanten netjes af.',
+    svg:S(`<rect x="70" y="74" width="180" height="14" fill="${PANEL}"/><rect x="70" y="62" width="180" height="10" fill="${GRN}" stroke="${INK}" stroke-width="1.4"/>${down(160,32,58)}${tx(160,26,'8 mm HPL',HL,10)}${tx(160,108,'op het subblad',INK,10)}`,120),
+    need:['Compact-HPL 8 mm']},
+   {t:'Markeer plek pizza-oven & inductie',d:'Markeer op het blad waar de pizza-oven (rechts) en de inductie komen, inclusief de hitteschild-zone.',
+    svg:S(`<rect x="40" y="34" width="240" height="56" fill="${PANEL}"/><rect x="56" y="44" width="70" height="36" fill="#fff" stroke="${DIM}" stroke-dasharray="5 4"/>${tx(91,66,'inductie',DIM,9)}<rect x="200" y="44" width="64" height="36" fill="#fff" stroke="${WARM}" stroke-dasharray="5 4"/>${tx(232,66,'pizza',WARM,9)}`,108)},
+ ]},
+ {t:'Apparaten plaatsen',sub:'aansluiten & inzetten',steps:[
+   {t:'Monteer spoelbak + mengkraan',d:'Zet de spoelbak in de uitsparing, sluit koud + warm (via de boiler) aan op de mengkraan en kit de rand af.',
+    svg:S(`<rect x="100" y="58" width="120" height="40" rx="4" fill="${PANEL}"/><path d="M160 58 v-22 h22" fill="none"/><line x1="150" y1="60" x2="150" y2="98" stroke="${DIM}" stroke-width="2.4"/>${tx(150,112,'koud',DIM,8.5)}<line x1="172" y1="60" x2="172" y2="98" stroke="${WARM}" stroke-width="2.4"/>${tx(172,112,'warm',WARM,8.5)}`,124),
+    need:['Spoelbak','Mengkraan','Kit']},
+   {t:'Schuif de koelkast in de nis',d:'Schuif de buitenkoelkast in het vak, stekker in het spatwaterdichte stopcontact. Houd de ventilatie vrij.',
+    svg:S(`<rect x="60" y="22" width="120" height="100" fill="#fff" stroke="${INK}" stroke-width="1.6"/><rect x="196" y="34" width="78" height="86" fill="${PANEL}"/><line x1="236" y1="40" x2="236" y2="114"/>${down(0,0,0)}<g stroke="${HL}" stroke-width="2.6"><line x1="196" y1="74" x2="172" y2="74"/><path d="M180 68 L172 74 L180 80"/></g>${tx(120,134,'ventilatie vrij',INK,10)}`,144),
+    need:['Buitenkoelkast'],warn:'ventilatie vrijhouden'},
+   {t:'Maak het hitteschild (pizza-oven)',d:'Onder de oven: vezelcement + een natuursteen/keramische tegel met een luchtspleet. Achterwand onbrandbaar, min. 100–150 mm vrij.',
+    svg:S(`<rect x="100" y="44" width="120" height="22" fill="${PANEL}"/>${tx(160,59,'pizza-oven',INK,9)}<rect x="92" y="74" width="136" height="10" fill="#cfd8cf"/>${tx(250,80,'tegel',INK,8,'start')}<rect x="92" y="92" width="136" height="10" fill="#cfd8cf"/>${tx(250,99,'vezelcement',INK,8,'start')}${dimV(84,74,84,'spleet')}`,118),
+    need:['Vezelcement 12 mm','Tegel/natuursteen'],warn:'min. 100–150 mm vrij'},
+   {t:'Plaats de pizza-oven rechts',d:'Zet de oven in de rechter module, zo ver mogelijk van de houten staander. Bekleed het staandervlak onbrandbaar.',
+    svg:strip(5),warn:'staander onbrandbaar bekleden'},
+   {t:'Plaats de Kamado op het plateau',d:'Til de Kamado met 2 personen op het plateau, vrijstaand in de open bay. Géén blad eromheen.',
+    svg:S(`<circle cx="70" cy="58" r="9" fill="${PANEL}"/><path d="M70 67 v22 M70 74 l-12 8 M70 74 l12 8 M70 89 l-9 16 M70 89 l9 16"/><circle cx="250" cy="58" r="9" fill="${PANEL}"/><path d="M250 67 v22 M250 74 l-12 8 M250 74 l12 8 M250 89 l-9 16 M250 89 l9 16"/><path d="M128 96 q32 -52 64 0 z" fill="${GRN}" stroke="${INK}" stroke-width="1.6"/><rect x="120" y="96" width="80" height="14" fill="${PANEL}"/>${tx(160,128,'2 personen — ±100 kg',HL,10)}`,138),
+    warn:'±100 kg · met 2 personen'},
+   {t:'Berg de inductie rechtop op',d:'De Inventum VKI6010 (59×52 cm) past niet liggend in de 40 cm module — zet hem rechtop in een gleuf van ±12 cm.',
+    svg:S(`<rect x="96" y="24" width="128" height="104" fill="${PANEL}"/><rect x="118" y="34" width="16" height="84" fill="#fff" stroke="${INK}" stroke-width="1.6"/>${dimH(118,134,24,'±120')}${tx(180,80,'rechtop',INK,10)}`,140),
+    need:['Inductie VKI6010']},
+ ]},
+ {t:'Afwerking, test & oplevering',sub:'kitwerk en controle',steps:[
+   {t:'Kit alle naden',d:'Kit de naden bij de apparaten en langs het werkblad met neutrale sanitair-/buitenkit.',
+    svg:S(`<path d="M150 30 l16 8 v18 l-16 8 z" fill="${PANEL}"/><path d="M166 38 H230" stroke="${INK}"/><path d="M120 92 H250" stroke="${GRN}" stroke-width="6"/>${tx(160,116,'naden dichtkitten',INK,10)}`,128),
+    need:['Kit']},
+   {t:'Test op waterlekkage',d:'Open de kraan en controleer de sifon en de toevoer op lekkage.',
+    svg:S(`<path d="M120 40 v34"/><path d="M120 44 h28"/><path d="M148 44 v12"/><path d="M148 62 q5 7 0 13 q-5 -6 0 -13 z" fill="${DIM}" stroke="none"/><circle cx="210" cy="64" r="20" fill="${GRN}"/><path d="M200 64 l7 8 l14 -18" stroke="${HL}" stroke-width="3.5" fill="none"/>`,112)},
+   {t:'Test koelkast, inductie & boiler',d:'Inductie op de eigen 16A-groep (geen overbelasting), boiler eerst gevuld, koelkast koelt.',
+    svg:S(`<rect x="50" y="44" width="50" height="50" fill="${PANEL}"/>${tx(75,72,'koel',INK,9)}<rect x="135" y="44" width="50" height="50" fill="${PANEL}"/>${tx(160,72,'ind.',INK,9)}<rect x="220" y="44" width="50" height="50" fill="${PANEL}"/>${tx(245,72,'boiler',INK,8.5)}${tx(160,112,'alles testen',INK,10)}`,124)},
+   {t:'Brand de Kamado rustig in',d:'Stook de eerste keer rustig op en controleer de ventilatie en de afstanden tot het hout.',
+    svg:S(`<path d="M120 100 q40 -64 80 0 z" fill="${GRN}" stroke="${INK}" stroke-width="1.6"/><path d="M160 56 q10 10 0 20 q-10 -8 0 -20 z" fill="${WARM}" stroke="none"/>${tx(160,118,'rustig instoken',INK,10)}`,128)},
+   {t:'Opruimen & opleveren',d:'Ruim op, controleer alles nog één keer. De eerste pizza is voor de bouwer.',
+    svg:S(`<circle cx="160" cy="60" r="36" fill="${GRN}"/><path d="M142 60 l12 14 l26 -32" stroke="${HL}" stroke-width="5" fill="none"/>${tx(160,114,'klaar!',HL,12)}`,128)},
+ ]},
+];
+
+// ---------- STATE ----------
+const KEY='buitenkeuken_v1';
+let state=JSON.parse(localStorage.getItem(KEY)||'{}');
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function isDone(id){return !!state[id];}
+function toggle(id){state[id]=!state[id];save();render();}
+
+// ---------- RENDER ----------
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-11"/></svg>';
+function itemHtml(id,lbl,meta){
+  return `<div class="item ${isDone(id)?'done':''}" onclick="toggle('${id}')">
+    <div class="box">${CHECK}</div>
+    <div class="itxt"><div class="lbl">${lbl}</div>${meta?`<div class="meta">${meta}</div>`:''}</div>
+  </div>`;
+}
+
+function renderMat(){
+  let h='';
+  MATERIALEN.forEach((g,gi)=>{
+    h+=`<h3>${g.c}</h3>`;
+    g.items.forEach((it,i)=>{ h+=itemHtml(`mat-${gi}-${i}`,it[0],`Aantal: <b>${it[1]}</b>`); });
+  });
+  document.getElementById('matlist').innerHTML=h;
+}
+function renderGer(){
+  let h='';
+  GEREEDSCHAP.forEach((it,i)=>{ h+=itemHtml(`ger-${i}`,it[0],it[1]); });
+  document.getElementById('gerlist').innerHTML=h;
+}
+function stepCard(id,si,st,isNext){
+  const need=(st.need||[]).map(n=>`<span class="chip">${n}</span>`).join('');
+  const tools=(st.tools||[]).map(n=>`<span class="chip tool">${n}</span>`).join('');
+  const warn=st.warn?`<span class="chip warnchip">⚠ ${st.warn}</span>`:'';
+  const chips=(need||tools||warn)?`<div class="sneed"><span class="nlab">Nodig</span>${need}${tools}${warn}</div>`:'';
+  const badge=isNext?'<span class="nextchip">nu</span>':'';
+  return `<div class="step ${isDone(id)?'done':''} ${isNext?'next':''}" id="${id}" onclick="toggle('${id}')">
+    <div class="srow"><div class="snum">${si}</div><div class="stitle">${st.t}${badge}</div><div class="sbox">${CHECK}</div></div>
+    ${st.svg?`<div class="sillu">${st.svg}</div>`:''}
+    <div class="sdetail">${st.d}</div>${chips}</div>`;
+}
+function nextStep(){
+  for(let pi=0;pi<PHASES.length;pi++)
+    for(let si=0;si<PHASES[pi].steps.length;si++)
+      if(!isDone(`stap-${pi}-${si}`))return {pi,si,id:`stap-${pi}-${si}`};
+  return null;
+}
+function renderPhases(){
+  const nx=nextStep();
+  let h='';
+  PHASES.forEach((p,pi)=>{
+    const ids=p.steps.map((_,si)=>`stap-${pi}-${si}`);
+    const done=ids.filter(isDone).length;
+    const pct=Math.round(done/ids.length*100);
+    const open=state['_open_'+pi]?'open':'';
+    let body='';
+    p.steps.forEach((st,si)=>{ body+=stepCard(`stap-${pi}-${si}`,si+1,st,nx&&nx.pi===pi&&nx.si===si); });
+    h+=`<div class="phase ${open}" id="ph-${pi}">
+      <div class="phead" onclick="togglePhase(${pi})">
+        <div class="pn">${pi+1}</div>
+        <div class="pt"><div class="pttl">${p.t}</div><div class="psub">${p.sub} · ${done}/${ids.length}</div></div>
+        <div class="chev">▶</div>
+      </div>
+      <div class="pmini"><div style="width:${pct}%"></div></div>
+      <div class="pbody">${body}</div>
+    </div>`;
+  });
+  document.getElementById('phases').innerHTML=h;
+}
+function togglePhase(pi){state['_open_'+pi]=!state['_open_'+pi];save();renderPhases();}
+
+function progress(){
+  let total=0,done=0;
+  MATERIALEN.forEach((g,gi)=>g.items.forEach((_,i)=>{total++;if(isDone(`mat-${gi}-${i}`))done++;}));
+  GEREEDSCHAP.forEach((_,i)=>{total++;if(isDone(`ger-${i}`))done++;});
+  PHASES.forEach((p,pi)=>p.steps.forEach((_,si)=>{total++;if(isDone(`stap-${pi}-${si}`))done++;}));
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progfill').style.width=pct+'%';
+  document.getElementById('proglabel').textContent=`${done} / ${total} afgevinkt · ${pct}%`;
+}
+
+function updateNextBtn(){
+  const b=document.getElementById('nextbtn');if(!b)return;
+  const nx=nextStep();
+  if(nx){
+    const st=PHASES[nx.pi].steps[nx.si];
+    b.classList.remove('done');
+    b.innerHTML=`▶ Volgende klus — ${nx.pi+1}.${nx.si+1} ${st.t}`;
+  }else{
+    b.classList.add('done');
+    b.innerHTML='✓ Alle stappen afgerond!';
+  }
+}
+function gotoNext(){
+  const nx=nextStep();if(!nx)return;
+  state['_open_'+nx.pi]=true;save();renderPhases();
+  const el=document.getElementById(nx.id);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+function render(){renderMat();renderGer();renderPhases();progress();updateNextBtn();}
+
+function buildNav(){
+  let h='';
+  TABS.forEach((t,i)=>{
+    h+=`<button data-tab="${t.id}" class="${i===0?'active':''}" onclick="go('${t.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${t.icon}"/></svg>
+      ${t.l}</button>`;
+  });
+  document.getElementById('nav').innerHTML=h;
+}
+function go(id){
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  const sec=document.getElementById('s-'+id);if(!sec)return;
+  sec.classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+  state['_tab']=id;save();
+  if(id==='stap'){
+    const anyOpen=PHASES.some((_,pi)=>state['_open_'+pi]);
+    if(!anyOpen){const nx=nextStep();if(nx){state['_open_'+nx.pi]=true;save();renderPhases();}}
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function resetAll(){
+  if(confirm('Alle vinkjes en voortgang wissen?')){state={};save();render();}
+}
+
+buildNav();render();
+go(state['_tab']&&document.getElementById('s-'+state['_tab'])?state['_tab']:'overzicht');
+</script>
+</body>
+</html>
