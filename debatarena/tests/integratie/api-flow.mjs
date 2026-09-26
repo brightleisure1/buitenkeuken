@@ -413,7 +413,7 @@ await step("Hamvraag: blind vergelijken met één vraag aan het slimste model", 
   assert.match(v.data.vergelijking.advies.uitslag, /nieuwe klanten/);
   assert.ok(["debat", "enkel"].includes(v.data.vergelijking.aIs), "willekeurige volgorde");
   assert.ok(!v.data.vergelijking.keuze, "nog niet gekozen");
-  const req = (await fakeLog()).filter((l) => l.schemaProps?.includes("risicos")).at(-1);
+  const req = (await fakeLog()).filter((l) => l.schemaProps?.includes("uitslag") && !l.schemaProps.includes("besluitenVanDeBaas")).at(-1);
   assert.equal(req.model, "claude-opus-5", "het slimste Claude-model");
   assert.match(req.user, /We verhogen niet vóór juni/, "met dezelfde vaststaande besluiten");
   const again = await call(`/api/runs/${run.id}/vergelijk`, { method: "POST", json: {} });

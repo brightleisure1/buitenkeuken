@@ -125,7 +125,9 @@ export interface EnkelAdvies {
   uitslag: string;
   samenvatting: string;
   strategie: { stap: string; waarom: string; eersteActie: string }[];
-  risicos: string[];
+  aannames?: { aanname: string; risico: string; hoeTesten: string }[];
+  /** Oudere vergelijkingen hadden alleen losse risico's */
+  risicos?: string[];
 }
 
 export interface Vergelijking {

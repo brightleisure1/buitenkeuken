@@ -208,16 +208,24 @@ Antwoord ALLEEN met JSON in dit formaat:
 {"feiten":[{"feit":"...","bron":"..."}]}`;
 }
 
+/** Regels voor een advies waar een directie echt op kan besluiten (ook gebruikt voor de vergelijking). */
+export const ADVIES_REGELS = `- uitslag: het advies aan de baas in één korte, krachtige zin (max 12 woorden).
+- samenvatting: 3 tot 5 zinnen: wat de baas moet doen, waarom, en onder welke voorwaarde.
+- strategie: 3 tot 5 stappen. Per stap een 'waarom' van 2 tot 3 zinnen met het echte argument (cijfers, afwegingen, wat er misgaat als je het niet doet), en een eerste actie die morgen kan beginnen, met wie het doet en wanneer.
+- aannames: 3 tot 5 dingen waar het advies op leunt: per aanname het risico als het niet klopt en hoe je het goedkoop en snel test.
+- Concreet: bedragen, percentages, termijnen, eigenaren. Verzin geen cijfers; noem een schatting een schatting.
+- Gewone taal, geen jargon, geen complimenten.`;
+
 export function resultInstruction(run: Run) {
-  return `Het debat is afgelopen. Jij bent de voorzitter en levert nu het eindresultaat voor de baas: jouw advies, zodat de baas kan besluiten.
+  return `Het debat is afgelopen. Jij bent de voorzitter en schrijft nu het advies waarop de baas gaat besluiten.
+
+Gebruik het debat als bron, niet als plafond. Denk grondig na: weeg de argumenten zelf, neem de sterkste over (noem wie ze inbracht als dat helpt), verwerp zwakke of onbewezen beweringen, en vul aan wat de rollen over het hoofd zagen. Je bent niet gebonden aan de meerderheid. Het advies moet beter zijn dan wat één slimme adviseur zonder dit debat had bedacht: benut juist de bezwaren, belangen en praktijkkennis die in het debat naar boven kwamen.
 
 Regels:
-- samenvatting: maximaal 3 zinnen. Rustig en zakelijk.
-- uitslag: jouw advies aan de baas in één korte, krachtige zin.
-- besluitenVanDeBaas: alle besluiten die de baas met de hamer nam, letterlijk of heel dicht erbij. Leeg als er geen waren.
-- strategie: 3 tot 5 stappen, elk met waarom en een eerste actie die morgen kan beginnen.
+${ADVIES_REGELS}
+- besluitenVanDeBaas: alle besluiten die de baas met de hamer nam, letterlijk of heel dicht erbij. Leeg als er geen waren. Die staan vast.
 - onenigheid: punten waar de rollen het echt oneens bleven, met per rol het standpunt (gebruik de namen).
-- aannames: waar de strategie op leunt, met risico en hoe je het goedkoop test. Elke bewering uit het debat die zonder bron werd gedaan en ertoe doet, komt hier ook in met onbewezen=true.
+- aannames: elke bewering uit het debat die zonder bron werd gedaan en ertoe doet, komt hier ook in met onbewezen=true.
 - bronnen: alleen bronnen die echt in het debat of huiswerk zijn genoemd, met wie ze gebruikte. Verzin geen bronnen.
 - volgendeStappen: 3 tot 5 korte acties.
 - besteQuote: de scherpste, meest deelbare uitspraak uit het debat (letterlijk, max 25 woorden) en de naam van wie het zei.

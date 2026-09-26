@@ -1,6 +1,6 @@
 import "server-only";
 import { toFile } from "openai";
-import { IMAGE, resolveModel } from "./config";
+import { FAST_MODEL_KEY, IMAGE, getModel, resolveModel, supportsWebSearch } from "./config";
 import { attachmentImages, attachmentsFor, runAttachments } from "./attachments";
 import { extractJson, openaiClient, research } from "./llm";
 import { homeworkInstruction, roleSystem } from "./prompts";
@@ -119,8 +119,9 @@ async function makePortraits(run: Run, role: Role) {
     await mergePrep(run.id, role.id, { portraits: { ...(run.prep[role.id]?.portraits ?? {}), neutraal } });
     let cost = IMAGE.priceUsd;
 
+    // Alleen in de fun-modus tekenen we ook een sceptisch en enthousiast gezicht; serieus volstaat één portret.
     const moods = await Promise.allSettled(
-      (Object.keys(MOOD_EDIT.serieus) as Exclude<Mood, "neutraal">[]).map(async (mood) => {
+      (fun ? (Object.keys(MOOD_EDIT.serieus) as Exclude<Mood, "neutraal">[]) : []).map(async (mood) => {
         const edit = await client.images.edit({
           model: IMAGE.model,
           image: await toFile(neutralBuf, "neutraal.jpg", { type: "image/jpeg" }),
@@ -161,7 +162,10 @@ async function doHomework(run: Run, role: Role, all: Attachment[]) {
     facts: [],
   });
   try {
-    const model = resolveModel(role.modelKey, role.customModel);
+    // Huiswerk (lezen en zoeken) doet het snelle model van dezelfde AI: veel goedkoper, en het zijn maar vijf feiten.
+    const own = resolveModel(role.modelKey, role.customModel);
+    const fast = getModel(FAST_MODEL_KEY[own.provider]);
+    const model = !role.customModel && fast && (!role.webzoeken || supportsWebSearch(fast)) ? fast : own;
     let pending: Promise<unknown> = Promise.resolve();
     const { text, usage } = await research(
       {

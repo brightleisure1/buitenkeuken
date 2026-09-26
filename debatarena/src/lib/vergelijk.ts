@@ -5,6 +5,7 @@ import { AppError } from "./errors";
 import { generateJson } from "./llm";
 import { getMessages, getRun, updateRun } from "./runs";
 import { EnkelAdviesSchema } from "./schemas";
+import { ADVIES_REGELS } from "./prompts";
 import { availableKeys } from "./settings";
 import { recordUsage } from "./usage-db";
 import type { Vergelijking } from "./types";
@@ -39,12 +40,8 @@ export async function makeComparison(id: string): Promise<Vergelijking> {
       instruction: `HET VRAAGSTUK VAN DE BAAS:
 ${run.question}
 ${att ? `\nBIJLAGES:\n${att}\n` : ""}${decisions.length ? `\nDEZE BESLUITEN STAAN AL VAST:\n${decisions.join("\n")}\n` : ""}
-Geef je advies:
-- uitslag: je advies in één korte, krachtige zin.
-- samenvatting: maximaal 3 zinnen.
-- strategie: 3 tot 5 stappen, elk met waarom en een eerste actie die morgen kan beginnen.
-- risicos: 2 tot 4 risico's of aannames die de baas moet checken.
-Gewone taal, geen jargon.`,
+Denk grondig na en geef je advies. Regels:
+${ADVIES_REGELS}`,
       maxTokens: 6000,
       deep: true,
     },

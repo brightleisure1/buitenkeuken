@@ -42,7 +42,7 @@ export async function makeResult(id: string): Promise<JuryResult> {
     },
     1,
   );
-  const result = { ...data, samenvatting: maxSentences(data.samenvatting, 3) };
+  const result = { ...data, samenvatting: maxSentences(data.samenvatting, 5) };
   await recordUsage(id, "uitspraak", usage, jury.id);
   await updateRun(id, { result, status: "done" });
   after(() => makeHighlights(id).catch((e) => console.error("hoogtepunten mislukt", e)));

@@ -49,14 +49,14 @@ export const HomeworkSchema = z.object({
 
 export const EnkelAdviesSchema = z.object({
   uitslag: z.string().describe("Het advies aan de baas in één korte, krachtige zin (max 12 woorden)"),
-  samenvatting: z.string().describe("Max 3 zinnen"),
+  samenvatting: z.string().describe("3 tot 5 zinnen"),
   strategie: z.array(z.object({ stap: z.string(), waarom: z.string(), eersteActie: z.string() })).describe("3 tot 5 stappen"),
-  risicos: z.array(z.string()).describe("2 tot 4 risico's of aannames om te checken"),
+  aannames: z.array(z.object({ aanname: z.string(), risico: z.string(), hoeTesten: z.string() })).describe("3 tot 5 aannames"),
 });
 
 export const JuryResultSchema = z.object({
   uitslag: z.string().describe("Het advies aan de baas in één korte, krachtige zin (max 12 woorden)"),
-  samenvatting: z.string().describe("Max 3 zinnen"),
+  samenvatting: z.string().describe("3 tot 5 zinnen"),
   besluitenVanDeBaas: z.array(z.string()),
   strategie: z.array(z.object({ stap: z.string(), waarom: z.string(), eersteActie: z.string() })),
   aannames: z.array(

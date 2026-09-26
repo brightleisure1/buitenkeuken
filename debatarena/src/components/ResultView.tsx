@@ -433,7 +433,13 @@ function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: Ju
     }
   }
 
-  const debat: EnkelAdvies = { uitslag: result.uitslag, samenvatting: result.samenvatting, strategie: result.strategie, risicos: result.aannames.map((a) => a.aanname) };
+  // Beide adviezen in precies hetzelfde format, zodat je alleen de inhoud vergelijkt.
+  const debat: EnkelAdvies = {
+    uitslag: result.uitslag,
+    samenvatting: result.samenvatting,
+    strategie: result.strategie,
+    aannames: result.aannames.map(({ aanname, risico, hoeTesten }) => ({ aanname, risico, hoeTesten })),
+  };
   const kostenDebat = v ? Math.max(0, totalCost - v.kosten_eur) : totalCost;
 
   return (
@@ -469,14 +475,24 @@ function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: Ju
                     {advies.strategie.map((st, i) => (
                       <li key={i}>
                         <span className="font-semibold">{st.stap}</span> <span className="text-ink/65">— {st.waarom}</span>
+                        {st.eersteActie && <span className="block text-xs text-ink/55">Eerste actie: {st.eersteActie}</span>}
                       </li>
                     ))}
                   </ol>
-                  {advies.risicos.length > 0 && (
+                  {advies.aannames?.length ? (
+                    <ul className="text-xs text-ink/70 space-y-1">
+                      <li className="font-semibold text-ink/80">Aannames om te checken</li>
+                      {advies.aannames.map((a, i) => (
+                        <li key={i}>
+                          {a.aanname} <span className="text-ink/50">— test: {a.hoeTesten}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : advies.risicos?.length ? (
                     <p className="text-xs text-ink/60">
                       <span className="font-semibold">Om te checken:</span> {advies.risicos.slice(0, 4).join(" · ")}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               );
             })}

@@ -490,7 +490,7 @@ async function researchOnce(
               {
                 type: p.model.webSearchTool,
                 name: "web_search",
-                max_uses: 4,
+                max_uses: 2,
                 user_location: { type: "approximate", country: "NL", city: "Amsterdam", timezone: "Europe/Amsterdam" },
               } as Anthropic.ToolUnion,
             ]
