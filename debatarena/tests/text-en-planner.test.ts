@@ -58,3 +58,14 @@ assert.equal(autorunState([sys({ autorun: true }), sys({ wrapUp: true })]), "aan
 assert.equal(autorunState([sys({ autorun: true }), sys({ autorunOff: true })]), "uit");
 assert.equal(autorunState([sys({ autorun: true }), sys({ autorunError: { error: "x" } })]), "fout");
 assert.equal(autorunState([sys({ autorunError: { error: "x" } }), sys({ autorun: true })]), "aan", "opnieuw proberen");
+
+// Geen titels in namen
+import { stripTitles } from "../src/lib/text";
+assert.equal(stripTitles("Dr. Anneke de Wit"), "Anneke de Wit");
+assert.equal(stripTitles("prof. dr. ir. Kees Jansen"), "Kees Jansen");
+assert.equal(stripTitles("Mr Jan Visser"), "Jan Visser");
+assert.equal(stripTitles("Petra Smit MBA"), "Petra Smit");
+assert.equal(stripTitles("Kees de Vries, RA"), "Kees de Vries");
+assert.equal(stripTitles("Iris Drost"), "Iris Drost", "gewone namen blijven heel");
+assert.equal(stripTitles("Mira Ingen"), "Mira Ingen");
+assert.equal(stripTitles("Dr."), "Dr.", "niet leeg maken");

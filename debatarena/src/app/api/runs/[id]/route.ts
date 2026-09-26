@@ -4,6 +4,7 @@ import { applyCliches } from "@/lib/cliches";
 import { fixJury } from "@/lib/jury";
 import { MAX_ROUNDS, MODELS } from "@/lib/config";
 import { NIVEAUS, applyNiveau } from "@/lib/niveau";
+import { stripTitles } from "@/lib/text";
 import { prepare } from "@/lib/prep";
 import { nextStep } from "@/lib/planner";
 import { body, handle } from "@/lib/route";
@@ -61,7 +62,7 @@ export const PATCH = handle(async (req: Request, { params }: Ctx) => {
       rollen: c.rollen.map((r) => {
         const customModel = r.customModel?.trim() || null;
         // Ongecensureerd kan bij elke deelnemer; fixJury houdt de Jury netjes.
-        return fixJury({ ...r, customModel, ongezouten: !!r.ongezouten });
+        return fixJury({ ...r, naam: stripTitles(r.naam ?? ""), customModel, ongezouten: !!r.ongezouten });
       }),
     }, autoFill);
   }

@@ -115,3 +115,12 @@ export function applyShare(cast: Cast, messages: Message[], share: ShareSettings
     fix,
   };
 }
+
+const TITLE_PREFIX = /^(?:(?:prof|dr|drs|mr|ir|ds|dhr|mevr)(?:\.\s*|\s+(?=\p{Lu}))|ing\.\s*)+/iu;
+const TITLE_SUFFIX = /,?\s+(?:MBA|MSc|BSc|MA|BA|PhD|RA|RC|LLM|AA)\.?(?=\s|$)/g;
+
+/** Geen titels als "Dr.", "Mr." of "MBA" in namen: gewoon voornaam en achternaam. */
+export function stripTitles(naam: string): string {
+  const clean = naam.trim().replace(TITLE_PREFIX, "").replace(TITLE_SUFFIX, "").replace(/\s+/g, " ").trim();
+  return clean || naam.trim();
+}

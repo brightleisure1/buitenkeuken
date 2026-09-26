@@ -149,7 +149,8 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     const said = (await (await fetch(`${process.env.FAKE_URL ?? "http://127.0.0.1:54321"}/__log`)).json()).filter((l) => l.provider === "elevenlabs");
     assert.ok(said.length > 0, "met stemmen aan wordt er hardop gesproken");
     assert.ok(!(await page.getByText("🎭").count()), "clichés niet zichtbaar in de arena");
-    assert.ok(await page.getByText("Anneke", { exact: true }).count(), "'Dr.' niet als voornaam");
+    assert.ok(await page.getByText("Anneke", { exact: true }).count(), "voornaam onder het portret");
+    assert.ok(!(await page.getByText(/\bDr\./).count()), "geen titels zoals Dr. in beeld");
     assert.ok(await page.getByText(/opent de vergadering/).count(), "de voorzitter opent de vergadering");
     // Zelf doorklikken: de vergadering wacht op jou
     const tempo = page.getByRole("radiogroup", { name: "Tempo" });

@@ -1,4 +1,5 @@
 import { handle } from "@/lib/route";
+import { stripTitles } from "@/lib/text";
 import { db } from "@/lib/supabase";
 import { tokensPerRun } from "@/lib/usage-db";
 
@@ -23,7 +24,7 @@ export const GET = handle(async (req: Request) => {
     keuze: (r as { keuze?: string | null }).keuze ?? null,
     rollen: (r.cast?.rollen ?? []).map((x: { id: string; naam: string }) => ({
       id: x.id,
-      naam: x.naam,
+      naam: stripTitles(x.naam),
       portrait: r.prep?.[x.id]?.portraits?.neutraal ?? null,
     })),
   }));

@@ -1,4 +1,5 @@
 import "server-only";
+import { stripTitles } from "./text";
 import { AppError } from "./errors";
 import { db } from "./supabase";
 import type { Message, Role, RolePrep, Run } from "./types";
@@ -16,7 +17,9 @@ export async function getRunByToken(token: string): Promise<Run | null> {
 
 function normalizeRun(data: Record<string, unknown>): Run {
   const r = data as unknown as Run;
-  return { ...r, cost_eur: Number(r.cost_eur ?? 0), prep: r.prep ?? {}, share: r.share ?? {}, result_checks: r.result_checks ?? {} };
+  // Oudere vergaderingen hadden soms titels in namen ("Dr. …"); die laten we weg.
+  const cast = r.cast ? { ...r.cast, rollen: (r.cast.rollen ?? []).map((x) => ({ ...x, naam: stripTitles(x.naam) })) } : r.cast;
+  return { ...r, cast, cost_eur: Number(r.cost_eur ?? 0), prep: r.prep ?? {}, share: r.share ?? {}, result_checks: r.result_checks ?? {} };
 }
 
 export async function getMessages(runId: string): Promise<Message[]> {

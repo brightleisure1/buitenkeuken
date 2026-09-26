@@ -5,6 +5,7 @@ import { AppError } from "./errors";
 import { generateJson } from "./llm";
 import { CastChatSchema, CastSchema } from "./schemas";
 import { applyCliches, CLICHES, isFun } from "./cliches";
+import { stripTitles } from "./text";
 import { fixJury } from "./jury";
 import { availableKeys } from "./settings";
 import type { Attachment, Cast, Role } from "./types";
@@ -48,6 +49,7 @@ Jij stelt de cast samen. Castingregels:
 - stemId: kies uit de stemmenlijst per rol een passende stem (geslacht en leeftijd passend bij de naam). Elke rol een andere. Stemmen met "Nederlands" gaan voor. null als er geen lijst is.
 - bijlages: wijs elke bijlage toe aan 'iedereen' of aan de id van de ene rol waarvoor hij bedoeld is. Bij twijfel 'iedereen'.
 - id: een korte slug in kleine letters (bijv. 'inkoper', 'voorzitter').
+- Namen zonder titels: geen "dr.", "mr.", "ir.", "drs.", "prof.", "ing." en geen "MBA" of "RA". Gewoon voornaam en achternaam.
 - Het gaat om Nederlandse bedrijven. Rollen werken bij Nederlandse organisaties, denken in euro's en kennen de Nederlandse markt, regels en omgangsvormen. Namen passen bij Nederland (met variatie in afkomst).
 - modelKey: kies uit de modellijst.`;
 
@@ -103,7 +105,7 @@ export function normalizeCast(
     used.add(id);
     return {
       id,
-      naam: r.naam.trim(),
+      naam: stripTitles(r.naam),
       functie: r.functie.trim(),
       perspectief: r.perspectief.trim(),
       instructie: r.instructie.trim(),
@@ -126,7 +128,7 @@ export function normalizeCast(
   if (jury.length === 0) {
     roles.push({
       id: used.has("jury") ? "jury-1" : "jury",
-      naam: "Mr. Anneke de Wit",
+      naam: "Anneke de Wit",
       functie: "Voorzitter",
       perspectief: "Weegt alle standpunten neutraal af",
       instructie: "Zit de vergadering voor, luister, weeg af en geef aan het eind een helder advies. Geen complimenten, wel harde keuzes.",
