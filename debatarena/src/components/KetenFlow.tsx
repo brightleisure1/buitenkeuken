@@ -1,7 +1,6 @@
 "use client";
 
 import type { Keten } from "@/lib/types";
-import { FunWait } from "./FunWait";
 
 type State = "klaar" | "bezig" | "straks" | "fout";
 const FASEN = ["huiswerk", "versie1", "review", "herschrijven", "slotcheck", "klaar"] as const;
@@ -15,88 +14,79 @@ function faseVan(k: Keten | null | undefined): number {
   return k.rondes.at(-1)!.reviews.length ? 3 : 2;
 }
 
-/** Het flowschema van de review-keten, live bijgewerkt. */
+type Stap = { titel: string; detail: string; state: State; lus?: boolean };
+
+/** Compacte stappenbalk van de review-keten, live bijgewerkt. */
 export function KetenFlow({ keten, meelezers }: { keten: Keten | null | undefined; meelezers: number }) {
   const k = keten;
   const fase = faseVan(k);
   const fout = k?.status === "fout";
-  const st = (i: number, doneFrom: number): State => (fase >= doneFrom ? "klaar" : fase === i ? (fout ? "fout" : "bezig") : "straks");
+  const st = (i: number): State => (fase > i ? "klaar" : fase === i ? (fout ? "fout" : k?.status === "klaar" ? "klaar" : "bezig") : "straks");
   const max = k?.maxRondes ?? 2;
   const ronde = Math.min(k?.rondes.at(-1)?.nr ?? 1, Math.max(max, k?.rondes.length ?? 1));
-  const laatsteOordeel = k?.rondes.filter((r) => r.oordelen.length).at(-1);
-  const over = laatsteOordeel ? laatsteOordeel.oordelen.filter((o) => o.oordeel !== "niet").length : 0;
-  // In de lus horen lezen en herschrijven bij de huidige ronde.
-  const lezen = st(2, 3);
-  const herschrijfState = st(3, 4);
+  const laatste = k?.rondes.filter((r) => r.oordelen.length).at(-1);
+  const over = laatste ? laatste.oordelen.filter((o) => o.oordeel !== "niet").length : 0;
+
+  const stappen: Stap[] = [
+    { titel: "Vraag", detail: "met jouw antwoorden", state: "klaar" },
+    { titel: "Huiswerk", detail: "feiten met bron", state: st(0) },
+    { titel: "Versie 1", detail: k?.auteur.ai ? `door ${k.auteur.ai}` : "slimste model", state: st(1) },
+    { titel: "Reviews", detail: `${meelezers} rollen${k?.kruis ? ` + ${k.kruis.ai}` : ""}`, state: st(2), lus: true },
+    { titel: "Herschrijven", detail: laatste ? `${over} van ${laatste.oordelen.length} overgenomen` : "per punt beoordeeld", state: st(3), lus: true },
+    { titel: "Slotcheck", detail: "voorzitter", state: st(4) },
+    { titel: "Advies", detail: k?.status === "klaar" ? `${k.rondes.length} versies` : "klaar om te besluiten", state: fase >= 5 ? "klaar" : "straks" },
+  ];
 
   return (
-    <section className="card p-4 sm:p-5 space-y-3" aria-label="Voortgang van de review-keten">
-      <div className="flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0">
-        <Node icon="❓" title="Vraag" detail="en jouw antwoorden" state="klaar" />
-        <Pijl />
-        <Node icon="🔎" title="Huiswerk" detail="feiten met bron" state={st(0, 1)} />
-        <Pijl />
-        <Node icon="✍️" title="Versie 1" detail={k?.auteur.ai ? `door ${k.auteur.ai}` : "slimste model"} state={st(1, 2)} />
-        <Pijl />
-        <div
-          className={`relative rounded-2xl border border-dashed px-2.5 pt-5 pb-2.5 lg:mx-0.5 flex flex-col lg:flex-row lg:items-stretch gap-2 lg:gap-0 ${
-            fase === 2 || fase === 3 ? "border-coral/60 bg-coral/[0.03]" : "border-ink/20"
-          }`}
-        >
-          <span className="absolute -top-2.5 left-3 bg-white px-1.5 text-[11px] font-semibold text-ink/70">
-            ↺ Ronde {ronde} van {max}
+    <section className="card px-4 py-4 sm:px-6 sm:py-5" aria-label="Voortgang van de review-keten">
+      <ol className="relative grid grid-cols-1 gap-3 sm:grid-cols-7 sm:gap-0">
+        {/* De review-lus: licht gemarkeerd achter 'Reviews' en 'Herschrijven' */}
+        <li aria-hidden className="pointer-events-none absolute hidden sm:block inset-y-[-6px] left-[calc(3/7*100%)] w-[calc(2/7*100%)] rounded-2xl bg-coral/[0.06] ring-1 ring-coral/15">
+          <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 text-[11px] font-medium text-coral ring-1 ring-coral/20">
+            Ronde {ronde} van {max}
           </span>
-          <div className="flex flex-col gap-2">
-            <Node icon="👥" title="Meelezers" detail={`${meelezers} rollen`} state={lezen} />
-            {k?.kruis !== null && <Node icon="🔍" title="Tegenlezer" detail={k?.kruis?.ai ?? "ander model"} state={lezen} />}
-          </div>
-          <Pijl />
-          <Node
-            icon="⚖️"
-            title="Beoordelen en herschrijven"
-            detail={laatsteOordeel ? `${over} van ${laatsteOordeel.oordelen.length} punten overgenomen` : "per punt: over, deels of niet"}
-            state={herschrijfState}
-          />
-        </div>
-        <Pijl />
-        <Node icon="🧭" title="Slotcheck" detail="voorzitter" state={st(4, 5)} />
-        <Pijl />
-        <Node icon="✅" title="Advies" detail={k?.status === "klaar" ? `${k.rondes.length} versies` : "blind vergelijken"} state={fase >= 5 ? "klaar" : "straks"} />
-      </div>
+        </li>
+        {stappen.map((s, i) => (
+          <li key={s.titel} className="relative flex items-center gap-3 sm:flex-col sm:gap-2 sm:text-center">
+            {i > 0 && <span aria-hidden className={`absolute hidden sm:block top-[15px] right-1/2 w-full h-px ${s.state === "straks" ? "bg-ink/10" : "bg-ink/40"}`} />}
+            <Bol state={s.state} nr={i + 1} />
+            <span className="min-w-0">
+              <span className={`block text-sm font-medium leading-tight ${s.state === "straks" ? "text-ink/45" : "text-ink"}`}>
+                {s.titel}
+                {s.lus && <span className="sm:hidden text-[11px] text-coral font-normal"> · ronde {ronde} van {max}</span>}
+              </span>
+              <span className="block text-[11px] leading-snug text-ink/50 mt-0.5">{s.state === "fout" ? "vastgelopen" : s.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
       {k?.status === "bezig" && (
-        <div className="min-h-[2.5rem] flex items-center">
-          <FunWait lines={[k.stap]} icon="⏳" />
-        </div>
+        <p className="mt-4 flex items-center gap-2 text-sm text-ink/70">
+          <span className="h-1.5 w-1.5 rounded-full bg-coral animate-pulse" aria-hidden />
+          {k.stap}
+        </p>
       )}
     </section>
   );
 }
 
-const STYLE: Record<State, string> = {
-  klaar: "bg-ink text-white border-ink",
-  bezig: "bg-white border-coral ring-4 ring-coral/15 animate-glow",
-  straks: "bg-ink/[0.03] border-ink/10 text-ink/50",
-  fout: "bg-peach border-coral",
-};
-
-function Node({ icon, title, detail, state }: { icon: string; title: string; detail: string; state: State }) {
-  return (
-    <div className={`rounded-xl border px-3 py-2 min-w-0 lg:min-w-[108px] lg:max-w-[150px] transition-colors ${STYLE[state]}`} aria-current={state === "bezig" ? "step" : undefined}>
-      <p className="text-sm font-semibold leading-tight flex items-center gap-1.5">
-        <span aria-hidden>{state === "klaar" ? "✓" : icon}</span>
-        {title}
-        {state === "bezig" && <span className="ml-auto h-2 w-2 rounded-full bg-coral animate-pulse" aria-label="bezig" />}
-      </p>
-      <p className={`text-[11px] leading-snug mt-0.5 ${state === "klaar" ? "text-white/70" : "text-ink/55"}`}>{state === "fout" ? "vastgelopen" : detail}</p>
-    </div>
-  );
-}
-
-function Pijl() {
-  return (
-    <span className="self-center text-ink/30 text-sm lg:px-1.5 leading-none" aria-hidden>
-      <span className="hidden lg:inline">→</span>
-      <span className="lg:hidden">↓</span>
-    </span>
-  );
+function Bol({ state, nr }: { state: State; nr: number }) {
+  const base = "relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors";
+  if (state === "klaar")
+    return (
+      <span className={`${base} bg-ink text-white`} aria-label="klaar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+      </span>
+    );
+  if (state === "bezig")
+    return (
+      <span className={`${base} bg-white text-coral ring-2 ring-coral`} aria-current="step">
+        <span className="absolute inset-0 rounded-full ring-4 ring-coral/20 animate-ping" aria-hidden />
+        {nr}
+      </span>
+    );
+  if (state === "fout") return <span className={`${base} bg-peach text-coral ring-2 ring-coral`}>!</span>;
+  return <span className={`${base} bg-white text-ink/40 ring-1 ring-ink/15`}>{nr}</span>;
 }

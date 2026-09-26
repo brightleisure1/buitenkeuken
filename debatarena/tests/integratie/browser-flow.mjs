@@ -282,8 +282,8 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
 
   await step(`[${label}] review-keten: werkblad met versies, reviews, oordelen en slotcheck`, async () => {
     await page.getByText("Slotcheck van de voorzitter").waitFor({ timeout: 60000 });
-    await page.getByText("🔍 Tegenlezer").first().waitFor();
-    await page.getByText("✗ Niet overgenomen").first().waitFor();
+    await page.getByText("ChatGPT, ander model").first().waitFor();
+    await page.getByText("Niet overgenomen", { exact: true }).first().waitFor();
     await page.getByRole("button", { name: /Versie 2/ }).waitFor();
     await page.getByText(/Wat veranderde ten opzichte van versie 1/).waitFor();
     await shot("11-werkblad");
@@ -300,7 +300,7 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.getByRole("button", { name: /Versie 3/ }).waitFor({ timeout: 60000 });
     await page.getByText("Slotcheck van de voorzitter").waitFor({ timeout: 60000 });
     await page.getByText("(verwerkt)").first().waitFor();
-    await page.getByText("🆚 Beter dan één vraag?").waitFor();
+    await page.getByText("Beter dan één vraag?").waitFor();
     await page.getByRole("button", { name: "A", exact: true }).click();
     await page.getByText(/versie 1 zonder review|de eindversie na review/).first().waitFor();
     await shot("12-werkblad-vergeleken");

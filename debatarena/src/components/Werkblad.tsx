@@ -7,7 +7,6 @@ import type { RunPayload } from "@/lib/payload";
 import type { AdviesDoc, Keten, KetenRonde, Oordeel, Review, ReviewPunt } from "@/lib/types";
 import { tokens } from "@/lib/usage";
 import { CostPanel } from "./CostPanel";
-import { FunWait } from "./FunWait";
 import { KetenFlow } from "./KetenFlow";
 import { Vergelijk } from "./ResultView";
 import { ErrorNote, Spinner, toError } from "./ui";
@@ -15,10 +14,10 @@ import { ErrorNote, Spinner, toError } from "./ui";
 type Err = { message: string; oplossing?: string } | null;
 
 const ZWAARTE: Record<ReviewPunt["zwaarte"], string> = { hoog: "bg-coral text-white", midden: "bg-sun", laag: "bg-ink/5 text-ink/60" };
-const OORDEEL: Record<Oordeel["oordeel"], { tekst: string; klas: string }> = {
-  over: { tekst: "✓ Overgenomen", klas: "text-emerald-700" },
-  deels: { tekst: "◐ Deels overgenomen", klas: "text-amber-700" },
-  niet: { tekst: "✗ Niet overgenomen", klas: "text-ink/55" },
+const OORDEEL: Record<Oordeel["oordeel"], { tekst: string; klas: string; dot: string }> = {
+  over: { tekst: "Overgenomen", klas: "text-emerald-700", dot: "bg-emerald-500" },
+  deels: { tekst: "Deels overgenomen", klas: "text-amber-700", dot: "bg-amber-400" },
+  niet: { tekst: "Niet overgenomen", klas: "text-ink/55", dot: "bg-ink/25" },
 };
 
 /** Het werkblad van de review-keten: het document dat beter wordt, de reviews, de oordelen en jouw ingrepen. */
@@ -62,7 +61,7 @@ export function Werkblad({ id }: { id: string }) {
   }
 
   if (!data) {
-    return <div className="flex-1 grid place-items-center p-6">{error ? <ErrorNote error={error} /> : <FunWait lines={["📂 Het werkblad wordt geopend…"]} size="lg" />}</div>;
+    return <div className="flex-1 grid place-items-center p-6">{error ? <ErrorNote error={error} /> : <p className="text-sm text-ink/55">Het werkblad wordt geopend…</p>}</div>;
   }
   const { run } = data;
   const k: Keten | null | undefined = run.keten;
@@ -179,8 +178,12 @@ export function Werkblad({ id }: { id: string }) {
               <DocView doc={huidigDoc} />
             </>
           ) : (
-            <div className="py-6">
-              <FunWait lines={[`✍️ ${k?.stap ?? "Versie 1 wordt geschreven…"}`, "🔎 De rollen doen hun huiswerk…", "🧠 Er wordt diep nagedacht…"]} size="lg" />
+            <div className="space-y-3 py-2" aria-busy="true" aria-label="Versie 1 wordt geschreven">
+              <div className="h-6 w-3/4 rounded-lg bg-ink/[0.06] animate-pulse" />
+              <div className="h-3 w-full rounded bg-ink/[0.05] animate-pulse" />
+              <div className="h-3 w-11/12 rounded bg-ink/[0.05] animate-pulse" />
+              <div className="h-3 w-4/5 rounded bg-ink/[0.05] animate-pulse" />
+              <p className="pt-2 text-sm text-ink/55">Versie 1 verschijnt hier zodra hij klaar is. Dat duurt meestal een minuut of twee.</p>
             </div>
           )}
         </section>
@@ -227,7 +230,7 @@ export function Werkblad({ id }: { id: string }) {
               <ul className="text-sm space-y-1">
                 {k.baas.opmerkingen.map((o) => (
                   <li key={o.id} className={o.verwerkt ? "text-ink/50" : ""}>
-                    {o.verwerkt ? "✓ " : "• "}
+                    <span className={`mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle ${o.verwerkt ? "bg-emerald-500" : "bg-coral"}`} aria-hidden />
                     {o.tekst}
                     {o.verwerkt ? " (verwerkt)" : ""}
                   </li>
@@ -349,7 +352,7 @@ function ReviewBlok({
   return (
     <div>
       <p className="text-sm font-semibold flex flex-wrap items-center gap-2">
-        {rv.soort === "kruis" ? "🔍 Tegenlezer" : rv.naam}
+        {rv.soort === "kruis" ? "Tegenlezer" : rv.naam}
         <span className="font-normal text-ink/60">{rv.functie}</span>
         <span className="text-[10px] rounded-full bg-ink/5 px-1.5 py-px font-medium">{rv.ai}</span>
       </p>
@@ -369,7 +372,10 @@ function ReviewBlok({
                 <p className="text-xs text-ink/60 mt-1">Voorstel: {p.voorstel}</p>
                 {o && (
                   <p className="text-xs mt-1.5">
-                    <span className={`font-semibold ${OORDEEL[o.oordeel].klas}`}>{OORDEEL[o.oordeel].tekst}</span> <span className="text-ink/60">— {o.reden}</span>
+                    <span className={`inline-flex items-center gap-1.5 font-semibold ${OORDEEL[o.oordeel].klas}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${OORDEEL[o.oordeel].dot}`} aria-hidden />
+                      {OORDEEL[o.oordeel].tekst}
+                    </span> <span className="text-ink/60">— {o.reden}</span>
                   </p>
                 )}
                 {o && kanOmdraaien && (

@@ -460,7 +460,7 @@ export function Vergelijk({
   return (
     <section className="card p-5 space-y-4">
       <div>
-        <h2 className="font-display font-bold text-lg">🆚 Beter dan één vraag?</h2>
+        <h2 className="font-display font-bold text-lg">Beter dan één vraag?</h2>
         <p className="text-sm text-ink/65 mt-1">
           {keten
             ? "Versie 1 is wat je krijgt als je het één keer aan het slimste model vraagt. Is de eindversie na alle reviews echt beter? Je ziet ze blind naast elkaar en kiest zelf. Pas daarna zie je welke welke is."
@@ -470,7 +470,7 @@ export function Vergelijk({
       <ErrorNote error={error} onClose={() => setError(null)} />
       {!v ? (
         <button className="btn-primary !py-2" disabled={busy} onClick={() => void post({})}>
-          {busy ? <FunWait lines={["🧠 Eén slimme adviseur denkt er even diep over na…", "📄 Het advies wordt uitgeschreven…"]} /> : "Vergelijk met één vraag (≈ € 0,10)"}
+          {busy ? "Eén slimme adviseur denkt er even over na…" : "Vergelijk met één vraag (≈ € 0,10)"}
         </button>
       ) : (
         <>

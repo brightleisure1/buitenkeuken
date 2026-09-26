@@ -73,7 +73,7 @@ export default function HistoryPage() {
       </div>
       {judged.length > 0 && (
         <div className="card p-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span className="font-semibold">🆚 Blind vergeleken ({judged.length}×)</span>
+          <span className="font-semibold">Blind vergeleken ({judged.length}×)</span>
           <span>Debat beter: {tel("debat")}</span>
           <span>Eén vraag beter: {tel("enkel")}</span>
           <span>Even goed: {tel("gelijk")}</span>
