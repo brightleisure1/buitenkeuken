@@ -102,7 +102,7 @@ export function CastEditor({
 
       <div className="space-y-4">
         {draft.rollen.map((r) => (
-          <fieldset key={r.id} className="rounded-2xl border-2 border-ink/15 p-4 space-y-3">
+          <fieldset key={r.id} className="rounded-2xl border border-ink/15 p-4 space-y-3">
             <div className="flex gap-2 items-center">
               <input className="field !py-2 font-semibold" value={r.naam} onChange={(e) => setRole(r.id, { naam: e.target.value })} />
               {!r.isJury && (

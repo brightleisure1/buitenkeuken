@@ -214,7 +214,7 @@ export function ReplayPlayer({
           </button>
           <span className="flex items-center gap-1 shrink-0">
             {SPEEDS.map((s) => (
-              <button key={s} onClick={() => setSpeed(s)} className={`rounded-full px-2.5 py-1 border-2 ${speed === s ? "bg-ink text-cream border-ink" : "border-ink/30 bg-white"}`}>
+              <button key={s} onClick={() => setSpeed(s)} className={`rounded-full px-2.5 py-1 border ${speed === s ? "bg-ink text-cream border-ink" : "border-ink/15 bg-white"}`}>
                 {String(s).replace(".", ",")}x
               </button>
             ))}
@@ -222,13 +222,13 @@ export function ReplayPlayer({
           {!!highlights?.length && (
             <button
               onClick={() => restart(!onlyHighlights)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 border-2 ${onlyHighlights ? "bg-lilac border-ink" : "border-ink/30 bg-white"}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 border ${onlyHighlights ? "bg-lilac border-ink" : "border-ink/15 bg-white"}`}
             >
               ✨ Hoogtepunten
             </button>
           )}
           {hasAudio && (
-            <button onClick={() => setSound((v) => !v)} className="shrink-0 whitespace-nowrap rounded-full px-3 py-1 border-2 border-ink/30 bg-white">
+            <button onClick={() => setSound((v) => !v)} className="shrink-0 whitespace-nowrap rounded-full px-3 py-1 border border-ink/15 bg-white">
               {sound ? "🔊 Geluid aan" : "🔇 Geluid uit"}
             </button>
           )}

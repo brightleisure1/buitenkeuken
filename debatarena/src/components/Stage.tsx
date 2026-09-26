@@ -88,7 +88,7 @@ export function Stage({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="px-3 sm:px-4 pt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <h1 className="font-display font-extrabold text-base sm:text-lg truncate flex-1 min-w-0">{title}</h1>
+        <h1 className="font-display font-bold text-base sm:text-lg truncate flex-1 min-w-0">{title}</h1>
         <span className="shrink-0 rounded-full bg-ink text-cream text-xs sm:text-sm font-semibold px-3 py-1 sm:order-last">{roundLabel}</span>
         {headerExtra && <div className="basis-full sm:basis-auto flex flex-wrap gap-2">{headerExtra}</div>}
       </div>
@@ -99,7 +99,7 @@ export function Stage({
           return (
             <div
               key={r.id}
-              className={`relative flex flex-col items-center shrink-0 ${r.isJury ? "sm:ml-2 sm:pl-4 sm:border-l-2 sm:border-dashed sm:border-ink/25" : ""}`}
+              className={`relative flex flex-col items-center shrink-0 ${r.isJury ? "sm:ml-2 sm:pl-4 sm:border-l sm:border-dashed sm:border-ink/25" : ""}`}
               style={{ width: size + 34 }}
             >
               <Portrait
@@ -133,7 +133,7 @@ export function Stage({
                 </span>
               )}
               {quips?.[r.id] && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-max max-w-[200px] text-xs bg-white border-2 border-ink rounded-2xl px-2.5 py-1.5 animate-pop shadow">
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-max max-w-[200px] text-xs bg-white border border-ink/15 rounded-2xl px-2.5 py-1.5 animate-pop shadow">
                   {quips[r.id]}
                 </span>
               )}
@@ -166,7 +166,7 @@ export function Stage({
         )}
       </div>
 
-      <div className="border-t-2 border-ink bg-white/70 shrink-0">
+      <div className="border-t border-ink/10 bg-white/70 shrink-0">
         <div className="mx-auto max-w-3xl px-3 sm:px-4 pt-2.5 pb-1.5 flex items-end gap-3">
           <Desk golden={!!goldenChair} />
           <div className="flex-1 min-w-0">{children}</div>
@@ -213,11 +213,11 @@ function FeedBubble({
         <Portrait name={role?.naam ?? "?"} portraits={role ? portraits[role.id] : undefined} mood={mood} index={index} size={36} />
       </div>
       <div
-        className={`min-w-0 flex-1 rounded-3xl rounded-tl-md border-2 px-4 py-2.5 ${
+        className={`min-w-0 flex-1 rounded-3xl rounded-tl-md border px-4 py-2.5 ${
           item.waiting && !clean
             ? "border-coral bg-peach/60 animate-glow"
             : item.streaming
-              ? "border-coral bg-white shadow-[3px_3px_0_0_var(--color-ink)]"
+              ? "border-coral bg-white shadow-lift"
               : role?.isJury
                 ? "border-ink/15 bg-sun"
                 : "border-ink/15 bg-white"

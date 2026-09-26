@@ -3,6 +3,7 @@ import { composeCast } from "@/lib/casting";
 import { AppError } from "@/lib/errors";
 import { prepare } from "@/lib/prep";
 import { body, handle } from "@/lib/route";
+import { applyNiveau } from "@/lib/niveau";
 import { defaultLimit } from "@/lib/budget";
 import { getRun } from "@/lib/runs";
 import type { Usage } from "@/lib/usage";
@@ -56,6 +57,8 @@ export const POST = handle(async (req: Request) => {
   }
 
   if (cast.kostenlimiet === undefined) cast = { ...cast, kostenlimiet: await defaultLimit() };
+  // Standaard: de sterkste modellen (instelbaar op het voorstelscherm).
+  if (!cast.niveau) cast = applyNiveau(cast, "slim");
   const { count } = await db().from("runs").select("id", { count: "exact", head: true });
   const { data: run, error } = await db()
     .from("runs")

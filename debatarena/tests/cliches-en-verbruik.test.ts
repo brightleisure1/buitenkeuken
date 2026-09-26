@@ -137,3 +137,15 @@ assert.doesNotMatch(roleSystem(run, run.cast.rollen[2], [], { withFacts: false }
 const pr = run.cast.rollen[0];
 assert.notEqual(portraitKey(pr, { fun: true }), portraitKey(pr, { fun: false }), "fun aan/uit tekent opnieuw");
 assert.equal(portraitKey(pr, { fun: false, cliches: true }), portraitKey({ ...pr, cliche: null }, {}), "serieus: cliché telt niet mee");
+
+// Slimheid: iedereen houdt zijn eigen AI, de voorzitter blijft de sterkste
+import { applyNiveau, estimateCost, niveauOf, turnModel } from "../src/lib/niveau";
+const nv = { ...cast(), rondes: 3, rollen: [role("a", { modelKey: "claude-sterk" }), role("b", { modelKey: "gpt-sterk" }), role("j", { isJury: true, modelKey: "claude-sterk" })] } as Cast;
+const vlotCast = applyNiveau(nv, "vlot");
+assert.deepEqual(vlotCast.rollen.map((r) => r.modelKey), ["claude-snel", "gpt-snel", "claude-sterk"]);
+assert.equal(niveauOf({ rollen: vlotCast.rollen }), "vlot", "oude debatten: afgeleid uit de modellen");
+assert.equal(turnModel(m("claude-sterk"), "slimst").effort, "medium");
+assert.equal(turnModel(m("gpt-sterk"), "slimst").reasoning, "medium");
+assert.equal(turnModel(m("grok-sterk"), "slimst").reasoning, null, "Grok kent geen effort");
+assert.equal(turnModel(m("claude-sterk"), "slim").effort, "low");
+assert.ok(estimateCost(nv, "vlot") < estimateCost(nv, "slim") && estimateCost(nv, "slim") < estimateCost(nv, "slimst"), "slimmer is duurder");

@@ -3,6 +3,7 @@ import { attachmentImages, attachmentsFor, runAttachments } from "./attachments"
 import { PROVIDERS, resolveModel } from "./config";
 import { friendly } from "./errors";
 import { streamText } from "./llm";
+import { niveauOf, turnModel } from "./niveau";
 import { historyBlocks, isFridayAfternoon, roleSystem, turnInstruction } from "./prompts";
 import { insertMessage, roleById, updateMessage } from "./runs";
 import { recordUsage } from "./usage-db";
@@ -32,7 +33,7 @@ export async function executeTurn(
   const role = roleById(run, step.roleId)!;
   const all = await runAttachments(id);
   const mine = attachmentsFor(all, run.cast.bijlages, role.id);
-  const model = resolveModel(role.modelKey, role.customModel);
+  const model = turnModel(resolveModel(role.modelKey, role.customModel), niveauOf(run.cast));
   const msg = await insertMessage({
     run_id: id,
     kind: "turn",

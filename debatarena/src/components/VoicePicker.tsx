@@ -76,7 +76,7 @@ export function VoicePicker() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border-2 border-ink/15 bg-white px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+      <div className="rounded-2xl border border-ink/15 bg-white px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         <span className="font-semibold">Uitspraak</span>
         <Segmented
           label="Afronding"
@@ -99,17 +99,17 @@ export function VoicePicker() {
             : "We vonden geen stemmen met een Nederlands label. Kies hieronder zelf welke stemmen meedoen."}
       </p>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <button onClick={() => setFilter("nl")} className={`rounded-full border-2 px-3 py-1 ${filter === "nl" ? "bg-ink text-cream border-ink" : "border-ink/30"}`}>
+        <button onClick={() => setFilter("nl")} className={`rounded-full border px-3 py-1 ${filter === "nl" ? "bg-ink text-cream border-ink" : "border-ink/15"}`}>
           🇳🇱 Nederlands ({nlCount})
         </button>
-        <button onClick={() => setFilter("alle")} className={`rounded-full border-2 px-3 py-1 ${filter === "alle" ? "bg-ink text-cream border-ink" : "border-ink/30"}`}>
+        <button onClick={() => setFilter("alle")} className={`rounded-full border px-3 py-1 ${filter === "alle" ? "bg-ink text-cream border-ink" : "border-ink/15"}`}>
           Alle ({voices.length})
         </button>
         <button onClick={() => void load(true)} className="underline ml-auto">
           Lijst vernieuwen
         </button>
       </div>
-      <ul className="max-h-80 overflow-y-auto rounded-2xl border-2 border-ink/15 divide-y divide-ink/10">
+      <ul className="max-h-80 overflow-y-auto rounded-2xl border border-ink/15 divide-y divide-ink/10">
         {shown.map((v) => (
           <li key={v.id} className="flex items-center gap-3 px-3 py-2 text-sm">
             <input

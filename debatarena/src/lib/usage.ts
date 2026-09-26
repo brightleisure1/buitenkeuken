@@ -27,7 +27,8 @@ export type UsageKind =
   | "hoogtepunten"
   | "zinnetje"
   | "stem"
-  | "spraak";
+  | "spraak"
+  | "vergelijking";
 
 export const KIND_LABEL: Record<UsageKind, string> = {
   samenstellen: "Team samenstellen",
@@ -40,6 +41,7 @@ export const KIND_LABEL: Record<UsageKind, string> = {
   zinnetje: "Losse zinnetjes",
   stem: "Stemmen",
   spraak: "Inspreken",
+  vergelijking: "Vergelijking (één vraag)",
 };
 
 export function emptyUsage(provider = "", model = ""): Usage {

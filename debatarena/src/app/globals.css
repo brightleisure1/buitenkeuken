@@ -1,18 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-cream: #fbf6ee;
-  --color-ink: #1e1b18;
-  --color-coral: #e4572e;
-  --color-peach: #ffd6c9;
-  --color-sky: #cde8ff;
-  --color-mint: #d9f2d0;
-  --color-lilac: #e8daff;
-  --color-sun: #fff1b8;
-  --color-rose: #ffd9ec;
+  /* Rustige, neutrale basis met één heldere accentkleur */
+  --color-cream: #f6f6f3;
+  --color-ink: #13151a;
+  --color-coral: #ff5a36;
+  --color-peach: #ffe8e1;
+  --color-sky: #eaf1ff;
+  --color-mint: #e5f5ea;
+  --color-lilac: #efeaff;
+  --color-sun: #fff5d6;
+  --color-rose: #ffe9f2;
   --color-gold: #e8b923;
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display-face), var(--font-body), ui-sans-serif, sans-serif;
+  --font-display: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  letter-spacing: -0.025em;
 }
 
 html,
@@ -26,22 +31,29 @@ body {
   overflow-x: clip;
 }
 
+@utility shadow-soft {
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.04);
+}
+@utility shadow-lift {
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 12px 32px -12px rgb(16 24 40 / 0.18);
+}
+
 @utility card {
-  @apply rounded-3xl border-2 border-ink bg-white shadow-[4px_4px_0_0_var(--color-ink)];
+  @apply rounded-2xl border border-ink/10 bg-white shadow-lift;
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-ink px-5 py-2.5 font-semibold transition active:translate-y-px disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-[15px] font-medium transition active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed;
 }
 @utility btn-primary {
-  @apply btn bg-coral text-white shadow-[3px_3px_0_0_var(--color-ink)] hover:brightness-105;
+  @apply btn border-ink bg-ink text-white shadow-soft hover:bg-ink/85;
 }
 @utility btn-ghost {
-  @apply btn bg-white hover:bg-sun;
+  @apply btn border-ink/15 bg-white text-ink shadow-soft hover:border-ink/30 hover:bg-ink/[0.03];
 }
 
 @utility field {
-  @apply w-full rounded-2xl border-2 border-ink bg-white px-4 py-3 outline-none focus:ring-4 focus:ring-coral/30;
+  @apply w-full rounded-xl border border-ink/15 bg-white px-4 py-3 shadow-soft outline-none transition placeholder:text-ink/40 focus:border-ink/40 focus:ring-4 focus:ring-ink/5;
 }
 
 @keyframes pop {
@@ -64,8 +76,8 @@ body {
 .animate-wiggle { animation: wiggle 1.1s ease-in-out infinite; display: inline-block; }
 
 @keyframes glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(228 87 46 / 0.45), 3px 3px 0 0 var(--color-ink); }
-  50% { box-shadow: 0 0 0 8px rgb(228 87 46 / 0), 3px 3px 0 0 var(--color-ink); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(255 90 54 / 0.35); }
+  50% { box-shadow: 0 0 0 8px rgb(255 90 54 / 0); }
 }
 .animate-glow { animation: glow 1.6s ease-out infinite; }
 
@@ -90,6 +102,6 @@ body {
 @media print {
   .no-print { display: none !important; }
   body { background: white; }
-  .card { box-shadow: none; border-width: 1px; break-inside: avoid; }
+  .card { box-shadow: none; break-inside: avoid; }
   details > *:not(summary) { display: block; }
 }

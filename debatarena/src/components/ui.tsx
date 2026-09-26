@@ -8,7 +8,7 @@ import { providerOf } from "@/lib/config";
 export function ErrorNote({ error, onClose }: { error: { message: string; oplossing?: string } | null; onClose?: () => void }) {
   if (!error) return null;
   return (
-    <div role="alert" className="rounded-2xl border-2 border-coral bg-[#FFF1EC] p-4 text-sm flex gap-3 items-start">
+    <div role="alert" className="rounded-2xl border border-coral bg-[#FFF1EC] p-4 text-sm flex gap-3 items-start">
       <span className="text-lg leading-none">⚠️</span>
       <div className="flex-1">
         <p className="font-semibold">{error.message}</p>
@@ -80,7 +80,7 @@ export function Portrait({
       title={title ?? name}
       disabled={!onClick}
       style={{ width: size, height: size }}
-      className={`relative shrink-0 rounded-full border-[3px] border-ink overflow-visible transition-all duration-300 ${
+      className={`relative shrink-0 rounded-full border-2 border-white shadow-soft overflow-visible transition-all duration-300 ${
         active ? "ring-4 ring-coral ring-offset-2 ring-offset-cream scale-105" : ""
       } ${dim ? "opacity-55 grayscale-[35%]" : ""} ${onClick ? "cursor-pointer" : "cursor-default"}`}
     >
@@ -89,7 +89,7 @@ export function Portrait({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt={name} className="h-full w-full object-cover" />
         ) : (
-          <span className="font-display font-extrabold" style={{ fontSize: size / 3 }}>
+          <span className="font-display font-bold" style={{ fontSize: size / 3 }}>
             {initials(name)}
           </span>
         )}
@@ -109,7 +109,7 @@ export function Portrait({
 }
 
 export function Spinner({ className = "" }: { className?: string }) {
-  return <span className={`inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin ${className}`} />;
+  return <span className={`inline-block h-4 w-4 rounded-full border border-current border-t-transparent animate-spin ${className}`} />;
 }
 
 /** Laat zien welke AI deze rol speelt: Claude, ChatGPT, Gemini of Grok. */
@@ -148,7 +148,7 @@ export function Segmented<T extends string>({
   label?: string;
 }) {
   return (
-    <span role="radiogroup" aria-label={label} className="inline-flex rounded-full border-2 border-ink bg-white p-0.5">
+    <span role="radiogroup" aria-label={label} className="inline-flex rounded-full border border-ink/15 bg-white p-0.5">
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -159,7 +159,7 @@ export function Segmented<T extends string>({
             aria-checked={on}
             onClick={() => !on && onChange(o.value)}
             className={`rounded-full font-semibold transition ${size === "xs" ? "text-[11px] px-2 py-0.5" : "text-xs px-3 py-1"} ${
-              on ? (o.tone ?? "bg-ink text-cream") : "text-ink/70 hover:bg-sun"
+              on ? (o.tone ?? "bg-ink text-cream") : "text-ink/70 hover:bg-ink/5"
             }`}
           >
             {o.label}
@@ -181,8 +181,8 @@ export function Switch({ checked, onChange, children, disabled }: { checked: boo
       onClick={() => onChange(!checked)}
       className="inline-flex items-center gap-2 text-sm disabled:opacity-50"
     >
-      <span className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-2 border-ink transition ${checked ? "bg-coral" : "bg-cream"}`}>
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white border-2 border-ink transition-all ${checked ? "left-5" : "left-0.5"}`} />
+      <span className={`relative inline-block h-6 w-11 shrink-0 rounded-full border border-ink/15 transition ${checked ? "bg-coral" : "bg-cream"}`}>
+        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white border border-ink/15 transition-all ${checked ? "left-5" : "left-0.5"}`} />
       </span>
       <span className="text-left">{children}</span>
     </button>

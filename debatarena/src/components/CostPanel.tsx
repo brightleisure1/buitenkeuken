@@ -52,9 +52,9 @@ export function CostPanel({ usage, roles, compact = false }: { usage: UsageSumma
 
 function Stat({ label, value, strong, hint }: { label: string; value: string; strong?: boolean; hint?: string }) {
   return (
-    <div className={`rounded-2xl border-2 border-ink/15 px-3 py-2 ${strong ? "bg-sun" : "bg-white"}`} title={hint}>
+    <div className={`rounded-2xl border border-ink/15 px-3 py-2 ${strong ? "bg-sun" : "bg-white"}`} title={hint}>
       <p className="text-[11px] text-ink/60">{label}</p>
-      <p className="font-display font-extrabold text-lg leading-tight">{value}</p>
+      <p className="font-display font-bold text-lg leading-tight">{value}</p>
     </div>
   );
 }

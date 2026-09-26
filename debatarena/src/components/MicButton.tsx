@@ -145,12 +145,12 @@ export function MicButton({
       onClick={() => (state === "listening" ? stop() : state === "idle" ? start() : undefined)}
       aria-label={state === "listening" ? "Stop met inspreken" : "Inspreken"}
       title={state === "listening" ? "Klik om te stoppen" : "Inspreken"}
-      className={`${dim} shrink-0 rounded-full border-2 border-ink grid place-items-center transition ${
-        state === "listening" ? "bg-coral text-white animate-pulse" : state === "working" ? "bg-sun" : "bg-white hover:bg-sun"
+      className={`${dim} shrink-0 rounded-full border border-ink/15 grid place-items-center transition ${
+        state === "listening" ? "bg-coral text-white animate-pulse" : state === "working" ? "bg-sun" : "bg-white hover:bg-ink/5"
       } ${className}`}
     >
       {state === "working" ? (
-        <span className="h-4 w-4 rounded-full border-2 border-ink border-t-transparent animate-spin" />
+        <span className="h-4 w-4 rounded-full border border-ink/15 border-t-transparent animate-spin" />
       ) : (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
           <rect x="9" y="3" width="6" height="11" rx="3" />

@@ -47,6 +47,13 @@ export const HomeworkSchema = z.object({
   feiten: z.array(z.object({ feit: z.string(), bron: z.string() })),
 });
 
+export const EnkelAdviesSchema = z.object({
+  uitslag: z.string().describe("Het advies aan de baas in één korte, krachtige zin (max 12 woorden)"),
+  samenvatting: z.string().describe("Max 3 zinnen"),
+  strategie: z.array(z.object({ stap: z.string(), waarom: z.string(), eersteActie: z.string() })).describe("3 tot 5 stappen"),
+  risicos: z.array(z.string()).describe("2 tot 4 risico's of aannames om te checken"),
+});
+
 export const JuryResultSchema = z.object({
   uitslag: z.string().describe("Het advies aan de baas in één korte, krachtige zin (max 12 woorden)"),
   samenvatting: z.string().describe("Max 3 zinnen"),

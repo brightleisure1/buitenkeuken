@@ -36,6 +36,8 @@ export interface Cast {
   cliches?: boolean;
   /** Fun-modus: karikaturen, clichés en droge humor bovenop een serieus debat */
   fun?: boolean;
+  /** Hoe slim de deelnemers zijn (vlot, slim, slimst) */
+  niveau?: "vlot" | "slim" | "slimst";
   /** Maximale kosten van deze vergadering in euro (null = geen limiet) */
   kostenlimiet?: number | null;
   /** attachmentId -> "iedereen" of role.id */
@@ -115,6 +117,26 @@ export interface JuryResult {
   bronnen: { naam: string; gebruiktDoor: string }[];
   volgendeStappen: string[];
   besteQuote: { tekst: string; rol: string };
+  /** Blinde vergelijking met één enkele vraag aan het slimste model */
+  vergelijking?: Vergelijking;
+}
+
+export interface EnkelAdvies {
+  uitslag: string;
+  samenvatting: string;
+  strategie: { stap: string; waarom: string; eersteActie: string }[];
+  risicos: string[];
+}
+
+export interface Vergelijking {
+  /** Welk model de enkele vraag kreeg, zoals de gebruiker het kent */
+  label: string;
+  model: string;
+  advies: EnkelAdvies;
+  kosten_eur: number;
+  /** Welk advies als 'A' wordt getoond (willekeurig, zodat je blind kiest) */
+  aIs: "debat" | "enkel";
+  keuze?: "debat" | "enkel" | "gelijk";
 }
 
 export interface Highlight {

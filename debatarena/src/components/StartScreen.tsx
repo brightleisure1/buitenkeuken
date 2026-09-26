@@ -9,6 +9,7 @@ import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
 import { MicButton, type MicHandle } from "./MicButton";
 import { isFun } from "@/lib/cliches";
+import { NIVEAUS, estimateCost, niveauOf, type Niveau } from "@/lib/niveau";
 import { RoleCard } from "./RoleCard";
 import { CensorToggle, ErrorNote, Portrait, Segmented, Spinner, Switch, toError } from "./ui";
 import { PersonaEditor } from "./PersonaEditor";
@@ -242,6 +243,21 @@ export function StartScreen() {
               <strong>🎉 Fun-modus</strong>{" "}
               <span className="text-ink/60">– karikaturen, vergaderclichés en droge humor. De inhoud blijft even serieus.</span>
             </Switch>
+            <span className="flex flex-wrap items-center gap-2 text-sm">
+              <strong>🧠 Slimheid</strong>
+              <Segmented
+                label="Slimheid"
+                value={niveauOf(cast)}
+                onChange={(v) => void saveAdvanced({ ...cast, niveau: v })}
+                options={(Object.keys(NIVEAUS) as Niveau[]).map((n) => ({
+                  value: n,
+                  label: `${NIVEAUS[n].naam} · ≈ ${euro(Math.max(0.01, Math.round(estimateCost(cast, n) * 100) / 100)).replace(",00", "")}`,
+                }))}
+              />
+            </span>
+            <span className="basis-full text-xs text-ink/60 -mt-1">
+              {NIVEAUS[niveauOf(cast)].uitleg} De voorzitter is altijd het sterkste model en denkt diep na over het advies. Bedragen zijn een schatting.
+            </span>
             <span className="flex items-center gap-2 text-sm">
               <strong>🔊 Stemmen</strong>
               {data.keys.elevenlabs ? (
@@ -279,8 +295,8 @@ export function StartScreen() {
             </label>
             <span className="text-xs text-ink/50">Kosten tot nu toe: {euro(run.cost_eur)}</span>
           </div>
-          <div className="mt-3 rounded-2xl border-2 border-ink bg-white px-4 py-3">
-            <p className="font-display font-extrabold">🌶️ Censuur per deelnemer</p>
+          <div className="mt-3 rounded-2xl border border-ink/15 bg-white px-4 py-3">
+            <p className="font-display font-bold">🌶️ Censuur per deelnemer</p>
             <p className="text-xs text-ink/60 mb-2">
               Ongecensureerd: brutaal, sarcastisch, vloeken mag. Grok gaat het verst; Claude, ChatGPT en Gemini worden scherper maar blijven wat netter. De voorzitter blijft altijd netjes.
             </p>
@@ -424,7 +440,7 @@ export function StartScreen() {
           Waar wil je over debatteren?
         </label>
         {team && (
-          <p className="mt-3 text-sm inline-flex items-center gap-2 rounded-full bg-mint border border-ink/30 px-3 py-1">
+          <p className="mt-3 text-sm inline-flex items-center gap-2 rounded-full bg-mint border border-ink/15 px-3 py-1">
             Met het team: {team.name}
             <button onClick={() => setTeam(null)} aria-label="Team loslaten" className="text-ink/60">
               ✕
@@ -468,7 +484,7 @@ export function StartScreen() {
               <li
                 key={f.key}
                 title={f.error}
-                className={`text-sm rounded-full border px-3 py-1 flex items-center gap-2 ${f.status === "fout" ? "border-coral bg-[#FFF1EC]" : "border-ink/30 bg-cream"}`}
+                className={`text-sm rounded-full border px-3 py-1 flex items-center gap-2 ${f.status === "fout" ? "border-coral bg-[#FFF1EC]" : "border-ink/15 bg-cream"}`}
               >
                 {f.status === "bezig" && <Spinner />}
                 {f.status === "ok" && "📎"}
@@ -533,7 +549,7 @@ export function StartScreen() {
           </div>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="card p-4 flex gap-4 items-center opacity-60 animate-pulse" aria-hidden>
-              <div className="h-[72px] w-[72px] rounded-full bg-peach border-[3px] border-ink grid place-items-center text-3xl">?</div>
+              <div className="h-[72px] w-[72px] rounded-full bg-peach border-2 border-white shadow-soft grid place-items-center text-3xl">?</div>
               <div className="flex-1 space-y-2">
                 <div className="h-4 w-40 rounded bg-ink/15" />
                 <div className="h-3 w-64 rounded bg-ink/10" />
@@ -546,7 +562,7 @@ export function StartScreen() {
       {phase === "input" && !question && (
         <div className="flex flex-wrap gap-2">
           {VOORBEELDEN.map((v) => (
-            <button key={v} onClick={() => setQuestion(v)} className="text-sm rounded-full border border-ink/25 bg-white px-3 py-1.5 hover:bg-sun">
+            <button key={v} onClick={() => setQuestion(v)} className="text-sm rounded-full border border-ink/25 bg-white px-3 py-1.5 hover:bg-ink/5">
               {v}
             </button>
           ))}
@@ -555,13 +571,13 @@ export function StartScreen() {
 
       {phase === "input" && templates.length > 0 && (
         <section>
-          <h2 className="font-display font-extrabold text-xl mb-2">Je teams</h2>
+          <h2 className="font-display font-bold text-xl mb-2">Je teams</h2>
           <div className="flex flex-wrap gap-2">
             {templates.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTeam(team?.id === t.id ? null : { kind: "template", id: t.id, name: t.name })}
-                className={`rounded-2xl border-2 border-ink px-3 py-2 flex items-center gap-2 text-sm ${team?.id === t.id ? "bg-mint" : "bg-white hover:bg-sun"}`}
+                className={`rounded-2xl border border-ink/15 px-3 py-2 flex items-center gap-2 text-sm ${team?.id === t.id ? "bg-mint" : "bg-white hover:bg-ink/5"}`}
               >
                 <span className="flex -space-x-3">
                   {t.cast.rollen.slice(0, 4).map((r, i) => (
@@ -578,7 +594,7 @@ export function StartScreen() {
       {phase === "input" && recent.length > 0 && (
         <section>
           <div className="flex items-baseline justify-between mb-2">
-            <h2 className="font-display font-extrabold text-xl">Recente debatten</h2>
+            <h2 className="font-display font-bold text-xl">Recente debatten</h2>
             <Link href="/geschiedenis" className="text-sm underline">
               Alles bekijken
             </Link>
@@ -588,7 +604,7 @@ export function StartScreen() {
               <li key={r.id}>
                 <Link
                   href={r.status === "draft" ? `/?run=${r.id}` : r.status === "done" || r.status === "stopped" ? `/resultaat/${r.id}` : `/arena/${r.id}`}
-                  className="card p-4 flex items-center gap-3 hover:bg-sun transition"
+                  className="card p-4 flex items-center gap-3 hover:bg-ink/5 transition"
                 >
                   <span className="flex -space-x-3">
                     {r.rollen.slice(0, 3).map((x, i) => (

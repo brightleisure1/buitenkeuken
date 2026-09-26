@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, datum, euro } from "@/lib/client";
 import { sectionText, toMarkdown, transcriptLines } from "@/lib/markdown";
 import type { RunPayload } from "@/lib/payload";
+import type { EnkelAdvies, JuryResult, Vergelijking } from "@/lib/types";
 import { CostPanel } from "./CostPanel";
 import { ShareDialog } from "./ShareDialog";
 import { tokens } from "@/lib/usage";
@@ -344,8 +345,10 @@ export function ResultView({ id }: { id: string }) {
         )}
       </Section>
 
+      <Vergelijk id={id} result={r} totalCost={run.cost_eur} onChange={() => void load()} />
+
       <details className="card p-5">
-        <summary className="cursor-pointer font-display font-extrabold text-lg flex items-center gap-2">
+        <summary className="cursor-pointer font-display font-bold text-lg flex items-center gap-2">
           Tokens en kosten
           <span className="ml-auto text-sm font-sans font-normal text-ink/60">
             {euro(run.cost_eur)} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
@@ -357,7 +360,7 @@ export function ResultView({ id }: { id: string }) {
       </details>
 
       <details className="card p-5">
-        <summary className="cursor-pointer font-display font-extrabold text-lg flex items-center gap-2">
+        <summary className="cursor-pointer font-display font-bold text-lg flex items-center gap-2">
           Transcript
           <span className="ml-auto no-print" onClick={(e) => e.stopPropagation()}>
             <CopyButton text={() => transcriptLines(run, messages).join("\n\n").replace(/\*\*|_/g, "")} />
@@ -380,7 +383,7 @@ export function ResultView({ id }: { id: string }) {
       </details>
 
       <div className="no-print card p-5 bg-mint flex flex-col sm:flex-row gap-3 sm:items-center">
-        <p className="font-display font-extrabold text-xl flex-1">Nog een keer met hetzelfde team?</p>
+        <p className="font-display font-bold text-xl flex-1">Nog een keer met hetzelfde team?</p>
         <Link href={`/?team=${id}`} className="btn-primary">
           Nieuw vraagstuk, zelfde team
         </Link>
@@ -398,10 +401,113 @@ function Section({ title, copy, children, tone = "bg-white" }: { title: string; 
   return (
     <section className={`card p-5 ${tone}`}>
       <div className="flex items-center gap-2 mb-3">
-        <h2 className="font-display font-extrabold text-lg flex-1">{title}</h2>
+        <h2 className="font-display font-bold text-lg flex-1">{title}</h2>
         <CopyButton text={copy} />
       </div>
       {children}
+    </section>
+  );
+}
+
+/**
+ * De hamvraag: is het debat beter dan één vraag aan het slimste model?
+ * Beide adviezen staan blind naast elkaar (A en B, willekeurig); pas na je keuze zie je welke welke is.
+ */
+function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: JuryResult; totalCost: number; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Err>(null);
+  const [wijzig, setWijzig] = useState(false);
+  const v = result.vergelijking;
+
+  async function post(json: object) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api<{ vergelijking: Vergelijking }>(`/api/runs/${id}/vergelijk`, { method: "POST", json });
+      setWijzig(false);
+      onChange();
+    } catch (e) {
+      setError(toError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const debat: EnkelAdvies = { uitslag: result.uitslag, samenvatting: result.samenvatting, strategie: result.strategie, risicos: result.aannames.map((a) => a.aanname) };
+  const kostenDebat = v ? Math.max(0, totalCost - v.kosten_eur) : totalCost;
+
+  return (
+    <section className="card p-5 space-y-4">
+      <div>
+        <h2 className="font-display font-bold text-lg">🆚 Beter dan één vraag?</h2>
+        <p className="text-sm text-ink/65 mt-1">
+          Levert dit debat een beter advies op dan één keer het slimste model vragen? Stel dezelfde vraag, met dezelfde bijlages, aan één model dat er diep over
+          nadenkt. Je ziet beide adviezen blind naast elkaar en kiest zelf. Pas daarna zie je welke welke is.
+        </p>
+      </div>
+      <ErrorNote error={error} onClose={() => setError(null)} />
+      {!v ? (
+        <button className="btn-primary !py-2" disabled={busy} onClick={() => void post({})}>
+          {busy ? <FunWait lines={["🧠 Eén slimme adviseur denkt er even diep over na…", "📄 Het advies wordt uitgeschreven…"]} /> : "Vergelijk met één vraag (≈ € 0,10)"}
+        </button>
+      ) : (
+        <>
+          <div className="grid md:grid-cols-2 gap-3">
+            {(["A", "B"] as const).map((letter) => {
+              const wie = (letter === "A") === (v.aIs === "debat") ? "debat" : "enkel";
+              const advies = wie === "debat" ? debat : v.advies;
+              const gekozen = v.keuze === wie;
+              return (
+                <div key={letter} className={`rounded-2xl border p-4 space-y-2 ${gekozen ? "border-ink bg-sun/60" : "border-ink/15 bg-white"}`}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink/55">
+                    Advies {letter}
+                    {v.keuze && ` · ${wie === "debat" ? `het debat (${euro(kostenDebat)})` : `één vraag aan ${v.label} (${euro(v.kosten_eur)})`}`}
+                  </p>
+                  <p className="font-display font-bold text-lg leading-snug">{advies.uitslag}</p>
+                  <p className="text-sm leading-relaxed">{advies.samenvatting}</p>
+                  <ol className="text-sm list-decimal pl-5 space-y-1">
+                    {advies.strategie.map((st, i) => (
+                      <li key={i}>
+                        <span className="font-semibold">{st.stap}</span> <span className="text-ink/65">— {st.waarom}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {advies.risicos.length > 0 && (
+                    <p className="text-xs text-ink/60">
+                      <span className="font-semibold">Om te checken:</span> {advies.risicos.slice(0, 4).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {v.keuze && !wijzig ? (
+            <p className="text-sm">
+              {v.keuze === "gelijk"
+                ? "Je vond ze even goed."
+                : v.keuze === "debat"
+                  ? "Je koos het advies van het debat."
+                  : `Je koos het advies van één vraag aan ${v.label}.`}{" "}
+              <button className="underline text-ink/60" onClick={() => setWijzig(true)}>
+                Toch anders?
+              </button>
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold">Welk advies helpt je beter beslissen?</span>
+              <button className="btn-ghost !py-1.5" disabled={busy} onClick={() => void post({ keuze: v.aIs === "debat" ? "debat" : "enkel" })}>
+                A
+              </button>
+              <button className="btn-ghost !py-1.5" disabled={busy} onClick={() => void post({ keuze: v.aIs === "debat" ? "enkel" : "debat" })}>
+                B
+              </button>
+              <button className="btn-ghost !py-1.5" disabled={busy} onClick={() => void post({ keuze: "gelijk" })}>
+                Even goed
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }

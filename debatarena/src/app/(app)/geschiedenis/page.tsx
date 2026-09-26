@@ -16,6 +16,7 @@ type Row = {
   cost_eur: number;
   tokens: number;
   share_token: string | null;
+  keuze?: "debat" | "enkel" | "gelijk" | null;
   rollen: { id: string; naam: string; portrait: string | null }[];
 };
 type Template = { id: string; name: string; cast: Cast; created_at: string };
@@ -55,6 +56,9 @@ export default function HistoryPage() {
   }
 
   const total = runs?.reduce((s, r) => s + r.cost_eur, 0) ?? 0;
+  // De hamvraag, in jouw eigen cijfers: hoe vaak koos je blind voor het debat?
+  const judged = runs?.filter((r) => r.keuze) ?? [];
+  const tel = (k: string) => judged.filter((r) => r.keuze === k).length;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 space-y-8">
@@ -66,6 +70,14 @@ export default function HistoryPage() {
           </span>
         )}
       </div>
+      {judged.length > 0 && (
+        <div className="card p-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+          <span className="font-semibold">🆚 Blind vergeleken ({judged.length}×)</span>
+          <span>Debat beter: {tel("debat")}</span>
+          <span>Eén vraag beter: {tel("enkel")}</span>
+          <span>Even goed: {tel("gelijk")}</span>
+        </div>
+      )}
       <ErrorNote error={error} />
       {!runs && !error && <Spinner className="h-6 w-6" />}
       {runs?.length === 0 && (

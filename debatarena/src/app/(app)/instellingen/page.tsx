@@ -77,7 +77,7 @@ export default function SettingsPage() {
       {info && (
         <>
           {aiCount === 0 && (
-            <div className="rounded-2xl border-2 border-coral bg-[#FFF1EC] p-4 text-sm">
+            <div className="rounded-2xl border border-coral bg-[#FFF1EC] p-4 text-sm">
               <p className="font-semibold">Nog geen AI-sleutel ingesteld.</p>
               <p className="text-ink/75">Plak hieronder een sleutel van Anthropic, OpenAI, Google of xAI. Eén is genoeg om te beginnen.</p>
             </div>
@@ -92,7 +92,7 @@ export default function SettingsPage() {
 
           <section className="card overflow-hidden">
             <div className="px-5 pt-5 pb-2 flex items-baseline">
-              <h2 className="font-display font-extrabold text-lg flex-1">Je sleutels</h2>
+              <h2 className="font-display font-bold text-lg flex-1">Je sleutels</h2>
               <span className="text-xs text-ink/50">Verbruik: laatste 30 dagen</span>
             </div>
             <ul>
@@ -117,13 +117,13 @@ export default function SettingsPage() {
 
           {info.keys.elevenlabs && (
             <section className="card p-5 space-y-2">
-              <h2 className="font-display font-extrabold text-lg">Stemmen</h2>
+              <h2 className="font-display font-bold text-lg">Stemmen</h2>
               <VoicePicker />
             </section>
           )}
 
           <section className="card p-5">
-            <h2 className="font-display font-extrabold text-lg">Modellen</h2>
+            <h2 className="font-display font-bold text-lg">Modellen</h2>
             <p className="text-sm text-ink/70 mt-1">
               Werkt een model niet, dan neemt automatisch een ander het over. Welke modellen je sleutel mag gebruiken, halen we zelf op. Prijzen staan in <code>src/lib/config.ts</code>; een eigen modelnaam kies je per rol onder Geavanceerd.
             </p>
@@ -180,7 +180,7 @@ function QuickPaste({ onSaved }: { onSaved: (d: Info & { detected: KeyProvider }
   return (
     <section className="card p-5 space-y-3 bg-sun">
       <div>
-        <h2 className="font-display font-extrabold text-lg">Sleutel toevoegen</h2>
+        <h2 className="font-display font-bold text-lg">Sleutel toevoegen</h2>
         <p className="text-sm text-ink/70">Plak een sleutel van welke aanbieder dan ook. Wij herkennen zelf van wie hij is en testen hem meteen.</p>
       </div>
       <form
@@ -248,7 +248,7 @@ function KeyRow({
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const dot = !masked ? "bg-ink/20" : !status ? "bg-sun border border-ink/30" : status.ok ? "bg-[#2FB344]" : "bg-coral";
+  const dot = !masked ? "bg-ink/20" : !status ? "bg-sun border border-ink/15" : status.ok ? "bg-[#2FB344]" : "bg-coral";
   const state = !masked ? "Niet ingesteld" : !status ? "Nog niet getest" : status.ok ? "Verbonden" : "Werkt niet";
 
   async function save() {
@@ -276,7 +276,7 @@ function KeyRow({
   }
 
   return (
-    <li className="border-t-2 border-ink/10 px-5 py-4 space-y-2" data-provider={provider}>
+    <li className="border-t border-ink/10/10 px-5 py-4 space-y-2" data-provider={provider}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className={`h-3 w-3 rounded-full shrink-0 ${dot}`} aria-hidden />
         <span className="font-semibold">{meta.naam}</span>
@@ -367,7 +367,7 @@ function LimitCard({ value, onSaved }: { value: number; onSaved: (i: Info) => vo
   }
   return (
     <section className="card p-5 space-y-2">
-      <h2 className="font-display font-extrabold text-lg">💶 Kostenlimiet per vergadering</h2>
+      <h2 className="font-display font-bold text-lg">💶 Kostenlimiet per vergadering</h2>
       <p className="text-sm text-ink/70">
         Vóór elke beurt kijkt de app hoeveel de vergadering al gekost heeft. Is de limiet bereikt, dan start er geen nieuwe beurt en kies jij: verhogen, afronden of stoppen.
         Per vergadering kun je de limiet nog aanpassen.

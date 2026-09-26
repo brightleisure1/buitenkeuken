@@ -65,11 +65,11 @@ export function ShareDialog({ payload, onClose, onChange }: { payload: RunPayloa
   return (
     <div className="no-print fixed inset-0 z-50 bg-ink/40 grid place-items-end sm:place-items-center p-0 sm:p-4" onClick={onClose}>
       <div
-        className="bg-cream w-full sm:max-w-3xl max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border-2 border-ink p-5 sm:p-7 space-y-5"
+        className="bg-cream w-full sm:max-w-3xl max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-ink/15 p-5 sm:p-7 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center">
-          <h2 className="font-display font-extrabold text-2xl flex-1">Delen</h2>
+          <h2 className="font-display font-bold text-2xl flex-1">Delen</h2>
           <button onClick={onClose} aria-label="Sluiten" className="text-2xl leading-none">
             ✕
           </button>
@@ -106,7 +106,7 @@ export function ShareDialog({ payload, onClose, onChange }: { payload: RunPayloa
             {(["square", "story"] as const).map((f) => (
               <div key={f} className={f === "square" ? "w-1/2 sm:w-[45%]" : "w-[28%] sm:w-[25%]"}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={card(f)} alt={f === "square" ? "Kaart 1:1" : "Kaart 9:16"} className="w-full rounded-xl border-2 border-ink bg-white" />
+                <img src={card(f)} alt={f === "square" ? "Kaart 1:1" : "Kaart 9:16"} className="w-full rounded-xl border border-ink/15 bg-white" />
                 <a href={card(f)} download={`advies-${f === "square" ? "1x1" : "9x16"}.png`} className="text-sm underline mt-1 inline-block">
                   Download {f === "square" ? "1:1" : "9:16"}
                 </a>
@@ -136,7 +136,7 @@ export function ShareDialog({ payload, onClose, onChange }: { payload: RunPayloa
           )}
         </div>
 
-        <div className="rounded-2xl border-2 border-ink bg-white p-4 space-y-2">
+        <div className="rounded-2xl border border-ink/15 bg-white p-4 space-y-2">
           <p className="text-sm font-semibold">Publieke replay-link</p>
           <p className="text-sm text-ink/60">Iedereen met de link kan het debat terugkijken (alleen lezen). Kosten en instructies zijn niet zichtbaar.</p>
           {link ? (

@@ -403,6 +403,52 @@ await step("Afronden → laatste woord → advies voorzitter → resultaat", asy
   assert.equal(again.json.step.type, "done");
 });
 
+await step("Hamvraag: blind vergelijken met één vraag aan het slimste model", async () => {
+  const before = (await call(`/api/runs/${run.id}`)).data.run.cost_eur;
+  const v = await call(`/api/runs/${run.id}/vergelijk`, { method: "POST", json: {} });
+  assert.equal(v.status, 200, JSON.stringify(v.data));
+  assert.match(v.data.vergelijking.advies.uitslag, /nieuwe klanten/);
+  assert.ok(["debat", "enkel"].includes(v.data.vergelijking.aIs), "willekeurige volgorde");
+  assert.ok(!v.data.vergelijking.keuze, "nog niet gekozen");
+  const req = (await fakeLog()).filter((l) => l.schemaProps?.includes("risicos")).at(-1);
+  assert.equal(req.model, "claude-opus-5", "het slimste Claude-model");
+  assert.match(req.user, /We verhogen niet vóór juni/, "met dezelfde vaststaande besluiten");
+  const again = await call(`/api/runs/${run.id}/vergelijk`, { method: "POST", json: {} });
+  assert.equal(again.data.vergelijking.advies.uitslag, v.data.vergelijking.advies.uitslag, "maar één keer betalen");
+  const k = await call(`/api/runs/${run.id}/vergelijk`, { method: "POST", json: { keuze: "debat" } });
+  assert.equal(k.data.vergelijking.keuze, "debat");
+  const list = await call("/api/runs");
+  assert.equal(list.data.runs.find((x) => x.id === run.id).keuze, "debat", "telt mee in de geschiedenis");
+  const after = (await call(`/api/runs/${run.id}`)).data;
+  assert.ok(after.run.cost_eur > before, "kosten van de vergelijking tellen mee");
+  assert.ok(after.usage.perKind.some((x) => x.label === "Vergelijking (één vraag)"));
+});
+
+await step("Slimheid: vlot, slim en slimst kiezen andere modellen; de voorzitter blijft de sterkste", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Nieuwe leverancier kiezen?" } });
+  const id = c.data.run.id;
+  assert.equal(c.data.run.cast.niveau, "slim");
+  const tierOf = (key) => (key.endsWith("-snel") ? "snel" : "sterk");
+  assert.ok(c.data.run.cast.rollen.filter((r) => !r.isJury).every((r) => tierOf(r.modelKey) === "sterk"), "slim = sterkste modellen");
+  const vlot = await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...c.data.run.cast, niveau: "vlot" } } });
+  assert.ok(vlot.data.run.cast.rollen.filter((r) => !r.isJury).every((r) => r.modelKey.endsWith("-snel")), "vlot = snelle modellen");
+  const jury = vlot.data.run.cast.rollen.find((r) => r.isJury);
+  assert.match(jury.modelKey, /sterk/, "de voorzitter blijft het sterkste model");
+  const providers = (cast) => cast.rollen.map((r) => r.modelKey.split("-")[0]).join(",");
+  assert.equal(providers(vlot.data.run.cast), providers(c.data.run.cast), "iedereen houdt zijn eigen AI");
+  const slimst = await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...vlot.data.run.cast, niveau: "slimst" } } });
+  assert.equal(slimst.data.run.cast.niveau, "slimst");
+  await call(`/api/runs/${id}/start`, { method: "POST" });
+  await fetch(`${FAKE}/__reset`);
+  for (let i = 0; i < 4; i++) await turn(id);
+  const log = await fakeLog();
+  const deep = log.filter((l) => /Ronde \d van/.test(l.user ?? "") && l.provider === "anthropic");
+  const gpt = log.filter((l) => /Ronde \d van/.test(l.user ?? "") && l.provider === "openai");
+  assert.ok(deep.length + gpt.length > 0, "er spraken Claude- of GPT-rollen");
+  assert.ok(deep.every((l) => l.effort === "medium") && gpt.every((l) => l.reasoning === "medium"), "slimst denkt langer na");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
 await step("Tokens en kosten per debat kloppen", async () => {
   const r = await call(`/api/runs/${run.id}`);
   const u = r.data.usage;

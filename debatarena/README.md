@@ -41,6 +41,20 @@ De rollen zijn collega's uit je eigen bedrijf, en er zit altijd één klant of g
 
 Het doel is een debat waar je echt iets aan hebt. Elke rol is een ervaren vakmens die kennis uit zijn eigen vak inbrengt: cijfers, praktijkervaring, risico's en voorwaarden. Rollen gaan in op het sterkste argument van een ander en schuiven op als ze overtuigd worden. De eerste ronde draait om standpunten, de tussenrondes om argumenten en tegenargumenten, en in de laatste ronde komt iedereen met een eindvoorstel: wat besluit je, onder welke voorwaarde, wat is de eerste stap en hoe zie je of het werkt. Standaard zijn de portretten nette illustraties van geloofwaardige collega's.
 
+## Slimheid
+
+Op het voorstelscherm kies je **🧠 Slimheid**, met bij elke keuze een schatting van wat de vergadering kost:
+
+- **Vlot**: snelle, goedkope modellen. Prima voor een eerste verkenning.
+- **Slim** (standaard): de sterkste modellen van elke AI.
+- **Slimst**: de sterkste modellen, en ze denken per beurt langer na. Het duurst.
+
+Iedereen houdt zijn eigen AI; alleen het model binnen die AI verandert. De voorzitter is altijd het sterkste model en denkt diep na over het advies, zodat de besluitvaardigheid nooit inlevert, ook niet in de vlotte stand.
+
+## Beter dan één vraag?
+
+De hamvraag: levert een debat een beter besluit op dan één keer het slimste model vragen? Dat zoek je uit met je eigen besluiten. Onderaan de resultaatpagina klik je op **🆚 Vergelijk met één vraag**. Dezelfde vraag, met dezelfde bijlages en je vaststaande besluiten, gaat dan naar het sterkste Claude-model, dat er diep over nadenkt (kost zo'n tien cent). Je ziet beide adviezen **blind** naast elkaar als A en B, in willekeurige volgorde, en kiest welk advies je beter helpt beslissen. Pas daarna zie je welke welke was, en wat elk kostte. Bij *Geschiedenis* houdt de app de stand bij: hoe vaak won het debat, hoe vaak de enkele vraag.
+
 ## Fun-modus
 
 Eén schakelaar op het voorstelscherm: **🎉 Fun-modus**. Uit (standaard) is het een serieus, zakelijk debat. Aan krijg je er karikaturen, vergaderclichés en droge humor bij: elke rol stopt per beurt één rake zin in zijn verhaal, en de voorzitter sluit af met een zin die je wilt doorsturen. De inhoud blijft even serieus: een grap vervangt nooit een argument, en de voorzitter blijft slim en netjes. Zo heb je iets aan het besluit én iets om te delen. Zet je de fun-modus om, dan tekent de tekenaar de portretten opnieuw in de andere stijl. Je kunt het ook zeggen: "doe het in de fun-modus" of "maak het grappig".

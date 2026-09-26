@@ -65,6 +65,16 @@ function answer({ system, user, schemaProps }) {
   if (schemaProps) {
     if (schemaProps.includes("antwoord") && schemaProps.includes("cast")) return { json: castEdit(user) };
     if (schemaProps.includes("rollen") && schemaProps.includes("titel")) return { json: castFrom(user) };
+    if (schemaProps.includes("risicos")) {
+      return {
+        json: {
+          uitslag: "Verhoog met 4%, maar alleen voor nieuwe klanten",
+          samenvatting: "Eén adviseur, diep nagedacht. Bestaande klanten ontzien.",
+          strategie: [{ stap: "Nieuwe prijslijst", waarom: "Minder verloop", eersteActie: "Prijzen doorrekenen" }],
+          risicos: ["Concurrent verlaagt juist", "Marge blijft te laag"],
+        },
+      };
+    }
     if (schemaProps.includes("uitslag")) return { json: juryResult(all) };
     if (schemaProps.includes("momenten")) return { json: highlights(user) };
     if (schemaProps.includes("feiten")) return { json: { feiten: [{ feit: "De markt groeit 4% per jaar", bron: "CBS" }] } };

@@ -3,6 +3,7 @@ import { attachmentsFor, runAttachments } from "@/lib/attachments";
 import { applyCliches } from "@/lib/cliches";
 import { fixJury } from "@/lib/jury";
 import { MAX_ROUNDS, MODELS } from "@/lib/config";
+import { NIVEAUS, applyNiveau } from "@/lib/niveau";
 import { prepare } from "@/lib/prep";
 import { nextStep } from "@/lib/planner";
 import { body, handle } from "@/lib/route";
@@ -46,7 +47,10 @@ export const PATCH = handle(async (req: Request, { params }: Ctx) => {
     const before = await getRun(id);
     // Fun-modus omgezet? Dan gaan de clichés mee aan of uit.
     const fun = typeof input.cast.fun === "boolean" ? input.cast.fun : before.cast.fun;
-    const c = fun !== before.cast.fun ? { ...input.cast, fun, cliches: !!fun } : { ...input.cast, fun };
+    const withFun = fun !== before.cast.fun ? { ...input.cast, fun, cliches: !!fun } : { ...input.cast, fun };
+    // Slimheid omgezet? Dan krijgt elke deelnemer het model van zijn eigen AI dat daarbij hoort.
+    const niveau = withFun.niveau && withFun.niveau in NIVEAUS ? withFun.niveau : before.cast.niveau;
+    const c = niveau && niveau !== before.cast.niveau ? applyNiveau(withFun, niveau) : { ...withFun, niveau };
     // Clichés alleen automatisch uitdelen als de schakelaar net aan is gezet (niet bij handmatige keuze).
     const autoFill = !input.handmatig && !!c.cliches && !before.cast.cliches;
     patch.cast = applyCliches({

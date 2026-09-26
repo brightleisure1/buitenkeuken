@@ -744,7 +744,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         }}
       />
     ) : phase === "oordeel" ? (
-      <div className="w-full max-w-2xl rounded-3xl bg-sun border-2 border-ink px-5 py-4 shadow-[3px_3px_0_0_var(--color-ink)] animate-pop">
+      <div className="w-full max-w-2xl rounded-3xl bg-sun border border-ink/15 px-5 py-4 shadow-lift animate-pop">
         <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-1">De voorzitter zet alles op een rij</span>
         <FunWait lines={JURY_LINES} size="lg" />
       </div>
@@ -755,13 +755,13 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
       key="censuur"
       onClick={() => setCensorOpen((v) => !v)}
       aria-expanded={censorOpen}
-      className={`rounded-full border-2 border-ink px-3 py-0.5 text-xs sm:text-sm font-semibold ${spicy ? "bg-coral text-white" : "bg-white"}`}
+      className={`rounded-full border border-ink/15 px-3 py-0.5 text-xs sm:text-sm font-semibold ${spicy ? "bg-coral text-white" : "bg-white"}`}
     >
       🌶️ Censuur{spicy ? `: ${spicy} ongecensureerd` : ""} {censorOpen ? "▴" : "▾"}
     </button>,
     ...(censorOpen
       ? participants.map((r) => (
-          <span key={r.id} className="flex items-center gap-1.5 rounded-full border-2 border-ink bg-white pl-3 pr-1 py-0.5 text-xs sm:text-sm">
+          <span key={r.id} className="flex items-center gap-1.5 rounded-full border border-ink/15 bg-white pl-3 pr-1 py-0.5 text-xs sm:text-sm">
             <span className="font-semibold">{firstName(r.naam)}</span>
             <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => void setGrok(r.id, v)} />
           </span>
@@ -852,7 +852,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
           {error && <ErrorNote error={error} onClose={() => setError(null)} />}
 
           {budgetHit && phase === "debat" && (
-            <div className="rounded-2xl bg-peach border-2 border-ink p-3 space-y-2 text-sm" role="dialog" aria-label="Kostenlimiet bereikt">
+            <div className="rounded-2xl bg-peach border border-ink/15 p-3 space-y-2 text-sm" role="dialog" aria-label="Kostenlimiet bereikt">
               <p className="font-semibold">
                 💶 De kostenlimiet is bereikt: {euro(run.cost_eur)} van max {euro(limit ?? run.cost_eur)}. Er start geen nieuwe beurt.
               </p>
@@ -880,7 +880,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
           )}
 
           {stopPanel && phase === "debat" && (
-            <div className="rounded-2xl bg-sun border-2 border-ink p-3 space-y-2 text-sm" role="dialog" aria-label="De vergadering staat stil">
+            <div className="rounded-2xl bg-sun border border-ink/15 p-3 space-y-2 text-sm" role="dialog" aria-label="De vergadering staat stil">
               <p className="font-semibold">De vergadering staat stil. Wat wil je?</p>
               <div className="flex flex-wrap gap-2">
                 <button className="btn-ghost !py-1.5" onClick={resume}>
@@ -919,7 +919,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                 <button
                   key={r.id}
                   onClick={() => setTarget(r.id)}
-                  className={`text-xs rounded-full border-2 px-2.5 py-1 ${target === r.id ? "bg-ink text-cream border-ink" : "border-ink/30 bg-white"}`}
+                  className={`text-xs rounded-full border px-2.5 py-1 ${target === r.id ? "bg-ink text-cream border-ink" : "border-ink/15 bg-white"}`}
                 >
                   {firstName(r.naam)}
                 </button>
@@ -1026,7 +1026,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
       {menuRole && (
         <div className="fixed inset-0 z-40" onClick={() => setMenuFor(null)}>
           <div
-            className="absolute left-1/2 top-40 -translate-x-1/2 w-[min(92vw,320px)] rounded-2xl border-2 border-ink bg-white shadow-[4px_4px_0_0_var(--color-ink)] p-2"
+            className="absolute left-1/2 top-40 -translate-x-1/2 w-[min(92vw,320px)] rounded-2xl border border-ink/15 bg-white shadow-lift p-2"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="px-2 pt-1 pb-2 text-sm font-semibold">
@@ -1034,7 +1034,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             </p>
             {menuRole.id !== activeId && (
               <button
-                className="w-full text-left rounded-xl px-3 py-2 hover:bg-sun"
+                className="w-full text-left rounded-xl px-3 py-2 hover:bg-ink/5"
                 onClick={() => {
                   setMenuFor(null);
                   void quip(menuRole.id);
@@ -1044,7 +1044,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
               </button>
             )}
             <button
-              className="w-full text-left rounded-xl px-3 py-2 hover:bg-sun"
+              className="w-full text-left rounded-xl px-3 py-2 hover:bg-ink/5"
               onClick={() => {
                 setMenuFor(null);
                 setMode("vraag");
@@ -1055,7 +1055,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
               ❓ Stel {firstName(menuRole.naam)} een vraag
             </button>
             <button
-              className="w-full text-left rounded-xl px-3 py-2 hover:bg-sun"
+              className="w-full text-left rounded-xl px-3 py-2 hover:bg-ink/5"
               onClick={() => {
                 setMenuFor(null);
                 setEditing(menuRole.id);
@@ -1083,10 +1083,10 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
       )}
 
       {showCost && (
-        <div className="absolute inset-x-0 bottom-0 z-40 max-h-[75%] overflow-y-auto bg-cream border-t-2 border-ink rounded-t-3xl p-5 shadow-[0_-6px_0_0_var(--color-ink)]">
+        <div className="absolute inset-x-0 bottom-0 z-40 max-h-[75%] overflow-y-auto bg-cream border-t border-ink/10 rounded-t-3xl p-5 shadow-[0_-6px_0_0_var(--color-ink)]">
           <div className="mx-auto max-w-2xl">
             <div className="flex items-center mb-3">
-              <h2 className="font-display font-extrabold text-xl flex-1">Tokens en kosten van dit debat</h2>
+              <h2 className="font-display font-bold text-xl flex-1">Tokens en kosten van dit debat</h2>
               <button onClick={() => setShowCost(false)} aria-label="Sluiten" className="text-xl">
                 ✕
               </button>
@@ -1098,7 +1098,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
 
       {orde && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center z-40">
-          <span className="font-display font-extrabold text-7xl sm:text-9xl text-coral drop-shadow-[4px_4px_0_var(--color-ink)] animate-pop">ORDE!</span>
+          <span className="font-display font-bold text-7xl sm:text-9xl text-coral drop-shadow-[4px_4px_0_var(--color-ink)] animate-pop">ORDE!</span>
         </div>
       )}
     </div>
@@ -1119,7 +1119,7 @@ function Ctrl({ children, onClick, active }: { children: React.ReactNode; onClic
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 whitespace-nowrap rounded-full border-2 px-3 py-1.5 font-medium transition ${active ? "bg-ink text-cream border-ink" : "bg-white border-ink hover:bg-sun"}`}
+      className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 font-medium transition ${active ? "bg-ink text-cream border-ink" : "bg-white border-ink/15 shadow-soft hover:border-ink/15"}`}
     >
       {children}
     </button>
@@ -1144,14 +1144,14 @@ function PrepBanner({ roles, prep, started, onStart }: { roles: Role[]; prep: Pr
   const namen = pending.map((r) => firstName(r.naam));
   const wie = namen.length > 1 ? `${namen.slice(0, -1).join(", ")} en ${namen.at(-1)}` : namen[0];
   return (
-    <div className="w-full max-w-2xl rounded-3xl bg-sky border-2 border-ink px-4 sm:px-5 py-3 shadow-[3px_3px_0_0_var(--color-ink)] animate-pop space-y-2">
+    <div className="w-full max-w-2xl rounded-3xl bg-sky border border-ink/15 px-4 sm:px-5 py-3 shadow-lift animate-pop space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="font-display font-extrabold text-base sm:text-lg">
+        <span className="font-display font-bold text-base sm:text-lg">
           Huiswerk: {done} van {debaters.length} klaar
         </span>
         <span className="text-xs sm:text-sm text-ink/70">Het debat begint vanzelf{pending.length ? ` (uiterlijk over ${klok})` : ""}</span>
       </div>
-      <div className="h-2 rounded-full bg-white border border-ink/30 overflow-hidden" aria-hidden>
+      <div className="h-2 rounded-full bg-white border border-ink/15 overflow-hidden" aria-hidden>
         <div className="h-full bg-ink transition-all duration-700" style={{ width: `${debaters.length ? (done / debaters.length) * 100 : 100}%` }} />
       </div>
       <p className="text-sm text-ink/80">
@@ -1215,7 +1215,7 @@ function AutoView({ data, onWatch, onRetry, error }: { data: RunPayload; onWatch
       <div className="mx-auto max-w-2xl px-4 py-6 sm:py-10 space-y-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/60">⚡ Alleen het advies</p>
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl leading-tight mt-1">{run.title ?? run.question}</h1>
+          <h1 className="font-display font-bold text-2xl sm:text-3xl leading-tight mt-1">{run.title ?? run.question}</h1>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -1227,10 +1227,10 @@ function AutoView({ data, onWatch, onRetry, error }: { data: RunPayload; onWatch
           ))}
         </div>
 
-        <div className="rounded-3xl bg-sky border-2 border-ink px-5 py-4 shadow-[3px_3px_0_0_var(--color-ink)] space-y-3">
+        <div className="rounded-3xl bg-sky border border-ink/15 px-5 py-4 shadow-lift space-y-3">
           {stuck ? (
             <>
-              <p className="font-display font-extrabold text-lg">De vergadering liep vast</p>
+              <p className="font-display font-bold text-lg">De vergadering liep vast</p>
               <ErrorNote error={failed ? { message: failed.error, oplossing: failed.oplossing } : { message: "Er ging iets mis." }} />
               <div className="flex flex-wrap gap-2">
                 <button className="btn-primary !py-2" onClick={onRetry}>
@@ -1244,12 +1244,12 @@ function AutoView({ data, onWatch, onRetry, error }: { data: RunPayload; onWatch
           ) : (
             <>
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <span className="font-display font-extrabold text-base sm:text-lg">{title}</span>
+                <span className="font-display font-bold text-base sm:text-lg">{title}</span>
                 <span className="text-sm text-ink/70">
                   {turns.length} van ongeveer {expected} beurten
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-white border border-ink/30 overflow-hidden" aria-hidden>
+              <div className="h-2 rounded-full bg-white border border-ink/15 overflow-hidden" aria-hidden>
                 <div className="h-full bg-ink transition-all duration-700" style={{ width: `${pct}%` }} />
               </div>
               <div className="min-h-[4.5rem] flex items-center">

@@ -92,13 +92,13 @@ export function PersonaEditor({
       <div
         role="dialog"
         aria-label={`Persona ${role.naam} aanpassen`}
-        className="bg-cream w-full sm:max-w-2xl max-h-[94dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border-2 border-ink p-5 sm:p-7 space-y-4"
+        className="bg-cream w-full sm:max-w-2xl max-h-[94dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-ink/15 p-5 sm:p-7 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-4">
           <Portrait name={r.naam} portraits={prep?.portraits} index={index} size={72} />
           <div className="min-w-0 flex-1">
-            <h2 className="font-display font-extrabold text-2xl leading-tight break-words">{r.naam || "Naamloos"}</h2>
+            <h2 className="font-display font-bold text-2xl leading-tight break-words">{r.naam || "Naamloos"}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
               <AiBadge role={r} />
               <button onClick={newPortrait} disabled={redraw} className="underline text-ink/70">
@@ -141,7 +141,7 @@ export function PersonaEditor({
         </div>
 
         {canUncensor && (
-          <div className="rounded-2xl border-2 border-ink bg-white p-3 flex flex-wrap items-center gap-3">
+          <div className="rounded-2xl border border-ink/15 bg-white p-3 flex flex-wrap items-center gap-3">
             <span className="font-semibold">Censuur</span>
             <CensorToggle value={!!r.ongezouten} onChange={(v) => set({ ongezouten: v })} />
             <span className="text-xs text-ink/60 basis-full">
