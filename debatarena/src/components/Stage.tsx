@@ -3,6 +3,7 @@
 import { extractSources } from "@/lib/text";
 import type { Mood, Role, Tag } from "@/lib/types";
 import { useKonami, useLateNight, usePortraitSize } from "@/lib/hooks";
+import { clicheOf } from "@/lib/cliches";
 import { providerOf } from "@/lib/config";
 import { AiBadge, Portrait } from "./ui";
 
@@ -84,6 +85,11 @@ export function Stage({
               <span className="mt-1">
                 <AiBadge role={r} size="xs" />
               </span>
+              {clicheOf(r) && (
+                <span className="hidden sm:block mt-1 text-[10px] text-center leading-tight text-ink/60 line-clamp-2" title={clicheOf(r)!.omschrijving}>
+                  🎭 {clicheOf(r)!.naam}
+                </span>
+              )}
               {looking?.[r.id] && (
                 <span className="mt-1 text-[10px] sm:text-[11px] text-center text-ink/70 bg-sky rounded-lg px-1.5 py-0.5 line-clamp-2 animate-pop">{looking[r.id]}</span>
               )}
@@ -111,7 +117,7 @@ export function Stage({
                 {bubble.who === "baas"
                   ? "Jij, de baas"
                   : speaker
-                    ? `${speaker.naam} · ${speaker.isJury ? "Jury" : speaker.functie} · ${providerOf(speaker).naam}${speaker.ongezouten ? " 🌶️" : ""}`
+                    ? `${speaker.naam} · ${speaker.isJury ? "Jury" : speaker.functie} · ${providerOf(speaker).naam}${speaker.ongezouten ? " 🌶️" : ""}${clicheOf(speaker) ? ` · 🎭 ${clicheOf(speaker)!.naam}` : ""}`
                     : ""}
                 {bubble.note && <span className="ml-2 normal-case tracking-normal font-normal">{bubble.note}</span>}
               </p>
@@ -137,7 +143,7 @@ export function Stage({
           <Desk golden={!!goldenChair} />
           <div className="flex-1 min-w-0">{children}</div>
         </div>
-        {footer && <div className="mx-auto max-w-3xl px-4 pb-2 text-xs text-ink/60 flex items-center gap-3">{footer}</div>}
+        {footer && <div className="mx-auto max-w-3xl px-4 pb-2 text-xs text-ink/60 flex flex-wrap items-center gap-x-3 gap-y-1.5">{footer}</div>}
       </div>
     </div>
   );

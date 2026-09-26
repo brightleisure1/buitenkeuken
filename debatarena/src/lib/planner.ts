@@ -1,3 +1,4 @@
+import { orderForRound } from "./cliches";
 import type { Message, Run, Step } from "./types";
 
 /** Bepaalt wat er nu moet gebeuren, puur op basis van de opgeslagen berichten. */
@@ -31,7 +32,8 @@ export function nextStep(run: Run, messages: Message[]): Step {
     for (let r = 1; r <= R; r++) {
       const regular = turns.filter((t) => t.round === r && !t.meta.extra && !t.meta.answer);
       const spoken = new Set(regular.map((t) => t.role_id));
-      const next = debaters.find((d) => !spoken.has(d.id));
+      // Laatkomers en rondvraagterroristen komen in hun ronde als laatste aan het woord.
+      const next = orderForRound(debaters, r, R).find((d) => !spoken.has(d.id));
       if (next) return { type: "turn", roleId: next.id, round: r, meta: {} };
 
       // Iedereen eens? Verdacht. De kritische rol krijgt een extra beurt.

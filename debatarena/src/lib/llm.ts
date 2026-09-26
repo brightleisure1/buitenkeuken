@@ -15,6 +15,7 @@ import {
 } from "./config";
 import { AppError, friendly, type Who } from "./errors";
 import { requireKey } from "./settings";
+import { addUsage, emptyUsage, type Usage } from "./usage";
 
 export interface ImageInput {
   mime: string;
@@ -49,42 +50,68 @@ async function anthropic() {
 async function openai() {
   return new OpenAI({ apiKey: await requireKey("openai"), maxRetries: 2 });
 }
+/** Adres van de Gemini/Grok-API; te overschrijven voor tests (GEMINI_BASE_URL, XAI_BASE_URL). */
+function compatBaseURL(provider: "google" | "xai") {
+  return (provider === "google" ? process.env.GEMINI_BASE_URL : process.env.XAI_BASE_URL) || COMPAT_BASE_URL[provider];
+}
 async function compat(m: ModelConfig) {
   const provider = m.provider as "google" | "xai";
-  return new OpenAI({ apiKey: await requireKey(provider), baseURL: COMPAT_BASE_URL[provider], maxRetries: 2 });
+  return new OpenAI({ apiKey: await requireKey(provider), baseURL: compatBaseURL(provider), maxRetries: 2 });
 }
 
-// ---------- kosten ----------
+// ---------- verbruik en kosten ----------
 
-export function anthropicCost(m: ModelConfig, u: Anthropic.Usage | null | undefined): number {
-  if (!u) return 0;
+export function anthropicUsage(m: ModelConfig, u: Anthropic.Usage | null | undefined): Usage {
+  const out = emptyUsage(m.provider, m.model);
+  if (!u) return out;
   const perIn = m.inputPrice / 1e6;
   const perOut = m.outputPrice / 1e6;
-  return (
-    u.input_tokens * perIn +
-    (u.cache_creation_input_tokens ?? 0) * perIn * CACHE_WRITE_FACTOR +
-    (u.cache_read_input_tokens ?? 0) * perIn * CACHE_READ_FACTOR +
-    u.output_tokens * perOut +
-    (u.server_tool_use?.web_search_requests ?? 0) * WEB_SEARCH_PRICE_USD
-  );
+  out.inputTokens = u.input_tokens;
+  out.cachedTokens = u.cache_read_input_tokens ?? 0;
+  out.cacheWriteTokens = u.cache_creation_input_tokens ?? 0;
+  out.outputTokens = u.output_tokens;
+  out.webSearches = u.server_tool_use?.web_search_requests ?? 0;
+  out.costUsd =
+    out.inputTokens * perIn +
+    out.cacheWriteTokens * perIn * CACHE_WRITE_FACTOR +
+    out.cachedTokens * perIn * CACHE_READ_FACTOR +
+    out.outputTokens * perOut +
+    out.webSearches * WEB_SEARCH_PRICE_USD;
+  return out;
 }
 
-export function openaiCost(m: ModelConfig, u: OpenAI.Responses.ResponseUsage | null | undefined): number {
-  if (!u) return 0;
+export function openaiUsage(m: ModelConfig, u: OpenAI.Responses.ResponseUsage | null | undefined): Usage {
+  const out = emptyUsage(m.provider, m.model);
+  if (!u) return out;
   const cached = u.input_tokens_details?.cached_tokens ?? 0;
   const factor = m.cachedFactor ?? OPENAI_CACHED_FACTOR;
-  return ((u.input_tokens - cached) * m.inputPrice + cached * m.inputPrice * factor + u.output_tokens * m.outputPrice) / 1e6;
+  out.inputTokens = u.input_tokens - cached;
+  out.cachedTokens = cached;
+  out.outputTokens = u.output_tokens;
+  out.costUsd = (out.inputTokens * m.inputPrice + cached * m.inputPrice * factor + out.outputTokens * m.outputPrice) / 1e6;
+  return out;
 }
 
-export function compatCost(m: ModelConfig, u: OpenAI.CompletionUsage | null | undefined): number {
-  if (!u) return 0;
+export function compatUsage(m: ModelConfig, u: OpenAI.CompletionUsage | null | undefined): Usage {
+  const out = emptyUsage(m.provider, m.model);
+  if (!u) return out;
   const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
   const factor = m.cachedFactor ?? OPENAI_CACHED_FACTOR;
-  return ((u.prompt_tokens - cached) * m.inputPrice + cached * m.inputPrice * factor + u.completion_tokens * m.outputPrice) / 1e6;
+  out.inputTokens = u.prompt_tokens - cached;
+  out.cachedTokens = cached;
+  out.outputTokens = u.completion_tokens;
+  out.costUsd = (out.inputTokens * m.inputPrice + cached * m.inputPrice * factor + out.outputTokens * m.outputPrice) / 1e6;
+  return out;
 }
 
-function estimateCost(m: ModelConfig, inChars: number, outChars: number) {
-  return ((inChars / 4) * m.inputPrice + (outChars / 4) * m.outputPrice) / 1e6;
+/** Afgebroken beurt: de aanbieder geeft geen verbruik terug, dus we schatten (≈4 tekens per token). */
+function estimateUsage(m: ModelConfig, inChars: number, outChars: number): Usage {
+  const out = emptyUsage(m.provider, m.model);
+  out.inputTokens = Math.round(inChars / 4);
+  out.outputTokens = Math.round(outChars / 4);
+  out.costUsd = (out.inputTokens * m.inputPrice + out.outputTokens * m.outputPrice) / 1e6;
+  out.estimated = true;
+  return out;
 }
 
 // ---------- opbouw van de input ----------
@@ -161,7 +188,7 @@ function openaiReasoning(p: Prompt) {
 
 export interface StreamResult {
   text: string;
-  costUsd: number;
+  usage: Usage;
   aborted: boolean;
 }
 
@@ -191,7 +218,7 @@ export async function streamText(p: Prompt, onDelta: (t: string) => void): Promi
       if (final.stop_reason === "refusal") {
         throw new AppError("Deze rol wilde hier niet op ingaan.", "Geef de rol een andere richting of kies een ander model.");
       }
-      return { text, costUsd: anthropicCost(p.model, final.usage), aborted: false };
+      return { text, usage: anthropicUsage(p.model, final.usage), aborted: false };
     }
     if (isCompat(p.model)) {
       const client = await compat(p.model);
@@ -215,7 +242,7 @@ export async function streamText(p: Prompt, onDelta: (t: string) => void): Promi
         }
         if (ch.usage) usage = ch.usage;
       }
-      return { text, costUsd: compatCost(p.model, usage), aborted: false };
+      return { text, usage: compatUsage(p.model, usage), aborted: false };
     }
     const client = await openai();
     const stream = await client.responses.create(
@@ -241,12 +268,12 @@ export async function streamText(p: Prompt, onDelta: (t: string) => void): Promi
         throw new AppError("GPT gaf halverwege een fout.", "Probeer het opnieuw of kies een ander model voor deze rol.");
       }
     }
-    return { text, costUsd: openaiCost(p.model, usage), aborted: false };
+    return { text, usage: openaiUsage(p.model, usage), aborted: false };
   } catch (e) {
     if (p.signal?.aborted || e instanceof Anthropic.APIUserAbortError || e instanceof OpenAI.APIUserAbortError) {
       return {
         text,
-        costUsd: estimateCost(p.model, p.system.length + (p.history ?? []).join("").length, text.length),
+        usage: estimateUsage(p.model, p.system.length + (p.history ?? []).join("").length + p.instruction.length, text.length),
         aborted: true,
       };
     }
@@ -256,9 +283,9 @@ export async function streamText(p: Prompt, onDelta: (t: string) => void): Promi
 
 // ---------- gewone tekst (kort) ----------
 
-export async function generateText(p: Prompt): Promise<{ text: string; costUsd: number }> {
+export async function generateText(p: Prompt): Promise<{ text: string; usage: Usage }> {
   const r = await streamText(p, () => {});
-  return { text: r.text.trim(), costUsd: r.costUsd };
+  return { text: r.text.trim(), usage: r.usage };
 }
 
 // ---------- JSON met zod ----------
@@ -272,14 +299,14 @@ export function extractJson(text: string): unknown {
   return JSON.parse(raw.slice(start, end + 1));
 }
 
-async function jsonViaText<S extends z.ZodType>(schema: S, p: Prompt): Promise<{ data: z.infer<S>; costUsd: number }> {
+async function jsonViaText<S extends z.ZodType>(schema: S, p: Prompt): Promise<{ data: z.infer<S>; usage: Usage }> {
   const r = await generateText({
     ...p,
     instruction: `${p.instruction}\n\nAntwoord ALLEEN met geldige JSON volgens het gevraagde formaat. Geen uitleg eromheen.`,
   });
   const parsed = schema.safeParse(extractJson(r.text));
-  if (!parsed.success) throw new Error(`JSON klopt niet: ${parsed.error.message.slice(0, 300)}`);
-  return { data: parsed.data, costUsd: r.costUsd };
+  if (!parsed.success) throw Object.assign(new Error(`JSON klopt niet: ${parsed.error.message.slice(0, 300)}`), { usage: r.usage });
+  return { data: parsed.data, usage: r.usage };
 }
 
 /**
@@ -291,8 +318,8 @@ export async function generateJson<S extends z.ZodType>(
   schema: S,
   p: Prompt,
   retries = 1,
-): Promise<{ data: z.infer<S>; costUsd: number }> {
-  let cost = 0;
+): Promise<{ data: z.infer<S>; usage: Usage }> {
+  let usage = emptyUsage(p.model.provider, p.model.model);
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const prompt =
@@ -313,8 +340,8 @@ export async function generateJson<S extends z.ZodType>(
             format: zodOutputFormat(schema),
           },
         });
-        cost += anthropicCost(p.model, res.usage);
-        if (res.parsed_output) return { data: res.parsed_output as z.infer<S>, costUsd: cost };
+        usage = addUsage(usage, anthropicUsage(p.model, res.usage));
+        if (res.parsed_output) return { data: res.parsed_output as z.infer<S>, usage };
         lastError = new Error("leeg antwoord");
       } else if (isCompat(p.model)) {
         const client = await compat(p.model);
@@ -325,9 +352,9 @@ export async function generateJson<S extends z.ZodType>(
           response_format: zodResponseFormat(schema, "uitvoer"),
           ...compatExtras(prompt),
         });
-        cost += compatCost(p.model, res.usage);
+        usage = addUsage(usage, compatUsage(p.model, res.usage));
         const parsed = res.choices[0]?.message.parsed;
-        if (parsed) return { data: parsed as z.infer<S>, costUsd: cost };
+        if (parsed) return { data: parsed as z.infer<S>, usage };
         lastError = new Error("leeg antwoord");
       } else {
         const client = await openai();
@@ -340,8 +367,8 @@ export async function generateJson<S extends z.ZodType>(
           text: { format: zodTextFormat(schema, "uitvoer") },
           ...openaiReasoning(prompt),
         });
-        cost += openaiCost(p.model, res.usage);
-        if (res.output_parsed) return { data: res.output_parsed as z.infer<S>, costUsd: cost };
+        usage = addUsage(usage, openaiUsage(p.model, res.usage));
+        if (res.output_parsed) return { data: res.output_parsed as z.infer<S>, usage };
         lastError = new Error("leeg antwoord");
       }
     } catch (e) {
@@ -351,8 +378,10 @@ export async function generateJson<S extends z.ZodType>(
         // Model ondersteunt structured outputs niet: val terug op tekst.
         try {
           const r = await jsonViaText(schema, prompt);
-          return { data: r.data, costUsd: cost + r.costUsd };
+          return { data: r.data, usage: addUsage(usage, r.usage) };
         } catch (e2) {
+          const u = (e2 as { usage?: Usage }).usage;
+          if (u) usage = addUsage(usage, u);
           lastError = e2;
         }
       } else if (status) {
@@ -360,11 +389,14 @@ export async function generateJson<S extends z.ZodType>(
       }
     }
   }
-  if (lastError instanceof AppError) throw lastError;
+  if (lastError instanceof AppError) throw Object.assign(lastError, { usage });
   console.error("generateJson mislukt", lastError);
-  throw new AppError(
-    "De AI gaf een antwoord dat we niet konden lezen.",
-    "Probeer het nog een keer. Lukt het opnieuw niet, kies dan bij Geavanceerd een ander model.",
+  throw Object.assign(
+    new AppError(
+      "De AI gaf een antwoord dat we niet konden lezen.",
+      "Probeer het nog een keer. Lukt het opnieuw niet, kies dan bij Geavanceerd een ander model.",
+    ),
+    { usage },
   );
 }
 
@@ -373,7 +405,7 @@ export async function generateJson<S extends z.ZodType>(
 export async function research(
   p: Prompt & { webSearch: boolean },
   onLooking: (label: string) => void,
-): Promise<{ text: string; costUsd: number }> {
+): Promise<{ text: string; usage: Usage }> {
   // Gemini en Grok zoeken hier niet zelf op het web; ze werken met de bijlages.
   if (isCompat(p.model)) return generateText(p);
   try {
@@ -384,7 +416,7 @@ export async function research(
           ? [{ type: p.model.webSearchTool, name: "web_search", max_uses: 4 } as Anthropic.ToolUnion]
           : [];
       const messages: Anthropic.MessageParam[] = [{ role: "user", content: anthropicContent(p) }];
-      let cost = 0;
+      let usage = emptyUsage(p.model.provider, p.model.model);
       let text = "";
       for (let i = 0; i < 4; i++) {
         const stream = client.messages.stream({
@@ -404,12 +436,12 @@ export async function research(
           }
         });
         const msg = await stream.finalMessage();
-        cost += anthropicCost(p.model, msg.usage);
+        usage = addUsage(usage, anthropicUsage(p.model, msg.usage));
         text = msg.content.map((b) => (b.type === "text" ? b.text : "")).join("");
         if (msg.stop_reason !== "pause_turn") break;
         messages.push({ role: "assistant", content: msg.content });
       }
-      return { text, costUsd: cost };
+      return { text, usage };
     }
     const client = await openai();
     const stream = await client.responses.create({
@@ -432,7 +464,7 @@ export async function research(
         usage = ev.response.usage ?? undefined;
       }
     }
-    return { text, costUsd: openaiCost(p.model, usage) };
+    return { text, usage: openaiUsage(p.model, usage) };
   } catch (e) {
     throw friendly(e, who(p.model));
   }
@@ -451,7 +483,7 @@ export async function testOpenAI(key: string) {
 }
 
 export async function testCompat(provider: "google" | "xai", key: string) {
-  const client = new OpenAI({ apiKey: key, baseURL: COMPAT_BASE_URL[provider], maxRetries: 0 });
+  const client = new OpenAI({ apiKey: key, baseURL: compatBaseURL(provider), maxRetries: 0 });
   await client.models.list();
 }
 

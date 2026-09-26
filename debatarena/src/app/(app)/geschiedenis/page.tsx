@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, datum, euro } from "@/lib/client";
+import { tokens } from "@/lib/usage";
 import type { Cast } from "@/lib/types";
 import { ErrorNote, Portrait, Spinner, toError } from "@/components/ui";
 
@@ -13,6 +14,7 @@ type Row = {
   status: string;
   created_at: string;
   cost_eur: number;
+  tokens: number;
   share_token: string | null;
   rollen: { id: string; naam: string; portrait: string | null }[];
 };
@@ -52,7 +54,11 @@ export default function HistoryPage() {
     <div className="mx-auto w-full max-w-4xl px-4 py-8 space-y-8">
       <div className="flex items-end gap-4">
         <h1 className="font-display text-3xl font-extrabold flex-1">Geschiedenis</h1>
-        {runs && <span className="text-sm text-ink/60">Totaal uitgegeven: {euro(total)}</span>}
+        {runs && (
+          <span className="text-sm text-ink/60">
+            Totaal: {euro(total)} · {tokens(runs.reduce((s, r) => s + r.tokens, 0))} tokens
+          </span>
+        )}
       </div>
       <ErrorNote error={error} />
       {!runs && !error && <Spinner className="h-6 w-6" />}
@@ -72,7 +78,7 @@ export default function HistoryPage() {
             <div className="min-w-0 flex-1">
               <p className="font-semibold truncate">{r.title || r.question}</p>
               <p className="text-xs text-ink/60">
-                {datum(r.created_at)} · {STATUS[r.status] ?? r.status} · {euro(r.cost_eur)}
+                {datum(r.created_at)} · {STATUS[r.status] ?? r.status} · {euro(r.cost_eur)} · {tokens(r.tokens)} tokens
                 {r.share_token && " · gedeeld"}
               </p>
             </div>

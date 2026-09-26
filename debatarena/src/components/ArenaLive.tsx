@@ -11,7 +11,10 @@ import type { BossAction, Message, MessageMeta, Mood, Role, Tag } from "@/lib/ty
 import { MicButton } from "./MicButton";
 import { ReplayPlayer } from "./ReplayPlayer";
 import { Stage, type Bubble } from "./Stage";
-import { ErrorNote, Spinner, toError } from "./ui";
+import { CostPanel } from "./CostPanel";
+import { CensorToggle, ErrorNote, Spinner, toError } from "./ui";
+import { providerOf } from "@/lib/config";
+import { tokens } from "@/lib/usage";
 
 type Err = { message: string; oplossing?: string } | null;
 type Live = { id: string; roleId: string; round: number; tag: Tag | null; text: string; meta: MessageMeta };
@@ -37,6 +40,7 @@ export function ArenaLive({ id }: { id: string }) {
   const [orde, setOrde] = useState(false);
   const [quips, setQuips] = useState<Record<string, string | undefined>>({});
   const [prepStarted] = useState(() => Date.now());
+  const [showCost, setShowCost] = useState(false);
 
   const pausedRef = useRef(false);
   const loopingRef = useRef(false);
@@ -331,6 +335,18 @@ export function ArenaLive({ id }: { id: string }) {
     }
   }
 
+  async function setGrok(roleId: string, ongecensureerd: boolean) {
+    const cur = dataRef.current;
+    if (!cur) return;
+    const cast = { ...cur.run.cast, rollen: cur.run.cast.rollen.map((r) => (r.id === roleId ? { ...r, ongezouten: ongecensureerd } : r)) };
+    try {
+      await api(`/api/runs/${id}`, { method: "PATCH", json: { cast } });
+      await reload();
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
   async function quip(roleId: string) {
     if (quips[roleId]) return;
     setQuips((q) => ({ ...q, [roleId]: "…" }));
@@ -374,6 +390,7 @@ export function ArenaLive({ id }: { id: string }) {
 
   const roles = run.cast.rollen;
   const jury = roles.find((r) => r.isJury);
+  const grokRoles = roles.filter((r) => providerOf(r).naam === "Grok");
   const portraits = Object.fromEntries(roles.map((r) => [r.id, run.prep[r.id]?.portraits]));
   const lastShown = [...messages].reverse().find((m) => (m.kind === "turn" && m.content) || m.kind === "boss");
 
@@ -473,7 +490,16 @@ export function ArenaLive({ id }: { id: string }) {
         goldenChair={run.debate_number === 10}
         footer={
           <>
-            <span>Kosten tot nu toe: {euro(run.cost_eur)}</span>
+            <button onClick={() => setShowCost((v) => !v)} className="underline decoration-dotted underline-offset-2 hover:text-ink" title="Bekijk tokens en kosten per rol">
+              {euro(run.cost_eur)} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
+            </button>
+            {grokRoles.map((r) => (
+              <span key={r.id} className="flex items-center gap-1.5">
+                <span className="hidden sm:inline">Grok ({r.naam.split(" ")[0]}):</span>
+                <span className="sm:hidden">Grok:</span>
+                <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => void setGrok(r.id, v)} />
+              </span>
+            ))}
             {voicesOn && (
               <span className="ml-auto flex items-center gap-1">
                 Stemtempo
@@ -592,6 +618,20 @@ export function ArenaLive({ id }: { id: string }) {
           )}
         </div>
       </Stage>
+
+      {showCost && (
+        <div className="absolute inset-x-0 bottom-0 z-40 max-h-[75%] overflow-y-auto bg-cream border-t-2 border-ink rounded-t-3xl p-5 shadow-[0_-6px_0_0_var(--color-ink)]">
+          <div className="mx-auto max-w-2xl">
+            <div className="flex items-center mb-3">
+              <h2 className="font-display font-extrabold text-xl flex-1">Tokens en kosten van dit debat</h2>
+              <button onClick={() => setShowCost(false)} aria-label="Sluiten" className="text-xl">
+                ✕
+              </button>
+            </div>
+            <CostPanel usage={data.usage} roles={roles} />
+          </div>
+        </div>
+      )}
 
       {orde && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center z-40">

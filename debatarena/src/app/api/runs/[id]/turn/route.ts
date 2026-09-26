@@ -6,7 +6,8 @@ import { streamText } from "@/lib/llm";
 import { nextStep } from "@/lib/planner";
 import { historyBlocks, isFridayAfternoon, roleSystem, turnInstruction } from "@/lib/prompts";
 import { handle } from "@/lib/route";
-import { addCostUsd, getMessages, getRun, insertMessage, roleById, updateMessage, updateRun } from "@/lib/runs";
+import { getMessages, getRun, insertMessage, roleById, updateMessage, updateRun } from "@/lib/runs";
+import { recordUsage } from "@/lib/usage-db";
 import { db } from "@/lib/supabase";
 import { extractSources, splitTag } from "@/lib/text";
 import type { Tag } from "@/lib/types";
@@ -106,9 +107,9 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
         const { clean, sources } = extractSources(text);
         if (r.aborted && !clean) {
           await db().from("messages").delete().eq("id", msg.id);
-          await addCostUsd(id, r.costUsd);
+          await recordUsage(id, "beurt", r.usage, role.id);
         } else {
-          const eur = await addCostUsd(id, r.costUsd);
+          const eur = await recordUsage(id, step.meta.verdict ? "uitspraak" : "beurt", r.usage, role.id);
           const meta = { ...step.meta, streaming: false, ...(r.aborted ? { interrupted: true } : {}) };
           await updateMessage(msg.id, { content: clean, sources, tag: tag ?? splitTag(raw).tag, meta, cost_eur: eur });
           send({ t: "end", message: { ...msg, content: clean, sources, tag, meta, cost_eur: eur } });

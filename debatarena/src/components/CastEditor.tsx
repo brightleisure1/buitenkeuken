@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { getModel, resolveModel, supportsWebSearch } from "@/lib/config";
+import { CLICHES } from "@/lib/cliches";
 import type { Cast, Role } from "@/lib/types";
+import { CensorToggle, Switch } from "./ui";
 
 interface Voice {
   id: string;
@@ -67,6 +69,10 @@ export function CastEditor({
           {!voices.length && <span className="text-xs text-ink/60">Voeg een ElevenLabs-sleutel toe bij Instellingen om stemmen te gebruiken.</span>}
         </label>
       </div>
+
+      <Switch checked={!!draft.cliches} onChange={(v) => setDraft({ ...draft, cliches: v, rollen: v ? draft.rollen : draft.rollen.map((r) => ({ ...r, cliche: null })) })}>
+        <strong>🎭 Vergaderclichés</strong> <span className="text-ink/60">– kies hieronder per rol welk type hij speelt</span>
+      </Switch>
 
       {attachments.length > 0 && (
         <div>
@@ -156,10 +162,9 @@ export function CastEditor({
                 {!supportsWebSearch(resolveModel(r.modelKey, r.customModel)) && <span className="text-xs">(kan dit model niet)</span>}
               </label>
               {(getModel(r.modelKey)?.provider === "xai" || /^grok/i.test(r.customModel ?? "")) && (
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={!!r.ongezouten} onChange={(e) => setRole(r.id, { ongezouten: e.target.checked })} />
-                  🌶️ Ongezouten (zonder filter)
-                </label>
+                <span className="flex items-center gap-2">
+                  Grok: <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => setRole(r.id, { ongezouten: v })} />
+                </span>
               )}
               {!r.isJury && (
                 <label className="flex items-center gap-2">
@@ -177,6 +182,19 @@ export function CastEditor({
                 </label>
               )}
             </div>
+            {draft.cliches && !r.isJury && (
+              <label className="block text-sm">
+                <span className="font-semibold">Vergadercliché</span>
+                <select className="field mt-1 !py-2" value={r.cliche ?? ""} onChange={(e) => setRole(r.id, { cliche: e.target.value || null })}>
+                  <option value="">Geen</option>
+                  {CLICHES.map((c) => (
+                    <option key={c.id} value={c.id} disabled={draft.rollen.some((x) => x.id !== r.id && x.cliche === c.id)}>
+                      {c.naam} — {c.omschrijving}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <Field label="Uiterlijk voor het portret (Engels)" value={r.uiterlijk} onChange={(v) => setRole(r.id, { uiterlijk: v })} />
           </fieldset>
         ))}

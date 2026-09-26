@@ -4,7 +4,9 @@ import { IMAGE, resolveModel } from "./config";
 import { attachmentImages, attachmentsFor, runAttachments } from "./attachments";
 import { extractJson, openaiClient, research } from "./llm";
 import { homeworkInstruction, roleSystem } from "./prompts";
-import { addCostUsd, getRun, mergePrep } from "./runs";
+import { getRun, mergePrep } from "./runs";
+import { emptyUsage } from "./usage";
+import { recordUsage } from "./usage-db";
 import { HomeworkSchema } from "./schemas";
 import { availableKeys } from "./settings";
 import { upload } from "./supabase";
@@ -80,7 +82,10 @@ async function makePortraits(run: Run, role: Role) {
     const portraits: Partial<Record<Mood, string>> = { neutraal };
     for (const m of moods) if (m.status === "fulfilled") portraits[m.value[0]] = m.value[1];
     await mergePrep(run.id, role.id, { portraitStatus: "klaar", portraits });
-    await addCostUsd(run.id, cost);
+    const u = emptyUsage("openai", IMAGE.model);
+    u.units = Object.keys(portraits).length;
+    u.costUsd = cost;
+    await recordUsage(run.id, "portret", u, role.id);
   } catch (e) {
     console.error("portret mislukt", role.naam, e);
     await mergePrep(run.id, role.id, { portraitStatus: "mislukt" });
@@ -101,7 +106,7 @@ async function doHomework(run: Run, role: Role, all: Attachment[]) {
   try {
     const model = resolveModel(role.modelKey, role.customModel);
     let pending: Promise<unknown> = Promise.resolve();
-    const { text, costUsd } = await research(
+    const { text, usage } = await research(
       {
         model,
         system: roleSystem(run, role, mine, { withFacts: false }),
@@ -117,7 +122,7 @@ async function doHomework(run: Run, role: Role, all: Attachment[]) {
       },
     );
     await pending;
-    await addCostUsd(run.id, costUsd);
+    await recordUsage(run.id, "huiswerk", usage, role.id);
     let facts: { feit: string; bron: string }[] = [];
     try {
       facts = HomeworkSchema.parse(extractJson(text)).feiten;

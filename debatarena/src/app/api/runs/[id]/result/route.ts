@@ -6,7 +6,8 @@ import { makeHighlights } from "@/lib/highlights";
 import { generateJson } from "@/lib/llm";
 import { historyBlocks, resultInstruction, roleSystem } from "@/lib/prompts";
 import { handle } from "@/lib/route";
-import { addCostUsd, getMessages, getRun, updateRun } from "@/lib/runs";
+import { getMessages, getRun, updateRun } from "@/lib/runs";
+import { recordUsage } from "@/lib/usage-db";
 import { JuryResultSchema } from "@/lib/schemas";
 
 export const maxDuration = 300;
@@ -30,7 +31,7 @@ export const POST = handle(async (_req: Request, { params }: { params: Promise<{
     .join("\n");
   const system = `${roleSystem(run, jury, await runAttachments(id), { withFacts: false })}${facts ? `\nHUISWERK VAN DE ROLLEN:\n${facts}\n` : ""}`;
 
-  const { data, costUsd } = await generateJson(
+  const { data, usage } = await generateJson(
     JuryResultSchema,
     {
       model: resolveModel(jury.modelKey, jury.customModel),
@@ -43,7 +44,7 @@ export const POST = handle(async (_req: Request, { params }: { params: Promise<{
     1,
   );
   const result = { ...data, samenvatting: maxSentences(data.samenvatting, 3) };
-  await addCostUsd(id, costUsd);
+  await recordUsage(id, "uitspraak", usage, jury.id);
   await updateRun(id, { result, status: "done" });
   after(() => makeHighlights(id).catch((e) => console.error("hoogtepunten mislukt", e)));
   return Response.json({ result });

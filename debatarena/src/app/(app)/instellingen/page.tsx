@@ -1,63 +1,138 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/client";
+import { useCallback, useEffect, useState } from "react";
+import { api, datum, euro } from "@/lib/client";
+import { KEY_INFO, detectProvider, keyWarning, type KeyProvider, type KeyStatus } from "@/lib/keys";
+import { tokens } from "@/lib/usage";
 import { ErrorNote, Spinner, toError } from "@/components/ui";
 
-type Key = "anthropic" | "openai" | "google" | "xai" | "elevenlabs";
-type Info = { keys: Record<Key, string | null>; models: { key: string; label: string; provider: string; model: string }[] };
+type Info = {
+  keys: Record<KeyProvider, string | null>;
+  status: Partial<Record<KeyProvider, KeyStatus>>;
+  usage: Record<string, { tokens: number; costEur: number; calls: number }>;
+  models: { key: string; label: string; provider: string; model: string }[];
+};
+type Err = { message: string; oplossing?: string } | null;
 
-const PROVIDERS: { key: Key; name: string; waarvoor: string; waar: string }[] = [
-  { key: "anthropic", name: "Anthropic (Claude)", waarvoor: "Rollen die met Claude praten, het samenstellen van het team en de Jury.", waar: "console.anthropic.com → API Keys" },
-  { key: "openai", name: "OpenAI (GPT)", waarvoor: "Rollen die met GPT praten, de portretten en inspreken als je browser dat niet zelf kan.", waar: "platform.openai.com → API keys" },
-  { key: "google", name: "Google (Gemini)", waarvoor: "Rollen die met Gemini praten. Optioneel.", waar: "aistudio.google.com → Get API key" },
-  { key: "xai", name: "xAI (Grok)", waarvoor: "Rollen die met Grok praten, ook ongezouten als je dat aanzet. Optioneel.", waar: "console.x.ai → API Keys" },
-  { key: "elevenlabs", name: "ElevenLabs", waarvoor: "Stemmen: de rollen praten hardop. Optioneel.", waar: "elevenlabs.io → Profiel → API Keys" },
-];
+const ORDER: KeyProvider[] = ["anthropic", "openai", "google", "xai", "elevenlabs"];
 
 export default function SettingsPage() {
   const [info, setInfo] = useState<Info | null>(null);
-  const [error, setError] = useState<{ message: string; oplossing?: string } | null>(null);
+  const [error, setError] = useState<Err>(null);
+  const [testing, setTesting] = useState<Partial<Record<KeyProvider, boolean>>>({});
 
-  useEffect(() => {
-    api<Info>("/api/settings").then(setInfo).catch((e) => setError(toError(e)));
+  const load = useCallback(async () => {
+    const d = await api<Info>("/api/settings");
+    setInfo(d);
+    window.dispatchEvent(new Event("sleutels-gewijzigd"));
+    return d;
   }, []);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data ophalen; state wordt pas na de fetch gezet
+    load().catch((e) => setError(toError(e)));
+  }, [load]);
+
+  const test = useCallback(
+    async (p: KeyProvider) => {
+      setTesting((t) => ({ ...t, [p]: true }));
+      try {
+        await api("/api/settings/test", { method: "POST", json: { provider: p } });
+        await load();
+      } catch (e) {
+        setError(toError(e));
+      } finally {
+        setTesting((t) => ({ ...t, [p]: false }));
+      }
+    },
+    [load],
+  );
+
+  async function testAll() {
+    if (!info) return;
+    await Promise.all(ORDER.filter((p) => info.keys[p]).map((p) => test(p)));
+  }
+
+  const aiCount = info ? ORDER.filter((p) => KEY_INFO[p].ai && info.keys[p]).length : 0;
+
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-extrabold">Instellingen</h1>
-        <p className="text-ink/70 mt-1">Je sleutels worden versleuteld opgeslagen en alleen op de server gebruikt.</p>
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 space-y-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[14rem]">
+          <h1 className="font-display text-3xl font-extrabold">Instellingen</h1>
+          <p className="text-ink/70 mt-1">Je sleutels worden versleuteld opgeslagen en alleen op de server gebruikt.</p>
+        </div>
+        {info && ORDER.some((p) => info.keys[p]) && (
+          <button className="btn-ghost !py-2" onClick={testAll} disabled={Object.values(testing).some(Boolean)}>
+            {Object.values(testing).some(Boolean) ? <Spinner /> : "Test alle verbindingen"}
+          </button>
+        )}
       </div>
-      <ErrorNote error={error} />
+
+      <ErrorNote error={error} onClose={() => setError(null)} />
       {!info && !error && <Spinner className="h-6 w-6" />}
-      {info &&
-        PROVIDERS.map((p) => (
-          <KeyCard key={p.key} p={p} current={info.keys[p.key]} onSaved={(keys) => setInfo({ ...info, keys })} />
-        ))}
 
       {info && (
-        <section className="card p-5">
-          <h2 className="font-display font-extrabold text-lg">Modellen</h2>
-          <p className="text-sm text-ink/70 mt-1">
-            Modellen en prijzen staan in één bestand: <code>src/lib/config.ts</code>. Een eigen modelnaam kies je per rol onder Geavanceerd.
-          </p>
-          <ul className="mt-3 text-sm space-y-1">
-            {info.models.map((m) => (
-              <li key={m.key} className="flex gap-2">
-                <span className="font-semibold">{m.label}</span>
-                <span className="text-ink/50">{m.model}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <>
+          {aiCount === 0 && (
+            <div className="rounded-2xl border-2 border-coral bg-[#FFF1EC] p-4 text-sm">
+              <p className="font-semibold">Nog geen AI-sleutel ingesteld.</p>
+              <p className="text-ink/75">Plak hieronder een sleutel van Anthropic, OpenAI, Google of xAI. Eén is genoeg om te beginnen.</p>
+            </div>
+          )}
+
+          <QuickPaste
+            onSaved={async (d) => {
+              setInfo(d);
+              await test(d.detected);
+            }}
+          />
+
+          <section className="card overflow-hidden">
+            <div className="px-5 pt-5 pb-2 flex items-baseline">
+              <h2 className="font-display font-extrabold text-lg flex-1">Je sleutels</h2>
+              <span className="text-xs text-ink/50">Verbruik: laatste 30 dagen</span>
+            </div>
+            <ul>
+              {ORDER.map((p) => (
+                <KeyRow
+                  key={p}
+                  provider={p}
+                  info={info}
+                  testing={!!testing[p]}
+                  onTest={() => test(p)}
+                  onChanged={(i) => {
+                    setInfo(i);
+                    window.dispatchEvent(new Event("sleutels-gewijzigd"));
+                  }}
+                  onError={setError}
+                />
+              ))}
+            </ul>
+          </section>
+
+          <section className="card p-5">
+            <h2 className="font-display font-extrabold text-lg">Modellen</h2>
+            <p className="text-sm text-ink/70 mt-1">
+              Modellen en prijzen staan in één bestand: <code>src/lib/config.ts</code>. Een eigen modelnaam kies je per rol onder Geavanceerd.
+            </p>
+            <ul className="mt-3 text-sm grid sm:grid-cols-2 gap-x-6 gap-y-1">
+              {info.models.map((m) => (
+                <li key={m.key} className={`flex gap-2 ${info.keys[m.provider as KeyProvider] ? "" : "opacity-45"}`}>
+                  <span className="font-semibold">{m.label}</span>
+                  <span className="text-ink/50">{m.model}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
 
       <button
         className="btn-ghost"
         onClick={async () => {
           await fetch("/api/logout", { method: "POST" });
-          window.location.href = "/login";
+          window.location.assign("/login");
         }}
       >
         Uitloggen
@@ -66,104 +141,194 @@ export default function SettingsPage() {
   );
 }
 
-function KeyCard({
-  p,
-  current,
-  onSaved,
-}: {
-  p: (typeof PROVIDERS)[number];
-  current: string | null;
-  onSaved: (keys: Record<Key, string | null>) => void;
-}) {
+/** Eén vak: plak een sleutel, wij herkennen van wie hij is. */
+function QuickPaste({ onSaved }: { onSaved: (d: Info & { detected: KeyProvider }) => void }) {
   const [value, setValue] = useState("");
-  const [busy, setBusy] = useState<"save" | "test" | "remove" | null>(null);
-  const [status, setStatus] = useState<{ ok: boolean; text: string; oplossing?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Err>(null);
+  const [show, setShow] = useState(false);
+  const detected = value.trim() ? detectProvider(value) : null;
 
   async function save() {
-    setBusy("save");
-    setStatus(null);
+    setBusy(true);
+    setError(null);
     try {
-      const d = await api<{ keys: Record<Key, string | null> }>("/api/settings", { method: "POST", json: { [p.key]: value } });
-      onSaved(d.keys);
+      const d = await api<Info & { detected: KeyProvider }>("/api/settings", { method: "POST", json: { auto: value } });
       setValue("");
-      await test(true);
+      onSaved(d);
     } catch (e) {
-      const err = toError(e);
-      setStatus({ ok: false, text: err.message, oplossing: err.oplossing });
+      setError(toError(e));
     } finally {
-      setBusy(null);
-    }
-  }
-
-  async function test(afterSave = false) {
-    if (!afterSave) setBusy("test");
-    try {
-      const d = await api<{ ok: boolean; melding?: string; error?: string; oplossing?: string }>("/api/settings/test", {
-        method: "POST",
-        json: { provider: p.key, key: afterSave ? undefined : value || undefined },
-      });
-      setStatus(d.ok ? { ok: true, text: d.melding ?? "Verbonden." } : { ok: false, text: d.error ?? "Dat lukte niet.", oplossing: d.oplossing });
-    } catch (e) {
-      const err = toError(e);
-      setStatus({ ok: false, text: err.message, oplossing: err.oplossing });
-    } finally {
-      if (!afterSave) setBusy(null);
-    }
-  }
-
-  async function remove() {
-    if (!confirm(`De sleutel voor ${p.name} verwijderen?`)) return;
-    setBusy("remove");
-    try {
-      const d = await api<{ keys: Record<Key, string | null> }>("/api/settings", { method: "POST", json: { [p.key]: null } });
-      onSaved(d.keys);
-      setStatus(null);
-    } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
   return (
-    <section className="card p-5 space-y-3">
-      <div className="flex items-start gap-2">
-        <div className="flex-1">
-          <h2 className="font-display font-extrabold text-lg">{p.name}</h2>
-          <p className="text-sm text-ink/70">{p.waarvoor}</p>
-          <p className="text-xs text-ink/50 mt-0.5">Te vinden op: {p.waar}</p>
+    <section className="card p-5 space-y-3 bg-sun">
+      <div>
+        <h2 className="font-display font-extrabold text-lg">Sleutel toevoegen</h2>
+        <p className="text-sm text-ink/70">Plak een sleutel van welke aanbieder dan ook. Wij herkennen zelf van wie hij is en testen hem meteen.</p>
+      </div>
+      <form
+        className="flex flex-col sm:flex-row gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (detected) void save();
+        }}
+      >
+        <div className="relative flex-1">
+          <input
+            type={show ? "text" : "password"}
+            autoComplete="off"
+            spellCheck={false}
+            className="field !py-2.5 pr-20"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Plak hier je API-sleutel"
+            aria-label="API-sleutel"
+          />
+          <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs underline">
+            {show ? "Verberg" : "Toon"}
+          </button>
         </div>
-        <span className={`text-xs rounded-full px-2 py-1 border ${current ? "bg-mint border-ink/30" : "bg-cream border-ink/20"}`}>
-          {current ? `Ingesteld: ${current}` : "Nog niet ingesteld"}
+        <button className="btn-primary !py-2.5 shrink-0" disabled={!detected || busy}>
+          {busy ? <Spinner /> : detected ? `Opslaan als ${KEY_INFO[detected].naam.split(" ")[0]}` : "Opslaan"}
+        </button>
+      </form>
+      {value.trim() && (
+        <p className="text-sm">
+          {detected ? (
+            <>
+              Herkend: <strong>{KEY_INFO[detected].naam}</strong>
+            </>
+          ) : (
+            <span className="text-coral">We herkennen deze sleutel niet. Plak hem in het juiste vak hieronder, bij &ldquo;Vervangen&rdquo;.</span>
+          )}
+        </p>
+      )}
+      <ErrorNote error={error} onClose={() => setError(null)} />
+    </section>
+  );
+}
+
+function KeyRow({
+  provider,
+  info,
+  testing,
+  onTest,
+  onChanged,
+  onError,
+}: {
+  provider: KeyProvider;
+  info: Info;
+  testing: boolean;
+  onTest: () => void;
+  onChanged: (i: Info) => void;
+  onError: (e: Err) => void;
+}) {
+  const meta = KEY_INFO[provider];
+  const masked = info.keys[provider];
+  const status = info.status[provider];
+  const usage = info.usage[provider];
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const dot = !masked ? "bg-ink/20" : !status ? "bg-sun border border-ink/30" : status.ok ? "bg-[#2FB344]" : "bg-coral";
+  const state = !masked ? "Niet ingesteld" : !status ? "Nog niet getest" : status.ok ? "Verbonden" : "Werkt niet";
+
+  async function save() {
+    setBusy(true);
+    try {
+      const d = await api<Info>("/api/settings", { method: "POST", json: { [provider]: value } });
+      onChanged(d);
+      setEditing(false);
+      setValue("");
+      onTest();
+    } catch (e) {
+      onError(toError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!confirm(`De sleutel van ${meta.naam} verwijderen?`)) return;
+    try {
+      onChanged(await api<Info>("/api/settings", { method: "POST", json: { [provider]: null } }));
+    } catch (e) {
+      onError(toError(e));
+    }
+  }
+
+  return (
+    <li className="border-t-2 border-ink/10 px-5 py-4 space-y-2" data-provider={provider}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className={`h-3 w-3 rounded-full shrink-0 ${dot}`} aria-hidden />
+        <span className="font-semibold">{meta.naam}</span>
+        <span className="text-xs rounded-full bg-cream border border-ink/15 px-2 py-0.5" data-testid={`status-${provider}`}>
+          {state}
+        </span>
+        {masked && <code className="text-xs text-ink/60">{masked}</code>}
+        <span className="ml-auto flex gap-3 text-sm">
+          {masked && (
+            <button onClick={onTest} disabled={testing} className="underline">
+              {testing ? <Spinner /> : "Test"}
+            </button>
+          )}
+          <button onClick={() => setEditing((e) => !e)} className="underline">
+            {masked ? "Vervangen" : "Toevoegen"}
+          </button>
+          {masked && (
+            <button onClick={remove} className="underline text-coral">
+              Verwijderen
+            </button>
+          )}
         </span>
       </div>
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
-          type="password"
-          autoComplete="off"
-          className="field !py-2"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={current ? "Plak een nieuwe sleutel om te vervangen" : "Plak hier je sleutel"}
-        />
-        <div className="flex gap-2 shrink-0">
-          <button className="btn-primary !py-2" disabled={!value.trim() || !!busy} onClick={save}>
-            {busy === "save" ? <Spinner /> : "Opslaan"}
-          </button>
-          <button className="btn-ghost !py-2" disabled={(!value.trim() && !current) || !!busy} onClick={() => test()}>
-            {busy === "test" ? <Spinner /> : "Test verbinding"}
-          </button>
-        </div>
-      </div>
-      {status &&
-        (status.ok ? (
-          <p className="text-sm rounded-xl bg-mint px-3 py-2">✓ {status.text}</p>
-        ) : (
-          <ErrorNote error={{ message: status.text, oplossing: status.oplossing }} />
-        ))}
-      {current && (
-        <button className="text-xs text-coral underline" onClick={remove} disabled={!!busy}>
-          Sleutel verwijderen
-        </button>
+      <p className="text-sm text-ink/65">
+        {meta.waarvoor}{" "}
+        <a href={meta.url} target="_blank" rel="noreferrer" className="underline">
+          Sleutel halen
+        </a>
+      </p>
+      {status && (
+        <p className={`text-xs ${status.ok ? "text-ink/55" : "text-coral"}`}>
+          {status.melding} · getest {datum(status.at)}
+        </p>
       )}
-    </section>
+      {usage && (
+        <p className="text-xs text-ink/55">
+          Verbruik: {tokens(usage.tokens)} tokens · {euro(usage.costEur)} · {usage.calls} aanroepen
+        </p>
+      )}
+      {editing && (
+        <form
+          className="flex flex-col sm:flex-row gap-2 pt-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (value.trim()) void save();
+          }}
+        >
+          <input
+            type="password"
+            autoComplete="off"
+            autoFocus
+            className="field !py-2"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={`Plak je sleutel van ${meta.naam.split(" ")[0]}`}
+          />
+          <button className="btn-primary !py-2 shrink-0" disabled={!value.trim() || busy}>
+            {busy ? <Spinner /> : "Opslaan en testen"}
+          </button>
+        </form>
+      )}
+      {editing && keyWarning(provider, value) && (
+        <p className="text-sm text-coral" role="alert">
+          ⚠️ {keyWarning(provider, value)}
+        </p>
+      )}
+    </li>
   );
 }

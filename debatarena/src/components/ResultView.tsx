@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, datum, euro } from "@/lib/client";
 import { sectionText, toMarkdown, transcriptLines } from "@/lib/markdown";
 import type { RunPayload } from "@/lib/payload";
+import { CostPanel } from "./CostPanel";
 import { ShareDialog } from "./ShareDialog";
+import { tokens } from "@/lib/usage";
 import { CopyButton, ErrorNote, Portrait, Spinner, toError } from "./ui";
 
 type Err = { message: string; oplossing?: string } | null;
@@ -270,6 +272,18 @@ export function ResultView({ id }: { id: string }) {
           <p className="text-ink/60">Er zijn geen bronnen genoemd. Alles wat gezegd is, is dus mening.</p>
         )}
       </Section>
+
+      <details className="card p-5">
+        <summary className="cursor-pointer font-display font-extrabold text-lg flex items-center gap-2">
+          Tokens en kosten
+          <span className="ml-auto text-sm font-sans font-normal text-ink/60">
+            {euro(run.cost_eur)} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
+          </span>
+        </summary>
+        <div className="mt-4">
+          <CostPanel usage={data.usage} roles={run.cast.rollen} />
+        </div>
+      </details>
 
       <details className="card p-5">
         <summary className="cursor-pointer font-display font-extrabold text-lg flex items-center gap-2">

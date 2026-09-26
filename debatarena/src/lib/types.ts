@@ -17,8 +17,10 @@ export interface Role {
   webzoeken: boolean;
   isJury: boolean;
   isKritisch: boolean;
-  /** Alleen Grok: praat zonder filter, brutaal en ongezouten */
+  /** Alleen Grok: false = gecensureerd (standaard), true = ongecensureerd */
   ongezouten?: boolean;
+  /** Vergadercliché dat deze rol speelt (id uit cliches.ts), of null */
+  cliche?: string | null;
   /** Korte Engelse omschrijving voor het portret */
   uiterlijk: string;
   /** Alleen in templates: bewaarde portretten */
@@ -30,6 +32,8 @@ export interface Cast {
   rollen: Role[];
   rondes: number;
   stemmen: VoiceMode;
+  /** Vergaderclichés aan of uit */
+  cliches?: boolean;
   /** attachmentId -> "iedereen" of role.id */
   bijlages: Record<string, string>;
 }

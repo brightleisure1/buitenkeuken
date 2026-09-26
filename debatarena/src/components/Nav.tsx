@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const LINKS = [
   { href: "/", label: "Start" },
@@ -11,6 +12,17 @@ const LINKS = [
 
 export function Nav() {
   const path = usePathname();
+  const [noKey, setNoKey] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      fetch("/api/settings/status")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setNoKey(d ? !d.aiKey : false))
+        .catch(() => {});
+    check();
+    window.addEventListener("sleutels-gewijzigd", check);
+    return () => window.removeEventListener("sleutels-gewijzigd", check);
+  }, [path]);
   return (
     <header className="no-print sticky top-0 z-30 bg-cream/90 backdrop-blur border-b-2 border-ink">
       <div className="mx-auto max-w-6xl px-3 sm:px-4 h-14 flex items-center gap-2 sm:gap-4">
@@ -28,6 +40,9 @@ export function Nav() {
                 className={`rounded-full px-2.5 sm:px-3 py-1.5 font-medium ${on ? "bg-ink text-cream" : "hover:bg-sun"}`}
               >
                 {l.label}
+                {l.href === "/instellingen" && noKey && (
+                  <span className="ml-1 inline-block h-2 w-2 rounded-full bg-coral align-middle" title="Er is nog geen AI-sleutel ingesteld" />
+                )}
               </Link>
             );
           })}

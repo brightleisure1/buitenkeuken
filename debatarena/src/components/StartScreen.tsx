@@ -9,7 +9,7 @@ import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
 import { MicButton } from "./MicButton";
 import { RoleCard } from "./RoleCard";
-import { ErrorNote, Portrait, Spinner, toError } from "./ui";
+import { ErrorNote, Portrait, Spinner, Switch, toError } from "./ui";
 
 type Err = { message: string; oplossing?: string } | null;
 type FileItem = { key: string; name: string; status: "bezig" | "ok" | "fout"; id?: string; error?: string };
@@ -224,6 +224,12 @@ export function StartScreen() {
             <strong>{cast.rondes} rondes</strong> · {stemTekst}
             {data.attachments.length > 0 && ` · ${data.attachments.length} bijlage${data.attachments.length > 1 ? "s" : ""}`}
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Switch checked={!!cast.cliches} disabled={saving} onChange={(v) => void saveAdvanced({ ...cast, cliches: v })}>
+              <strong>🎭 Vergaderclichés</strong> <span className="text-ink/60">– herkenbare vergadertypes spelen mee</span>
+            </Switch>
+            <span className="text-xs text-ink/50">Kosten tot nu toe: {euro(run.cost_eur)}</span>
+          </div>
         </div>
 
         <div className="grid gap-3">

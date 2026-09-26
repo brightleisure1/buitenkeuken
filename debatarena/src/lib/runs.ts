@@ -1,5 +1,4 @@
 import "server-only";
-import { usdToEur } from "./config";
 import { AppError } from "./errors";
 import { db } from "./supabase";
 import type { Message, Role, RolePrep, Run } from "./types";
@@ -31,13 +30,6 @@ export async function updateRun(id: string, patch: Partial<Run>) {
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new AppError("Opslaan lukte niet.", "Probeer het opnieuw. Blijft het misgaan? Controleer de databaseverbinding.");
-}
-
-export async function addCostUsd(runId: string, usd: number) {
-  if (!usd) return 0;
-  const eur = usdToEur(usd);
-  await db().rpc("add_cost", { p_run: runId, p_eur: eur });
-  return eur;
 }
 
 export async function mergePrep(runId: string, roleId: string, patch: RolePrep) {

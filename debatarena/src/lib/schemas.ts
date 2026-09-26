@@ -17,7 +17,8 @@ export const CastRoleSchema = z.object({
   isKritisch: z.boolean(),
   ongezouten: z
     .boolean()
-    .describe("Alleen voor rollen met een Grok-model: true = praat zonder filter. Alleen aanzetten als de baas erom vraagt."),
+    .describe("Alleen voor rollen met een Grok-model: true = ongecensureerd. Alleen aanzetten als de baas erom vraagt."),
+  cliche: z.string().describe("Id van een vergadercliché uit de lijst, of '' voor geen"),
   uiterlijk: z
     .string()
     .describe("Engelse omschrijving voor een karikatuurportret: leeftijd, geslacht, afkomst, kleding, attribuut van het beroep, karakter"),
@@ -28,6 +29,7 @@ export const CastSchema = z.object({
   rollen: z.array(CastRoleSchema),
   rondes: z.number().int(),
   stemmen: z.enum(["uit", "jury", "iedereen"]),
+  vergadercliches: z.boolean().describe("Standaard false. true als de baas vergaderclichés wil"),
   bijlages: z.array(
     z.object({
       bijlageId: z.string(),

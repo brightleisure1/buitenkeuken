@@ -125,10 +125,82 @@ export function AiBadge({
     <span
       className={`inline-flex items-center gap-1 rounded-full font-semibold whitespace-nowrap ${size === "xs" ? "text-[10px] px-1.5 py-px" : "text-[11px] px-2 py-0.5"}`}
       style={{ background: p.kleur, color: p.tekst }}
-      title={`Deze rol wordt gespeeld door ${p.naam}${role.ongezouten ? ", zonder filter" : ""}`}
+      title={`Deze rol wordt gespeeld door ${p.naam}${role.ongezouten ? ", ongecensureerd" : ""}`}
     >
       {p.naam}
-      {role.ongezouten && <span aria-label="ongezouten">🌶️</span>}
+      {role.ongezouten && <span aria-label="ongecensureerd">🌶️</span>}
     </span>
+  );
+}
+
+/** Keuze tussen twee of meer opties, als knoppenbalk. */
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  size = "sm",
+  label,
+}: {
+  value: T;
+  options: { value: T; label: React.ReactNode; tone?: string }[];
+  onChange: (v: T) => void;
+  size?: "xs" | "sm";
+  label?: string;
+}) {
+  return (
+    <span role="radiogroup" aria-label={label} className="inline-flex rounded-full border-2 border-ink bg-white p-0.5">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => !on && onChange(o.value)}
+            className={`rounded-full font-semibold transition ${size === "xs" ? "text-[11px] px-2 py-0.5" : "text-xs px-3 py-1"} ${
+              on ? (o.tone ?? "bg-ink text-cream") : "text-ink/70 hover:bg-sun"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+/** Aan/uit-schakelaar met label. */
+export function Switch({ checked, onChange, children, disabled }: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className="inline-flex items-center gap-2 text-sm disabled:opacity-50"
+    >
+      <span className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-2 border-ink transition ${checked ? "bg-coral" : "bg-cream"}`}>
+        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white border-2 border-ink transition-all ${checked ? "left-5" : "left-0.5"}`} />
+      </span>
+      <span className="text-left">{children}</span>
+    </button>
+  );
+}
+
+/** Grok: gecensureerd of ongecensureerd. */
+export function CensorToggle({ value, onChange, size = "sm" }: { value: boolean; onChange: (ongecensureerd: boolean) => void; size?: "xs" | "sm" }) {
+  return (
+    <Segmented
+      label="Grok gecensureerd of ongecensureerd"
+      size={size}
+      value={value ? "uit" : "aan"}
+      onChange={(v) => onChange(v === "uit")}
+      options={[
+        { value: "aan", label: "Gecensureerd" },
+        { value: "uit", label: "🌶️ Ongecensureerd", tone: "bg-coral text-white" },
+      ]}
+    />
   );
 }

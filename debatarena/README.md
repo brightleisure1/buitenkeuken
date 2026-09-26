@@ -44,7 +44,7 @@ Je hebt nodig: een [Supabase](https://supabase.com)-project (gratis kan), Node.j
    npm run dev
    ```
    Open http://localhost:3000 en log in.
-4. **Sleutels invullen.** Ga naar *Instellingen*, plak je sleutels en klik op *Test verbinding*. De sleutels worden versleuteld opgeslagen.
+4. **Sleutels invullen.** Ga naar *Instellingen* en plak een sleutel in het gele vak. De app herkent zelf van welke aanbieder hij is, slaat hem versleuteld op en test hem meteen. Per aanbieder zie je een lampje (groen = verbonden), wanneer hij voor het laatst getest is, en hoeveel tokens en euro's je er de afgelopen 30 dagen mee hebt verbruikt. Plak je een sleutel in het verkeerde vak, dan waarschuwt de app je.
 
    | Sleutel | Waarvoor | Nodig? |
    |---|---|---|
@@ -66,11 +66,21 @@ Het team krijgt zoveel mogelijk verschillende AI's. Wil je het anders, zeg dan b
 
 Gemini en Grok zoeken zelf niet op het web. Ze doen hun huiswerk met jouw bijlages.
 
-### Grok ongezouten
+### Grok: gecensureerd of ongecensureerd
 
-Een Grok-rol kun je *ongezouten* maken. Die zegt dan alles zonder filter: brutaal, sarcastisch en vloeken mag. Hij prikt door mooie praatjes heen, ook die van jou. Hij sloopt wel argumenten, niet mensen om wie ze zijn.
+Elke Grok-rol heeft een schakelaar: **Gecensureerd** (standaard) of **Ongecensureerd**. Ongecensureerd zegt Grok alles zonder filter: brutaal, sarcastisch en vloeken mag. Hij prikt door mooie praatjes heen, ook die van jou. Hij sloopt wel argumenten, niet mensen om wie ze zijn.
 
-Zet het aan met de schakelaar op de kaart van een Grok-rol, onder *Geavanceerd*, of zeg in de chat: "Laat Grok zonder censuur los". Een ongezouten rol herken je aan het pepertje 🌶️.
+De schakelaar staat op de kaart van de Grok-rol, onder *Geavanceerd* en onderaan in de arena, zodat je hem ook midden in het debat kunt omzetten. Je kunt het ook gewoon zeggen: "Laat Grok zonder censuur los" of "Maak Grok weer gecensureerd". Een ongecensureerde rol herken je aan het pepertje 🌶️.
+
+## Vergaderclichés
+
+Zet op het voorstelscherm **🎭 Vergaderclichés** aan, of zeg het in je vraag ("met vergaderclichés"). Dan spelen een paar rollen, naast hun functie, een herkenbaar vergadertype: de Dominator, de Parkeerder, de Managementtaalspreker, de Rondvraagterrorist en nog 23 anderen. Sommige zijn tijdgebonden: de Late Binnenkomer komt in ronde 1 als laatste binnen ("Sorry, liep een beetje uit. Waar zijn we?"), de Stille Aanwezigheid zegt tot de laatste ronde vrijwel niets.
+
+Welke rol welk type speelt, kies je zelf onder *Geavanceerd*. De Jury laat het gedrag niet meewegen en oordeelt op de inhoud.
+
+## Tokens en kosten per debat
+
+Onderaan in de arena zie je de kosten en het aantal tokens tot nu toe. Klik erop voor de uitsplitsing: per rol (met welke AI), per onderdeel (samenstellen, portretten, huiswerk, beurten, uitspraak, stemmen) en per model. Je ziet ook hoeveel tokens uit de cache kwamen; die kosten maar een fractie. Hetzelfde overzicht staat op de resultaatpagina, en in *Geschiedenis* zie je per debat de kosten en tokens.
 
 ## Modellen en kosten
 
@@ -109,6 +119,18 @@ npm run typecheck  # TypeScript
 npm test           # tests van de debatlogica
 ```
 
+**Integratietests.** In `tests/integratie/` staat een complete testomgeving: een echte Postgres met PostgREST, en een nepwolk die Claude, ChatGPT, Gemini, Grok, ElevenLabs en Supabase-opslag nabootst. Daarmee loopt een test de hele app door via de API (27 stappen) en een tweede in een echte browser op desktop en telefoon (20 stappen). Nodig: PostgreSQL 16, een [PostgREST-binary](https://github.com/PostgREST/postgrest/releases) en Playwright.
+
+```bash
+npm run build
+POSTGREST_BIN=/pad/naar/postgrest tests/integratie/omgeving.sh start   # MODE=anon test de variant zonder service key
+node tests/integratie/api-flow.mjs
+node tests/integratie/browser-flow.mjs
+tests/integratie/omgeving.sh stop
+```
+
+**Zonder service role key.** Heb je die niet bij de hand, zet dan `SUPABASE_ANON_KEY` en een zelfgekozen `SUPABASE_APP_SECRET`, en draai `supabase/optioneel/zonder-service-key.sql` met hetzelfde geheim. De database laat dan alleen verzoeken met dat geheim toe.
+
 Next.js (App Router), TypeScript, Tailwind CSS en Supabase. De belangrijkste bestanden:
 
 - `src/lib/config.ts`: modellen en prijzen
@@ -117,4 +139,6 @@ Next.js (App Router), TypeScript, Tailwind CSS en Supabase. De belangrijkste bes
 - `src/lib/prompts.ts`: wat elke rol te horen krijgt
 - `src/app/api/runs/[id]/turn/route.ts`: één beurt, live gestreamd
 - `src/lib/prep.ts`: portretten en huiswerk op de achtergrond
-- `supabase/migrations/0001_debatarena.sql`: tabellen en opslag
+- `src/lib/cliches.ts`: de vergaderclichés en wanneer ze wat doen
+- `src/lib/usage.ts`: tokens en kosten optellen
+- `supabase/migrations/`: tabellen, opslag en verbruik

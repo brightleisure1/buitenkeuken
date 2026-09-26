@@ -2,7 +2,8 @@ import "server-only";
 import { fastModel } from "./casting";
 import { generateJson } from "./llm";
 import { highlightsInstruction } from "./prompts";
-import { addCostUsd, getMessages, getRun, updateRun } from "./runs";
+import { getMessages, getRun, updateRun } from "./runs";
+import { recordUsage } from "./usage-db";
 import { HighlightsSchema } from "./schemas";
 import type { Highlight } from "./types";
 
@@ -17,7 +18,7 @@ export async function makeHighlights(runId: string): Promise<Highlight[]> {
       return `#${i + 1} ${r?.naam ?? "?"}${m.tag ? ` [${m.tag}]` : ""}: ${m.content}`;
     })
     .join("\n");
-  const { data, costUsd } = await generateJson(HighlightsSchema, {
+  const { data, usage } = await generateJson(HighlightsSchema, {
     model: await fastModel(),
     system: "Je bent een scherpe eindredacteur die de beste momenten uit een zakelijk debat kiest.",
     instruction: highlightsInstruction(numbered),
@@ -34,6 +35,6 @@ export async function makeHighlights(runId: string): Promise<Highlight[]> {
   }
   const picked = highlights.slice(0, 4).sort((a, b) => turns.findIndex((t) => t.id === a.messageId) - turns.findIndex((t) => t.id === b.messageId));
   await updateRun(runId, { highlights: picked });
-  await addCostUsd(runId, costUsd);
+  await recordUsage(runId, "hoogtepunten", usage);
   return picked;
 }

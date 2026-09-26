@@ -2,7 +2,8 @@
 
 import type { Role, RolePrep } from "@/lib/types";
 import { getModel } from "@/lib/config";
-import { AiBadge, Portrait } from "./ui";
+import { clicheOf } from "@/lib/cliches";
+import { AiBadge, CensorToggle, Portrait } from "./ui";
 
 export function RoleCard({
   role,
@@ -43,7 +44,12 @@ export function RoleCard({
           {role.isKritisch && <Badge className="bg-peach">Kritisch</Badge>}
           {role.isJury && <Badge className="bg-white">Doet uitspraak</Badge>}
           {modelLabel && <Badge>{modelLabel}</Badge>}
-          {role.ongezouten && <Badge className="bg-coral text-white border-coral">🌶️ Zonder filter</Badge>}
+          {role.ongezouten && <Badge className="bg-coral text-white border-coral">🌶️ Ongecensureerd</Badge>}
+          {clicheOf(role) && (
+            <span title={clicheOf(role)!.omschrijving}>
+              <Badge className="bg-lilac">🎭 {clicheOf(role)!.naam}</Badge>
+            </span>
+          )}
           {role.webzoeken && <Badge>Zoekt op het web</Badge>}
           {voiceOn && role.stemId && <Badge>Praat hardop</Badge>}
           {readers?.map((r) => (
@@ -53,19 +59,10 @@ export function RoleCard({
           ))}
         </div>
         {isGrok && onToggleOngezouten && (
-          <label className="mt-3 flex items-center gap-2 text-sm cursor-pointer select-none w-fit">
-            <span
-              role="switch"
-              aria-checked={!!role.ongezouten}
-              className={`relative inline-block h-6 w-11 rounded-full border-2 border-ink transition ${role.ongezouten ? "bg-coral" : "bg-cream"}`}
-            >
-              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white border-2 border-ink transition-all ${role.ongezouten ? "left-5" : "left-0.5"}`} />
-            </span>
-            <input type="checkbox" className="sr-only" checked={!!role.ongezouten} onChange={onToggleOngezouten} />
-            <span>
-              <strong>Ongezouten</strong> <span className="text-ink/60">– Grok zegt alles zonder filter</span>
-            </span>
-          </label>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-ink/70">Grok:</span>
+            <CensorToggle value={!!role.ongezouten} onChange={(v) => v !== !!role.ongezouten && onToggleOngezouten()} />
+          </div>
         )}
       </div>
     </div>

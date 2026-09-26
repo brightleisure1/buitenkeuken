@@ -3,7 +3,9 @@ import { composeCast } from "@/lib/casting";
 import { AppError } from "@/lib/errors";
 import { prepare } from "@/lib/prep";
 import { body, handle } from "@/lib/route";
-import { addCostUsd, getRun } from "@/lib/runs";
+import { getRun } from "@/lib/runs";
+import type { Usage } from "@/lib/usage";
+import { recordUsage } from "@/lib/usage-db";
 import { db } from "@/lib/supabase";
 import type { Attachment, Cast } from "@/lib/types";
 
@@ -31,7 +33,7 @@ export const POST = handle(async (req: Request) => {
   }
 
   let cast: Cast;
-  let costUsd = 0;
+  let usage: Usage | undefined;
   if (templateId || fromRunId) {
     // Hetzelfde team: geen AI-call nodig, dus meteen klaar.
     if (templateId) {
@@ -49,7 +51,7 @@ export const POST = handle(async (req: Request) => {
   } else {
     const r = await composeCast(q, attachments);
     cast = r.cast;
-    costUsd = r.costUsd;
+    usage = r.usage;
   }
 
   const { count } = await db().from("runs").select("id", { count: "exact", head: true });
@@ -61,7 +63,7 @@ export const POST = handle(async (req: Request) => {
   if (error || !run) throw new AppError("Het debat kon niet worden aangemaakt.", "Controleer of de SQL-migratie is uitgevoerd en probeer het opnieuw.");
 
   if (attachments.length) await db().from("attachments").update({ run_id: run.id }).in("id", attachments.map((a) => a.id));
-  await addCostUsd(run.id, costUsd);
+  await recordUsage(run.id, "samenstellen", usage);
 
   after(() => prepare(run.id));
   return Response.json({ run: await getRun(run.id) });

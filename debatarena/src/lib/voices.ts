@@ -9,7 +9,7 @@ export interface Voice {
   omschrijving: string;
 }
 
-const API = "https://api.elevenlabs.io/v1";
+const API = process.env.ELEVENLABS_BASE_URL || "https://api.elevenlabs.io/v1";
 
 interface ElVoice {
   voice_id: string;

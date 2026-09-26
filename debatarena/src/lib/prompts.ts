@@ -1,6 +1,7 @@
 import { WORDS_NORMAL, WORDS_VOICE } from "./config";
 import type { Attachment, Message, Role, Run } from "./types";
 import { attachmentText } from "./attachments";
+import { clicheOf, clicheTurnLines } from "./cliches";
 
 const ACTION_LABEL: Record<string, string> = {
   opmerking: "",
@@ -77,6 +78,10 @@ ONGEZOUTEN MODUS (de baas heeft je losgelaten):
 - Geen diplomatie, geen disclaimers, geen "aan de andere kant". Zeg hardop wat de anderen niet durven te zeggen.
 - Prik door mooie praatjes en noem onzin onzin, ook als de baas het bedacht heeft.
 - Speel op de bal: je sloopt argumenten en plannen, niet mensen om wie ze zijn (afkomst, geloof, geslacht en dergelijke laat je erbuiten).
+` : ""}${clicheOf(role) ? `
+JE VERGADERCLICHÉ: ${clicheOf(role)!.naam}
+${clicheOf(role)!.gedrag}
+Speel dit herkenbaar en met humor, maar blijf je rol en je belang als ${role.functie} houden. Noem jezelf nooit bij de naam van het cliché.
 ` : ""}${facts.length ? `\nJOUW HUISWERK (feiten die je hebt opgezocht):\n${facts.map((f) => `- ${f.feit} (bron: ${f.bron})`).join("\n")}\n` : ""}${att ? `\nBIJLAGES DIE JIJ HEBT GELEZEN:\n${att}\n` : ""}`;
 }
 
@@ -90,7 +95,9 @@ export interface TurnContext {
 
 export function turnInstruction({ run, role, messages, round, meta }: TurnContext) {
   const voiceAll = run.cast.stemmen === "iedereen";
-  const words = voiceAll ? WORDS_VOICE : WORDS_NORMAL;
+  const cliche = clicheTurnLines(role, round, run.cast.rondes);
+  const base = voiceAll ? WORDS_VOICE : WORDS_NORMAL;
+  const words = cliche.maxWords ?? Math.round(base * (voiceAll ? Math.min(cliche.factor, 1.2) : cliche.factor));
   const lines: string[] = [];
 
   const decisions = messages.filter((m) => m.kind === "boss" && m.meta.action === "hamer");
@@ -136,6 +143,8 @@ export function turnInstruction({ run, role, messages, round, meta }: TurnContex
     lines.push("Dit is de laatste ronde: werk toe naar een concreet voorstel of een duidelijk bezwaar dat de Jury kan wegen.");
   }
 
+  if (!meta.answer) lines.push(...cliche.lines);
+
   lines.push(`Houd het kort: maximaal ${words} woorden. Begin met [bezwaar], [akkoord] of [voorstel].`);
   return lines.join("\n\n");
 }
@@ -161,7 +170,7 @@ Regels:
 - bronnen: alleen bronnen die echt in het debat of huiswerk zijn genoemd, met wie ze gebruikte. Verzin geen bronnen.
 - volgendeStappen: 3 tot 5 korte acties.
 - besteQuote: de scherpste, meest deelbare uitspraak uit het debat (letterlijk, max 25 woorden) en de naam van wie het zei.
-- Geen jargon, geen complimenten.
+- Geen jargon, geen complimenten.${run.cast.cliches ? "\n- Sommige deelnemers speelden een herkenbaar vergadercliché (parkeren, uitstellen, managementtaal enzovoort). Laat dat gedrag niet meewegen: oordeel op de inhoud. Je mag het in de samenvatting wel droog benoemen als het het debat vertraagde." : ""}
 
 Vraagstuk: ${run.question}`;
 }

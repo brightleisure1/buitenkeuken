@@ -4,6 +4,7 @@ import { DEFAULT_ROUNDS, FAST_MODEL_KEY, MAX_ROUNDS, MODELS, PROVIDERS, getModel
 import { AppError } from "./errors";
 import { generateJson } from "./llm";
 import { CastChatSchema, CastSchema } from "./schemas";
+import { applyCliches, CLICHES } from "./cliches";
 import { availableKeys } from "./settings";
 import type { Attachment, Cast, Role } from "./types";
 import { listVoices, type Voice } from "./voices";
@@ -33,7 +34,8 @@ Jij stelt de cast samen. Castingregels:
 - Altijd precies één kritische klant- of koperrol (isKritisch=true): iemand die uiteindelijk moet betalen of kopen en dus kritisch is.
 - Geen overlappende perspectieven. Elke rol bewaakt een ander belang.
 - Meng de AI's: gebruik zoveel mogelijk verschillende aanbieders uit de modellijst (Claude, ChatGPT, Gemini, Grok), zodat de baas ziet hoe ze van elkaar verschillen.
-- ongezouten: standaard false. Alleen true voor een rol met een Grok-model als de baas daarom vraagt ("zonder censuur", "ongezouten", "laat Grok los").
+- ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) voor een rol met een Grok-model als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los").
+- vergadercliches: standaard false en dan is cliche overal ''. Zet op true als de baas erom vraagt ("met vergaderclichés", "maak het herkenbaar", "net een echte vergadering"). Geef dan 2 tot 4 debaterende rollen elk een ander cliché uit de clichélijst dat past bij hun functie. De Jury nooit; de kritische klant liever niet.
 - Rollen geven nooit scores of complimenten. Ze komen met concrete bezwaren en concrete voorstellen. Zet dat in hun instructie.
 - Maak het leuk: rollen met karakter, maar geloofwaardig.
 - Varieer leeftijd, geslacht en afkomst. 'uiterlijk' is Engels en karikaturaal: beroep plus karakter (bijv. "stern woman in her late 50s of Moroccan-Dutch descent, reading glasses on a chain, clutching a thick procurement binder").
@@ -60,7 +62,8 @@ function context(models: ModelConfig[], voices: Voice[], attachments: Attachment
         .map((a) => `- ${a.id}: ${a.name}${a.kind === "text" && a.text ? ` — begint met: "${a.text.slice(0, 300).replace(/\s+/g, " ")}"` : " (afbeelding)"}`)
         .join("\n")
     : "(geen bijlages)";
-  return `MODELLEN:\n${modelList}\n\nSTEMMEN:\n${voiceList}\n\nBIJLAGES:\n${att}`;
+  const clicheList = CLICHES.map((c) => `- ${c.id}: ${c.naam} — ${c.omschrijving}`).join("\n");
+  return `MODELLEN:\n${modelList}\n\nSTEMMEN:\n${voiceList}\n\nBIJLAGES:\n${att}\n\nVERGADERCLICHÉS:\n${clicheList}`;
 }
 
 function slug(s: string) {
@@ -108,6 +111,7 @@ export function normalizeCast(
       isJury: !!r.isJury,
       isKritisch: !!r.isKritisch,
       ongezouten: !!r.ongezouten,
+      cliche: r.cliche || null,
       uiterlijk: r.uiterlijk.trim(),
       ...(prev?.portraits ? { portraits: prev.portraits } : {}),
     };
@@ -219,7 +223,7 @@ export function normalizeCast(
   const rondes = Number.isFinite(raw.rondes) ? Math.min(MAX_ROUNDS, Math.max(1, Math.round(raw.rondes))) : DEFAULT_ROUNDS;
   const stemmen = opts.voices.length ? raw.stemmen : "uit";
 
-  return { titel: raw.titel.trim().slice(0, 80), rollen: roles, rondes, stemmen, bijlages };
+  return applyCliches({ titel: raw.titel.trim().slice(0, 80), rollen: roles, rondes, stemmen, bijlages, cliches: !!raw.vergadercliches });
 }
 
 function castToRaw(c: Cast): RawCast {
@@ -227,6 +231,7 @@ function castToRaw(c: Cast): RawCast {
     titel: c.titel,
     rondes: c.rondes,
     stemmen: c.stemmen,
+    vergadercliches: !!c.cliches,
     bijlages: Object.entries(c.bijlages).map(([bijlageId, voor]) => ({ bijlageId, voor })),
     rollen: c.rollen.map((r) => ({
       id: r.id,
@@ -241,6 +246,7 @@ function castToRaw(c: Cast): RawCast {
       isJury: r.isJury,
       isKritisch: r.isKritisch,
       ongezouten: !!r.ongezouten,
+      cliche: r.cliche ?? "",
       uiterlijk: r.uiterlijk,
     })),
   };
@@ -248,13 +254,13 @@ function castToRaw(c: Cast): RawCast {
 
 export async function composeCast(question: string, attachments: Attachment[]) {
   const [model, models, voices] = await Promise.all([fastModel(), availableModels(), listVoices()]);
-  const { data, costUsd } = await generateJson(CastSchema, {
+  const { data, usage } = await generateJson(CastSchema, {
     model,
     system: SYSTEM,
     instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK VAN DE BAAS:\n${question}\n\nStel de cast samen.`,
     maxTokens: 4000,
   });
-  return { cast: normalizeCast(data, { models, voices, attachments }), costUsd };
+  return { cast: normalizeCast(data, { models, voices, attachments }), usage };
 }
 
 export async function editCast(
@@ -269,15 +275,15 @@ export async function editCast(
     .slice(-6)
     .map((m) => `${m.van === "baas" ? "Baas" : "Regie"}: ${m.tekst}`)
     .join("\n");
-  const { data, costUsd } = await generateJson(CastChatSchema, {
+  const { data, usage } = await generateJson(CastChatSchema, {
     model,
     system: SYSTEM,
-    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om een rol "zonder censuur" of "ongezouten", geef die rol dan een Grok-model (als dat in de lijst staat) en zet ongezouten=true. Geef de volledige nieuwe cast terug.`,
+    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om vergaderclichés, zet vergadercliches=true en deel clichés uit; wil de baas ze weg, zet vergadercliches=false. Vraagt de baas een specifiek cliché voor een rol ("maak de CFO de Parkeerder"), zet dat cliché bij die rol. Vraagt de baas om een rol "zonder censuur" of "ongezouten", geef die rol dan een Grok-model (als dat in de lijst staat) en zet ongezouten=true. Wil de baas Grok weer "gecensureerd" of "netjes", zet ongezouten=false. Geef de volledige nieuwe cast terug.`,
     maxTokens: 5000,
   });
   return {
     antwoord: data.antwoord,
     cast: normalizeCast(data.cast, { models, voices, attachments, previous: current }),
-    costUsd,
+    usage,
   };
 }
