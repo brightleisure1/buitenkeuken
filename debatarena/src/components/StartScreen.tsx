@@ -9,7 +9,7 @@ import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
 import { MicButton } from "./MicButton";
 import { RoleCard } from "./RoleCard";
-import { CensorToggle, ErrorNote, Portrait, Spinner, Switch, toError } from "./ui";
+import { CensorToggle, ErrorNote, Portrait, Segmented, Spinner, Switch, toError } from "./ui";
 import { PersonaEditor } from "./PersonaEditor";
 import { FunWait } from "./FunWait";
 import { CASTING_LINES } from "@/lib/wachten";
@@ -233,6 +233,25 @@ export function StartScreen() {
             <Switch checked={!!cast.cliches} disabled={saving} onChange={(v) => void saveAdvanced({ ...cast, cliches: v })}>
               <strong>🎭 Vergaderclichés</strong> <span className="text-ink/60">– herkenbare vergadertypes spelen mee</span>
             </Switch>
+            <span className="flex items-center gap-2 text-sm">
+              <strong>🔊 Stemmen</strong>
+              {data.keys.elevenlabs ? (
+                <Segmented
+                  label="Stemmen"
+                  value={cast.stemmen}
+                  onChange={(v) => void saveAdvanced({ ...cast, stemmen: v })}
+                  options={[
+                    { value: "uit", label: "Uit" },
+                    { value: "jury", label: "Jury" },
+                    { value: "iedereen", label: "Iedereen" },
+                  ]}
+                />
+              ) : (
+                <Link href="/instellingen" className="underline text-ink/60">
+                  voeg een ElevenLabs-sleutel toe
+                </Link>
+              )}
+            </span>
             <span className="text-xs text-ink/50">Kosten tot nu toe: {euro(run.cost_eur)}</span>
           </div>
           {cast.rollen

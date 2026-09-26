@@ -15,7 +15,7 @@ import { FunWait } from "./FunWait";
 import { PersonaEditor } from "./PersonaEditor";
 import { JURY_LINES, LOADING_LINES, prepLines, turnWaitLines } from "@/lib/wachten";
 import { CostPanel } from "./CostPanel";
-import { CensorToggle, ErrorNote, Spinner, toError } from "./ui";
+import { CensorToggle, ErrorNote, Segmented, Spinner, toError } from "./ui";
 import { providerOf } from "@/lib/config";
 import { tokens } from "@/lib/usage";
 
@@ -344,6 +344,18 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
     }
   }
 
+  async function setVoices(stemmen: "uit" | "jury" | "iedereen") {
+    const cur = dataRef.current;
+    if (!cur) return;
+    if (stemmen === "uit") speechRef.current?.stop();
+    try {
+      await api(`/api/runs/${id}`, { method: "PATCH", json: { handmatig: true, cast: { ...cur.run.cast, stemmen } } });
+      await reload();
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
   async function setGrok(roleId: string, ongecensureerd: boolean) {
     const cur = dataRef.current;
     if (!cur) return;
@@ -538,9 +550,25 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             <button onClick={() => setShowCost((v) => !v)} className="underline decoration-dotted underline-offset-2 hover:text-ink" title="Bekijk tokens en kosten per rol">
               {euro(run.cost_eur)} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
             </button>
+            {data.keys.elevenlabs && (
+              <span className="flex items-center gap-1.5">
+                🔊
+                <Segmented
+                  label="Stemmen"
+                  size="xs"
+                  value={run.cast.stemmen}
+                  onChange={(v) => void setVoices(v)}
+                  options={[
+                    { value: "uit", label: "Uit" },
+                    { value: "jury", label: "Jury" },
+                    { value: "iedereen", label: "Iedereen" },
+                  ]}
+                />
+              </span>
+            )}
             {voicesOn && (
               <span className="ml-auto flex items-center gap-1">
-                Stemtempo
+                Tempo
                 {[1, 1.25, 1.5].map((r) => (
                   <button key={r} onClick={() => setRate(r)} className={`rounded-full px-2 py-0.5 border ${rate === r ? "bg-ink text-cream border-ink" : "border-ink/30"}`}>
                     {String(r).replace(".", ",")}x

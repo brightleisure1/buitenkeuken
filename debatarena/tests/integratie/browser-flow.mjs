@@ -124,6 +124,9 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.waitForFunction(() => !document.body.innerText.includes("🎭 De Parkeerder"));
     await sw.click();
     await page.getByText(/🎭 De /).first().waitFor();
+    // Stemmen aanzetten voor iedereen
+    await page.getByRole("radiogroup", { name: "Stemmen" }).getByRole("radio", { name: "Iedereen" }).click();
+    await page.getByText("iedereen praat hardop").waitFor();
     // Persona aanpassen
     await page.getByRole("button", { name: "✏️ Aanpassen" }).first().click();
     await page.getByRole("dialog").getByLabel("Instructie en manier van praten").fill("Praat kortaf en droog. Wil eerst cijfers zien.");
@@ -143,6 +146,8 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.waitForTimeout(2500);
     await lastVisible(page, "arena");
     await shot("3-arena");
+    const said = (await (await fetch(`${process.env.FAKE_URL ?? "http://127.0.0.1:54321"}/__log`)).json()).filter((l) => l.provider === "elevenlabs");
+    assert.ok(said.length > 0, "met stemmen aan wordt er hardop gesproken");
     assert.ok(!(await page.getByText("🎭").count()), "clichés niet zichtbaar in de arena");
     assert.ok(await page.getByText("Anneke", { exact: true }).count(), "'Dr.' niet als voornaam");
     await page.getByRole("button", { name: /tokens/ }).click();
