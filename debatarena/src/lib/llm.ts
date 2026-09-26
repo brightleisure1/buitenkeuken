@@ -2,16 +2,18 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
+import { zodResponseFormat, zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 import {
+  COMPAT_BASE_URL,
   CACHE_READ_FACTOR,
   CACHE_WRITE_FACTOR,
   OPENAI_CACHED_FACTOR,
   WEB_SEARCH_PRICE_USD,
   type ModelConfig,
+  type Provider,
 } from "./config";
-import { AppError, friendly } from "./errors";
+import { AppError, friendly, type Who } from "./errors";
 import { requireKey } from "./settings";
 
 export interface ImageInput {
@@ -35,13 +37,21 @@ export interface Prompt {
   deep?: boolean;
 }
 
-const who = (m: ModelConfig) => (m.provider === "anthropic" ? "Anthropic" : "OpenAI");
+const WHO: Record<Provider, Who> = { anthropic: "Anthropic", openai: "OpenAI", google: "Google", xai: "xAI" };
+const who = (m: ModelConfig) => WHO[m.provider];
+
+/** Gemini en Grok: OpenAI-compatibele Chat Completions. */
+const isCompat = (m: ModelConfig) => m.provider === "google" || m.provider === "xai";
 
 async function anthropic() {
   return new Anthropic({ apiKey: await requireKey("anthropic"), maxRetries: 2 });
 }
 async function openai() {
   return new OpenAI({ apiKey: await requireKey("openai"), maxRetries: 2 });
+}
+async function compat(m: ModelConfig) {
+  const provider = m.provider as "google" | "xai";
+  return new OpenAI({ apiKey: await requireKey(provider), baseURL: COMPAT_BASE_URL[provider], maxRetries: 2 });
 }
 
 // ---------- kosten ----------
@@ -62,10 +72,15 @@ export function anthropicCost(m: ModelConfig, u: Anthropic.Usage | null | undefi
 export function openaiCost(m: ModelConfig, u: OpenAI.Responses.ResponseUsage | null | undefined): number {
   if (!u) return 0;
   const cached = u.input_tokens_details?.cached_tokens ?? 0;
-  return (
-    ((u.input_tokens - cached) * m.inputPrice + cached * m.inputPrice * OPENAI_CACHED_FACTOR + u.output_tokens * m.outputPrice) /
-    1e6
-  );
+  const factor = m.cachedFactor ?? OPENAI_CACHED_FACTOR;
+  return ((u.input_tokens - cached) * m.inputPrice + cached * m.inputPrice * factor + u.output_tokens * m.outputPrice) / 1e6;
+}
+
+export function compatCost(m: ModelConfig, u: OpenAI.CompletionUsage | null | undefined): number {
+  if (!u) return 0;
+  const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
+  const factor = m.cachedFactor ?? OPENAI_CACHED_FACTOR;
+  return ((u.prompt_tokens - cached) * m.inputPrice + cached * m.inputPrice * factor + u.completion_tokens * m.outputPrice) / 1e6;
 }
 
 function estimateCost(m: ModelConfig, inChars: number, outChars: number) {
@@ -118,6 +133,25 @@ function openaiInput(p: Prompt): OpenAI.Responses.ResponseInput {
   return [{ role: "user", content }];
 }
 
+function compatMessages(p: Prompt): OpenAI.Chat.ChatCompletionMessageParam[] {
+  const content: OpenAI.Chat.ChatCompletionContentPart[] = [];
+  for (const img of p.images ?? []) {
+    content.push({ type: "image_url", image_url: { url: `data:${img.mime};base64,${img.base64}` } });
+  }
+  const hist = p.history ?? [];
+  if (hist.length) content.push({ type: "text", text: `HET DEBAT TOT NU TOE:\n\n${hist.join("\n\n")}` });
+  content.push({ type: "text", text: p.instruction });
+  return [
+    { role: "system", content: p.system },
+    { role: "user", content },
+  ];
+}
+
+function compatExtras(p: Prompt) {
+  const effort = p.deep && p.model.reasoning ? "medium" : p.model.reasoning;
+  return effort ? { reasoning_effort: effort } : {};
+}
+
 function openaiReasoning(p: Prompt) {
   const effort = p.deep ? "medium" : p.model.reasoning;
   return effort ? { reasoning: { effort } } : {};
@@ -158,6 +192,30 @@ export async function streamText(p: Prompt, onDelta: (t: string) => void): Promi
         throw new AppError("Deze rol wilde hier niet op ingaan.", "Geef de rol een andere richting of kies een ander model.");
       }
       return { text, costUsd: anthropicCost(p.model, final.usage), aborted: false };
+    }
+    if (isCompat(p.model)) {
+      const client = await compat(p.model);
+      const stream = await client.chat.completions.create(
+        {
+          model: p.model.model,
+          messages: compatMessages(p),
+          stream: true,
+          stream_options: { include_usage: true },
+          max_tokens: maxTokens + 3000,
+          ...compatExtras(p),
+        },
+        { signal: p.signal },
+      );
+      let usage: OpenAI.CompletionUsage | undefined;
+      for await (const ch of stream) {
+        const d = ch.choices[0]?.delta?.content;
+        if (d) {
+          text += d;
+          onDelta(d);
+        }
+        if (ch.usage) usage = ch.usage;
+      }
+      return { text, costUsd: compatCost(p.model, usage), aborted: false };
     }
     const client = await openai();
     const stream = await client.responses.create(
@@ -258,6 +316,19 @@ export async function generateJson<S extends z.ZodType>(
         cost += anthropicCost(p.model, res.usage);
         if (res.parsed_output) return { data: res.parsed_output as z.infer<S>, costUsd: cost };
         lastError = new Error("leeg antwoord");
+      } else if (isCompat(p.model)) {
+        const client = await compat(p.model);
+        const res = await client.chat.completions.parse({
+          model: p.model.model,
+          messages: compatMessages(prompt),
+          max_tokens: (p.maxTokens ?? 8000) + 4000,
+          response_format: zodResponseFormat(schema, "uitvoer"),
+          ...compatExtras(prompt),
+        });
+        cost += compatCost(p.model, res.usage);
+        const parsed = res.choices[0]?.message.parsed;
+        if (parsed) return { data: parsed as z.infer<S>, costUsd: cost };
+        lastError = new Error("leeg antwoord");
       } else {
         const client = await openai();
         const res = await client.responses.parse({
@@ -303,6 +374,8 @@ export async function research(
   p: Prompt & { webSearch: boolean },
   onLooking: (label: string) => void,
 ): Promise<{ text: string; costUsd: number }> {
+  // Gemini en Grok zoeken hier niet zelf op het web; ze werken met de bijlages.
+  if (isCompat(p.model)) return generateText(p);
   try {
     if (p.model.provider === "anthropic") {
       const client = await anthropic();
@@ -374,6 +447,11 @@ export async function testAnthropic(key: string) {
 
 export async function testOpenAI(key: string) {
   const client = new OpenAI({ apiKey: key, maxRetries: 0 });
+  await client.models.list();
+}
+
+export async function testCompat(provider: "google" | "xai", key: string) {
+  const client = new OpenAI({ apiKey: key, baseURL: COMPAT_BASE_URL[provider], maxRetries: 0 });
   await client.models.list();
 }
 

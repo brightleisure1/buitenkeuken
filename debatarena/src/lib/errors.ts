@@ -9,7 +9,7 @@ export class AppError extends Error {
   }
 }
 
-type Who = "Anthropic" | "OpenAI" | "ElevenLabs" | "de AI";
+export type Who = "Anthropic" | "OpenAI" | "Google" | "xAI" | "ElevenLabs" | "de AI";
 
 function statusOf(e: unknown): number | undefined {
   if (e && typeof e === "object" && "status" in e && typeof (e as { status: unknown }).status === "number") {

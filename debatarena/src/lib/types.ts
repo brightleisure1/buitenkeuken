@@ -17,6 +17,8 @@ export interface Role {
   webzoeken: boolean;
   isJury: boolean;
   isKritisch: boolean;
+  /** Alleen Grok: praat zonder filter, brutaal en ongezouten */
+  ongezouten?: boolean;
   /** Korte Engelse omschrijving voor het portret */
   uiterlijk: string;
   /** Alleen in templates: bewaarde portretten */

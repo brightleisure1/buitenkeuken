@@ -32,7 +32,7 @@ Met een ElevenLabs-sleutel praten de rollen hardop. Kies uit: uit, alleen de Jur
 
 ## Installeren
 
-Je hebt nodig: een [Supabase](https://supabase.com)-project (gratis kan), Node.js 20 of nieuwer, en minstens één sleutel van Anthropic of OpenAI.
+Je hebt nodig: een [Supabase](https://supabase.com)-project (gratis kan), Node.js 20 of nieuwer, en minstens één AI-sleutel: Anthropic (Claude), OpenAI (ChatGPT), Google (Gemini) of xAI (Grok).
 
 1. **Database klaarzetten.** Open in Supabase de *SQL Editor*, plak de inhoud van `supabase/migrations/0001_debatarena.sql` en klik op *Run*. Dit maakt de tabellen en de opslagmappen voor portretten, audio en bijlages.
 2. **Instellingen.** Kopieer `.env.example` naar `.env.local` en vul in:
@@ -48,13 +48,29 @@ Je hebt nodig: een [Supabase](https://supabase.com)-project (gratis kan), Node.j
 
    | Sleutel | Waarvoor | Nodig? |
    |---|---|---|
-   | Anthropic | Claude-rollen, het samenstellen van het team, de Jury | Deze of OpenAI |
-   | OpenAI | GPT-rollen, de portretten, inspreken in browsers zonder spraakherkenning | Deze of Anthropic |
+   | Anthropic | Claude-rollen, het samenstellen van het team, de Jury | Minstens één van deze vier |
+   | OpenAI | ChatGPT-rollen, de portretten, inspreken in browsers zonder spraakherkenning | |
+   | Google | Gemini-rollen | |
+   | xAI | Grok-rollen | |
    | ElevenLabs | Stemmen | Nee |
 
-   Met beide AI-sleutels krijg je een gemengd team van Claude en GPT. Zonder OpenAI-sleutel krijgen de rollen hun initialen in plaats van een portret.
+   Hoe meer AI-sleutels, hoe gemengder het team. Zonder OpenAI-sleutel krijgen de rollen hun initialen in plaats van een portret.
 
 **Online zetten** kan bijvoorbeeld op Vercel: importeer de repository, kies `debatarena` als *Root Directory* en zet dezelfde omgevingsvariabelen. Sommige stappen (portretten, huiswerk, de uitspraak) duren langer dan een halve minuut. Kies daarom een abonnement waarop functies tot 5 minuten mogen draaien.
+
+## Welke AI speelt wie?
+
+Bij elke rol staat een gekleurd label: **Claude**, **ChatGPT**, **Gemini** of **Grok**. Je ziet het op de teamkaarten, onder de portretten in de arena, in de tekstballon en op de oordeelkaart. Zo zie je meteen hoe de AI's van elkaar verschillen.
+
+Het team krijgt zoveel mogelijk verschillende AI's. Wil je het anders, zeg dan bijvoorbeeld "Laat de CFO door Gemini spelen", of kies het model onder *Geavanceerd*.
+
+Gemini en Grok zoeken zelf niet op het web. Ze doen hun huiswerk met jouw bijlages.
+
+### Grok ongezouten
+
+Een Grok-rol kun je *ongezouten* maken. Die zegt dan alles zonder filter: brutaal, sarcastisch en vloeken mag. Hij prikt door mooie praatjes heen, ook die van jou. Hij sloopt wel argumenten, niet mensen om wie ze zijn.
+
+Zet het aan met de schakelaar op de kaart van een Grok-rol, onder *Geavanceerd*, of zeg in de chat: "Laat Grok zonder censuur los". Een ongezouten rol herken je aan het pepertje 🌶️.
 
 ## Modellen en kosten
 

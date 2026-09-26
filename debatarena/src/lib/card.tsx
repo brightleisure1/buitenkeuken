@@ -1,5 +1,6 @@
 import "server-only";
 import { ImageResponse } from "next/og";
+import { providerOf } from "./config";
 import { applyShare, initials } from "./text";
 import type { Run } from "./types";
 
@@ -90,6 +91,20 @@ export function renderCard(run: Run, format: "square" | "story") {
                   </div>
                 )}
                 <div style={{ display: "flex", fontSize: 22, marginTop: 10, textAlign: "center", fontWeight: 600 }}>{r.naam}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    marginTop: 6,
+                    fontSize: 16,
+                    fontWeight: 700,
+                    padding: "2px 10px",
+                    borderRadius: 999,
+                    background: providerOf(r).kleur,
+                    color: providerOf(r).tekst,
+                  }}
+                >
+                  {providerOf(r).naam}
+                </div>
               </div>
             );
           })}

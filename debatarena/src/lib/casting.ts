@@ -1,6 +1,6 @@
 import "server-only";
 import type { z } from "zod";
-import { DEFAULT_ROUNDS, FAST_MODEL_KEY, MAX_ROUNDS, MODELS, getModel, type ModelConfig } from "./config";
+import { DEFAULT_ROUNDS, FAST_MODEL_KEY, MAX_ROUNDS, MODELS, PROVIDERS, getModel, supportsWebSearch, type ModelConfig, type Provider } from "./config";
 import { AppError } from "./errors";
 import { generateJson } from "./llm";
 import { CastChatSchema, CastSchema } from "./schemas";
@@ -12,11 +12,12 @@ type RawCast = z.infer<typeof CastSchema>;
 
 export async function fastModel(): Promise<ModelConfig> {
   const keys = await availableKeys();
-  if (keys.anthropic) return getModel(FAST_MODEL_KEY.anthropic)!;
-  if (keys.openai) return getModel(FAST_MODEL_KEY.openai)!;
+  for (const p of ["anthropic", "openai", "google", "xai"] as Provider[]) {
+    if (keys[p]) return getModel(FAST_MODEL_KEY[p])!;
+  }
   throw new AppError(
     "Er is nog geen AI-sleutel ingesteld.",
-    "Ga naar Instellingen en plak een sleutel van Anthropic of OpenAI (of beide). Dat duurt een minuut.",
+    "Ga naar Instellingen en plak een sleutel van Anthropic, OpenAI, Google (Gemini) of xAI (Grok). Dat duurt een minuut.",
   );
 }
 
@@ -31,11 +32,12 @@ Jij stelt de cast samen. Castingregels:
 - 3 of 4 debaterende rollen plus precies één Jury (isJury=true). De Jury debatteert niet mee, maar weegt af en doet aan het eind uitspraak. Geef de Jury een sterk model.
 - Altijd precies één kritische klant- of koperrol (isKritisch=true): iemand die uiteindelijk moet betalen of kopen en dus kritisch is.
 - Geen overlappende perspectieven. Elke rol bewaakt een ander belang.
-- Meng Claude- en GPT-modellen als beide in de lijst staan.
+- Meng de AI's: gebruik zoveel mogelijk verschillende aanbieders uit de modellijst (Claude, ChatGPT, Gemini, Grok), zodat de baas ziet hoe ze van elkaar verschillen.
+- ongezouten: standaard false. Alleen true voor een rol met een Grok-model als de baas daarom vraagt ("zonder censuur", "ongezouten", "laat Grok los").
 - Rollen geven nooit scores of complimenten. Ze komen met concrete bezwaren en concrete voorstellen. Zet dat in hun instructie.
 - Maak het leuk: rollen met karakter, maar geloofwaardig.
 - Varieer leeftijd, geslacht en afkomst. 'uiterlijk' is Engels en karikaturaal: beroep plus karakter (bijv. "stern woman in her late 50s of Moroccan-Dutch descent, reading glasses on a chain, clutching a thick procurement binder").
-- webzoeken=true voor rollen die baat hebben bij actuele feiten (markt, prijzen, regels). Anders false.
+- webzoeken=true voor rollen die baat hebben bij actuele feiten (markt, prijzen, regels). Anders false. Alleen modellen met "(kan webzoeken)" kunnen dat.
 - rondes: standaard 3. Alleen minder bij een heel simpele vraag.
 - stemmen: 'uit' als er geen stemmenlijst is. Anders standaard 'jury'.
 - stemId: kies uit de stemmenlijst per rol een passende stem (geslacht, leeftijd). Elke rol een andere. null als er geen lijst is.
@@ -44,7 +46,9 @@ Jij stelt de cast samen. Castingregels:
 - modelKey: kies uit de modellijst.`;
 
 function context(models: ModelConfig[], voices: Voice[], attachments: Attachment[]) {
-  const modelList = models.map((m) => `- ${m.key}: ${m.label}`).join("\n");
+  const modelList = models
+    .map((m) => `- ${m.key}: ${m.label} (${PROVIDERS[m.provider].naam}${supportsWebSearch(m) ? ", kan webzoeken" : ""})`)
+    .join("\n");
   const voiceList = voices.length
     ? voices
         .slice(0, 40)
@@ -103,6 +107,7 @@ export function normalizeCast(
       webzoeken: !!r.webzoeken,
       isJury: !!r.isJury,
       isKritisch: !!r.isKritisch,
+      ongezouten: !!r.ongezouten,
       uiterlijk: r.uiterlijk.trim(),
       ...(prev?.portraits ? { portraits: prev.portraits } : {}),
     };
@@ -159,21 +164,31 @@ export function normalizeCast(
     }
   }
 
-  // Claude en GPT gemengd.
-  if (providers.has("anthropic") && providers.has("openai") && debaters.length > 1) {
+  // Verschillende AI's door elkaar (Claude, ChatGPT, Gemini, Grok).
+  const provList = [...providers];
+  if (provList.length > 1 && debaters.length > 1) {
     const provs = new Set(debaters.map((r) => getModel(r.modelKey)?.provider));
     if (provs.size < 2) {
+      const cur = getModel(debaters[0].modelKey)!.provider;
+      const others = provList.filter((p) => p !== cur);
       debaters.forEach((r, i) => {
         if (i % 2 === 1 && !r.customModel) {
-          const cur = getModel(r.modelKey)!;
-          const other = cur.provider === "anthropic" ? "openai" : "anthropic";
-          r.modelKey = (opts.models.find((m) => m.provider === other && m.tier === cur.tier) ?? strongest(other)).key;
+          const tier = getModel(r.modelKey)!.tier;
+          const other = others[((i - 1) / 2) % others.length];
+          r.modelKey = (opts.models.find((m) => m.provider === other && m.tier === tier) ?? strongest(other)).key;
         }
       });
     }
   }
 
   roles = [...debaters, jury[0]];
+
+  // Ongezouten kan alleen bij Grok; webzoeken alleen bij modellen die dat kunnen.
+  for (const r of roles) {
+    const m = getModel(r.modelKey);
+    r.ongezouten = !!r.ongezouten && (m?.provider === "xai" || /^grok/i.test(r.customModel ?? ""));
+    if (m && !supportsWebSearch(m) && !r.customModel) r.webzoeken = false;
+  }
 
   // Stemmen: geldig en uniek.
   const voiceIds = new Set(opts.voices.map((v) => v.id));
@@ -225,6 +240,7 @@ function castToRaw(c: Cast): RawCast {
       webzoeken: r.webzoeken,
       isJury: r.isJury,
       isKritisch: r.isKritisch,
+      ongezouten: !!r.ongezouten,
       uiterlijk: r.uiterlijk,
     })),
   };
@@ -256,7 +272,7 @@ export async function editCast(
   const { data, costUsd } = await generateJson(CastChatSchema, {
     model,
     system: SYSTEM,
-    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Geef de volledige nieuwe cast terug.`,
+    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om een rol "zonder censuur" of "ongezouten", geef die rol dan een Grok-model (als dat in de lijst staat) en zet ongezouten=true. Geef de volledige nieuwe cast terug.`,
     maxTokens: 5000,
   });
   return {

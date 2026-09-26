@@ -236,6 +236,9 @@ export function StartScreen() {
               modelLabel={modelLabel(r.modelKey, r.customModel)}
               readers={data.readers[r.id]?.length && data.readers[r.id].length < data.attachments.length ? data.readers[r.id] : undefined}
               voiceOn={cast.stemmen === "iedereen" || (cast.stemmen === "jury" && r.isJury)}
+              onToggleOngezouten={() =>
+                void saveAdvanced({ ...cast, rollen: cast.rollen.map((x) => (x.id === r.id ? { ...x, ongezouten: !x.ongezouten } : x)) })
+              }
             />
           ))}
         </div>

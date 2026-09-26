@@ -1,5 +1,5 @@
 import { friendly } from "@/lib/errors";
-import { testAnthropic, testOpenAI } from "@/lib/llm";
+import { testAnthropic, testCompat, testOpenAI } from "@/lib/llm";
 import { body, handle } from "@/lib/route";
 import { getKey, PROVIDER_LABEL, type KeyName } from "@/lib/settings";
 import { fetchVoices } from "@/lib/voices";
@@ -13,6 +13,7 @@ export const POST = handle(async (req: Request) => {
   try {
     if (provider === "anthropic") await testAnthropic(key);
     else if (provider === "openai") await testOpenAI(key);
+    else if (provider === "google" || provider === "xai") await testCompat(provider, key);
     else {
       const voices = await fetchVoices(key);
       return Response.json({ ok: true, melding: `Verbonden. ${voices.length} stemmen gevonden.` });

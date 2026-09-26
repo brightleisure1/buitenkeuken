@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getModel, resolveModel, supportsWebSearch } from "@/lib/config";
 import type { Cast, Role } from "@/lib/types";
 
 interface Voice {
@@ -144,10 +145,22 @@ export function CastEditor({
               </label>
             </div>
             <div className="flex flex-wrap gap-4 text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={r.webzoeken} onChange={(e) => setRole(r.id, { webzoeken: e.target.checked })} />
+              <label className={`flex items-center gap-2 ${supportsWebSearch(resolveModel(r.modelKey, r.customModel)) ? "" : "opacity-50"}`}>
+                <input
+                  type="checkbox"
+                  checked={r.webzoeken}
+                  disabled={!supportsWebSearch(resolveModel(r.modelKey, r.customModel))}
+                  onChange={(e) => setRole(r.id, { webzoeken: e.target.checked })}
+                />
                 Webzoeken
+                {!supportsWebSearch(resolveModel(r.modelKey, r.customModel)) && <span className="text-xs">(kan dit model niet)</span>}
               </label>
+              {(getModel(r.modelKey)?.provider === "xai" || /^grok/i.test(r.customModel ?? "")) && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!r.ongezouten} onChange={(e) => setRole(r.id, { ongezouten: e.target.checked })} />
+                  🌶️ Ongezouten (zonder filter)
+                </label>
+              )}
               {!r.isJury && (
                 <label className="flex items-center gap-2">
                   <input

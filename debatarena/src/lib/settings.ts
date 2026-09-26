@@ -3,17 +3,21 @@ import { db } from "./supabase";
 import { decrypt, encrypt } from "./crypto";
 import { AppError } from "./errors";
 
-export type KeyName = "anthropic" | "openai" | "elevenlabs";
+export type KeyName = "anthropic" | "openai" | "google" | "xai" | "elevenlabs";
 
 const ENV: Record<KeyName, string> = {
   anthropic: "ANTHROPIC_API_KEY",
   openai: "OPENAI_API_KEY",
+  google: "GEMINI_API_KEY",
+  xai: "XAI_API_KEY",
   elevenlabs: "ELEVENLABS_API_KEY",
 };
 
-export const PROVIDER_LABEL: Record<KeyName, "Anthropic" | "OpenAI" | "ElevenLabs"> = {
+export const PROVIDER_LABEL: Record<KeyName, "Anthropic" | "OpenAI" | "Google" | "xAI" | "ElevenLabs"> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
+  google: "Google",
+  xai: "xAI",
   elevenlabs: "ElevenLabs",
 };
 
@@ -45,7 +49,7 @@ async function loadKeys(): Promise<Partial<Record<KeyName, string>>> {
   for (const name of Object.keys(ENV) as KeyName[]) {
     const enc = stored[name];
     const dec = enc ? decrypt(enc) : null;
-    const val = dec || process.env[ENV[name]];
+    const val = dec || process.env[ENV[name]] || (name === "google" ? process.env.GOOGLE_API_KEY : undefined);
     if (val) keys[name] = val;
   }
   cache = { at: Date.now(), keys };
@@ -69,7 +73,7 @@ export async function requireKey(name: KeyName): Promise<string> {
 
 export async function availableKeys(): Promise<Record<KeyName, boolean>> {
   const k = await loadKeys();
-  return { anthropic: !!k.anthropic, openai: !!k.openai, elevenlabs: !!k.elevenlabs };
+  return { anthropic: !!k.anthropic, openai: !!k.openai, google: !!k.google, xai: !!k.xai, elevenlabs: !!k.elevenlabs };
 }
 
 export async function saveKeys(input: Partial<Record<KeyName, string | null>>) {
@@ -93,6 +97,8 @@ export async function maskedKeys() {
   return {
     anthropic: mask(k.anthropic),
     openai: mask(k.openai),
+    google: mask(k.google),
+    xai: mask(k.xai),
     elevenlabs: mask(k.elevenlabs),
   };
 }

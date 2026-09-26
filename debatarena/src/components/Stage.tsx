@@ -3,7 +3,8 @@
 import { extractSources } from "@/lib/text";
 import type { Mood, Role, Tag } from "@/lib/types";
 import { useKonami, useLateNight, usePortraitSize } from "@/lib/hooks";
-import { Portrait } from "./ui";
+import { providerOf } from "@/lib/config";
+import { AiBadge, Portrait } from "./ui";
 
 export interface Bubble {
   who: string | "baas";
@@ -80,6 +81,9 @@ export function Stage({
               />
               <span className={`mt-1.5 text-xs sm:text-sm text-center leading-tight ${active ? "font-bold" : "font-medium"}`}>{r.naam.split(" ")[0]}</span>
               <span className="text-[10px] sm:text-xs text-ink/60 text-center leading-tight line-clamp-1">{r.isJury ? "Jury" : r.functie}</span>
+              <span className="mt-1">
+                <AiBadge role={r} size="xs" />
+              </span>
               {looking?.[r.id] && (
                 <span className="mt-1 text-[10px] sm:text-[11px] text-center text-ink/70 bg-sky rounded-lg px-1.5 py-0.5 line-clamp-2 animate-pop">{looking[r.id]}</span>
               )}
@@ -104,7 +108,11 @@ export function Stage({
               }`}
             >
               <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${bubble.who === "baas" ? "text-cream/70" : "text-ink/60"}`}>
-                {bubble.who === "baas" ? "Jij, de baas" : speaker ? `${speaker.naam} · ${speaker.isJury ? "Jury" : speaker.functie}` : ""}
+                {bubble.who === "baas"
+                  ? "Jij, de baas"
+                  : speaker
+                    ? `${speaker.naam} · ${speaker.isJury ? "Jury" : speaker.functie} · ${providerOf(speaker).naam}${speaker.ongezouten ? " 🌶️" : ""}`
+                    : ""}
                 {bubble.note && <span className="ml-2 normal-case tracking-normal font-normal">{bubble.note}</span>}
               </p>
               <p className={`text-[17px] sm:text-xl leading-relaxed whitespace-pre-wrap ${bubble.streaming ? "caret" : ""}`}>

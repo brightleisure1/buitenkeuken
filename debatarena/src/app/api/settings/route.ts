@@ -9,7 +9,7 @@ export const GET = handle(async () => {
 export const POST = handle(async (req: Request) => {
   const input = await body<Partial<Record<KeyName, string | null>>>(req);
   const clean: Partial<Record<KeyName, string | null>> = {};
-  for (const k of ["anthropic", "openai", "elevenlabs"] as KeyName[]) {
+  for (const k of ["anthropic", "openai", "google", "xai", "elevenlabs"] as KeyName[]) {
     if (k in input) clean[k] = input[k];
   }
   await saveKeys(clean);

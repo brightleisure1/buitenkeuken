@@ -15,6 +15,9 @@ export const CastRoleSchema = z.object({
   webzoeken: z.boolean(),
   isJury: z.boolean(),
   isKritisch: z.boolean(),
+  ongezouten: z
+    .boolean()
+    .describe("Alleen voor rollen met een Grok-model: true = praat zonder filter. Alleen aanzetten als de baas erom vraagt."),
   uiterlijk: z
     .string()
     .describe("Engelse omschrijving voor een karikatuurportret: leeftijd, geslacht, afkomst, kleding, attribuut van het beroep, karakter"),

@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { ErrorNote, Spinner, toError } from "@/components/ui";
 
-type Key = "anthropic" | "openai" | "elevenlabs";
+type Key = "anthropic" | "openai" | "google" | "xai" | "elevenlabs";
 type Info = { keys: Record<Key, string | null>; models: { key: string; label: string; provider: string; model: string }[] };
 
 const PROVIDERS: { key: Key; name: string; waarvoor: string; waar: string }[] = [
   { key: "anthropic", name: "Anthropic (Claude)", waarvoor: "Rollen die met Claude praten, het samenstellen van het team en de Jury.", waar: "console.anthropic.com → API Keys" },
   { key: "openai", name: "OpenAI (GPT)", waarvoor: "Rollen die met GPT praten, de portretten en inspreken als je browser dat niet zelf kan.", waar: "platform.openai.com → API keys" },
+  { key: "google", name: "Google (Gemini)", waarvoor: "Rollen die met Gemini praten. Optioneel.", waar: "aistudio.google.com → Get API key" },
+  { key: "xai", name: "xAI (Grok)", waarvoor: "Rollen die met Grok praten, ook ongezouten als je dat aanzet. Optioneel.", waar: "console.x.ai → API Keys" },
   { key: "elevenlabs", name: "ElevenLabs", waarvoor: "Stemmen: de rollen praten hardop. Optioneel.", waar: "elevenlabs.io → Profiel → API Keys" },
 ];
 

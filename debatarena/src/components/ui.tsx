@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Mood } from "@/lib/types";
 import { initials } from "@/lib/text";
+import { providerOf } from "@/lib/config";
 
 export function ErrorNote({ error, onClose }: { error: { message: string; oplossing?: string } | null; onClose?: () => void }) {
   if (!error) return null;
@@ -109,4 +110,25 @@ export function Portrait({
 
 export function Spinner({ className = "" }: { className?: string }) {
   return <span className={`inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin ${className}`} />;
+}
+
+/** Laat zien welke AI deze rol speelt: Claude, ChatGPT, Gemini of Grok. */
+export function AiBadge({
+  role,
+  size = "sm",
+}: {
+  role: { modelKey: string; customModel?: string | null; ongezouten?: boolean };
+  size?: "xs" | "sm";
+}) {
+  const p = providerOf(role);
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full font-semibold whitespace-nowrap ${size === "xs" ? "text-[10px] px-1.5 py-px" : "text-[11px] px-2 py-0.5"}`}
+      style={{ background: p.kleur, color: p.tekst }}
+      title={`Deze rol wordt gespeeld door ${p.naam}${role.ongezouten ? ", zonder filter" : ""}`}
+    >
+      {p.naam}
+      {role.ongezouten && <span aria-label="ongezouten">🌶️</span>}
+    </span>
+  );
 }

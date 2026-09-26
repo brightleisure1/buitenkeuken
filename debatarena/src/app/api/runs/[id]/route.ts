@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { attachmentsFor, runAttachments } from "@/lib/attachments";
-import { MAX_ROUNDS, MODELS } from "@/lib/config";
+import { MAX_ROUNDS, MODELS, resolveModel } from "@/lib/config";
 import { prepare } from "@/lib/prep";
 import { nextStep } from "@/lib/planner";
 import { body, handle } from "@/lib/route";
@@ -37,7 +37,12 @@ export const PATCH = handle(async (req: Request, { params }: Ctx) => {
     patch.cast = {
       ...c,
       rondes: Math.min(MAX_ROUNDS, Math.max(1, Math.round(Number(c.rondes) || 3))),
-      rollen: c.rollen.map((r) => ({ ...r, customModel: r.customModel?.trim() || null })),
+      rollen: c.rollen.map((r) => {
+        const customModel = r.customModel?.trim() || null;
+        // Ongezouten kan alleen bij Grok.
+        const ongezouten = !!r.ongezouten && resolveModel(r.modelKey, customModel).provider === "xai";
+        return { ...r, customModel, ongezouten };
+      }),
     };
   }
   if (input.result_checks) patch.result_checks = input.result_checks;

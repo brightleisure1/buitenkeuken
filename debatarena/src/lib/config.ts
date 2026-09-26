@@ -6,7 +6,21 @@
  * Controleer ze af en toe; aanbieders passen prijzen aan.
  */
 
-export type Provider = "anthropic" | "openai";
+export type Provider = "anthropic" | "openai" | "google" | "xai";
+
+/** Hoe de aanbieder in de UI heet, met een eigen kleur zodat je ziet wie wie is. */
+export const PROVIDERS: Record<Provider, { naam: string; kleur: string; tekst: string }> = {
+  anthropic: { naam: "Claude", kleur: "#D97757", tekst: "#ffffff" },
+  openai: { naam: "ChatGPT", kleur: "#10A37F", tekst: "#ffffff" },
+  google: { naam: "Gemini", kleur: "#4285F4", tekst: "#ffffff" },
+  xai: { naam: "Grok", kleur: "#111111", tekst: "#ffffff" },
+};
+
+/** Gemini en Grok praten we aan via hun OpenAI-compatibele API. */
+export const COMPAT_BASE_URL: Partial<Record<Provider, string>> = {
+  google: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  xai: "https://api.x.ai/v1",
+};
 
 export interface ModelConfig {
   key: string;
@@ -18,12 +32,14 @@ export interface ModelConfig {
   /** USD per 1M tokens */
   inputPrice: number;
   outputPrice: number;
-  /** Anthropic: web search tool-type; OpenAI: altijd "web_search" */
+  /** Anthropic: web search tool-type (OpenAI zoekt altijd; Gemini/Grok niet) */
   webSearchTool?: string;
   /** Anthropic: effort-niveau voor debatbeurten (null = niet ondersteund) */
   effort?: "low" | "medium" | "high" | null;
-  /** OpenAI: reasoning-effort voor debatbeurten (null = geen reasoning-model) */
+  /** OpenAI/Gemini: reasoning-effort voor debatbeurten (null = niet meesturen) */
   reasoning?: "minimal" | "low" | "medium" | "high" | null;
+  /** Deel van de inputprijs dat gecachete input kost (standaard 10%) */
+  cachedFactor?: number;
   tier: "sterk" | "midden" | "snel";
 }
 
@@ -81,10 +97,52 @@ export const MODELS: ModelConfig[] = [
     reasoning: "low",
     tier: "snel",
   },
+  // Prijzen Gemini en Grok: stand september 2026, controleer ze af en toe.
+  {
+    key: "gemini-sterk",
+    label: "Gemini, sterkste",
+    provider: "google",
+    model: "gemini-3.1-pro",
+    inputPrice: 2,
+    outputPrice: 12,
+    reasoning: "low",
+    tier: "sterk",
+  },
+  {
+    key: "gemini-snel",
+    label: "Gemini, bliksemsnel",
+    provider: "google",
+    model: "gemini-3.8-flash",
+    inputPrice: 0.75,
+    outputPrice: 3.75,
+    reasoning: "low",
+    tier: "snel",
+  },
+  {
+    key: "grok-sterk",
+    label: "Grok, sterkste",
+    provider: "xai",
+    model: "grok-4.7",
+    inputPrice: 2,
+    outputPrice: 6,
+    cachedFactor: 0.25,
+    reasoning: null,
+    tier: "sterk",
+  },
+  {
+    key: "grok-snel",
+    label: "Grok, bliksemsnel",
+    provider: "xai",
+    model: "grok-4.3",
+    inputPrice: 1.25,
+    outputPrice: 2.5,
+    reasoning: null,
+    tier: "snel",
+  },
 ];
 
 /** Het snelle model dat de cast samenstelt, de chat afhandelt en hoogtepunten kiest. */
-export const FAST_MODEL_KEY = { anthropic: "claude-snel", openai: "gpt-snel" } as const;
+export const FAST_MODEL_KEY: Record<Provider, string> = { anthropic: "claude-snel", openai: "gpt-snel", google: "gemini-snel", xai: "grok-snel" };
 
 /** Anthropic prompt caching: lezen kost 10%, schrijven 125% van de inputprijs. */
 export const CACHE_READ_FACTOR = 0.1;
@@ -140,7 +198,11 @@ export function resolveModel(modelKey: string, customModel?: string | null): Mod
     ? "openai"
     : /^claude/i.test(custom)
       ? "anthropic"
-      : base.provider;
+      : /^gemini/i.test(custom)
+        ? "google"
+        : /^grok/i.test(custom)
+          ? "xai"
+          : base.provider;
   const known = MODELS.find((m) => m.model === custom);
   if (known) return known;
   return {
@@ -151,8 +213,18 @@ export function resolveModel(modelKey: string, customModel?: string | null): Mod
     model: custom,
     webSearchTool: provider === "anthropic" ? "web_search_20250305" : undefined,
     effort: null,
-    reasoning: provider === "openai" && /^(gpt-5|o\d)/i.test(custom) ? "low" : null,
+    reasoning: (provider === "openai" && /^(gpt-5|o\d)/i.test(custom)) || provider === "google" ? "low" : null,
   };
+}
+
+/** Kan dit model zelf op het web zoeken? (Gemini en Grok via de compatibele API niet.) */
+export function supportsWebSearch(m: ModelConfig) {
+  return m.provider === "openai" || (m.provider === "anthropic" && !!m.webSearchTool);
+}
+
+/** Welke AI speelt deze rol? Voor het label in de UI. */
+export function providerOf(role: { modelKey: string; customModel?: string | null }) {
+  return PROVIDERS[resolveModel(role.modelKey, role.customModel).provider];
 }
 
 export function usdToEur(usd: number) {
