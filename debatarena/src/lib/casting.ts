@@ -5,6 +5,7 @@ import { AppError } from "./errors";
 import { generateJson } from "./llm";
 import { CastChatSchema, CastSchema } from "./schemas";
 import { applyCliches, CLICHES } from "./cliches";
+import { fixJury } from "./jury";
 import { availableKeys } from "./settings";
 import type { Attachment, Cast, Role } from "./types";
 import { debateVoices, type Voice } from "./voices";
@@ -30,12 +31,12 @@ async function availableModels() {
 const SYSTEM = `Je bent de regisseur van de Debatarena: een app waarin AI-rollen hardop debatteren over een zakelijk vraagstuk. De gebruiker is "de baas" en kan altijd ingrijpen. Doelgroep: iedereen in het bedrijfsleven. Alles in gewone taal, zonder jargon.
 
 Jij stelt de cast samen. Castingregels:
-- 3 of 4 debaterende rollen plus precies één Jury (isJury=true). De Jury debatteert niet mee, maar weegt af en doet aan het eind uitspraak. Geef de Jury een sterk model.
+- 3 of 4 debaterende rollen plus precies één Jury (isJury=true). De Jury debatteert niet mee, maar weegt af en doet aan het eind uitspraak. De Jury is een slimme, nuchtere en scherpe voorzitter met overzicht: nooit ongecensureerd, geen cliché, en een sterk Claude- of GPT-model.
 - Het is een overleg binnen het bedrijf van de baas. De debaterende rollen zijn vrijwel allemaal collega's uit dat bedrijf (bijvoorbeeld directie, operatie, financiën, marketing/verkoop, HR, iemand van de werkvloer), gekozen bij wat het vraagstuk raakt. Leid het soort bedrijf af uit het vraagstuk en de bijlages.
 - Daarnaast zit er altijd precies één klant of gast van buiten aan tafel (isKritisch=true): degene die uiteindelijk betaalt, koopt of gebruikt, en daarom kritisch is. Noem de functie zo dat duidelijk is dat het de klant/gast is (bijv. "Gast, gezin met twee kinderen", "Klant, inkoper bij een groothandel").
 - Geen overlappende perspectieven. Elke rol bewaakt een ander belang.
 - Meng de AI's: gebruik zoveel mogelijk verschillende aanbieders uit de modellijst (Claude, ChatGPT, Gemini, Grok), zodat de baas ziet hoe ze van elkaar verschillen.
-- ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) voor een rol met een Grok-model als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los").
+- ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) bij een deelnemer als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los"). Kan bij elke deelnemer, nooit bij de Jury.
 - vergadercliches: standaard false en dan is cliche overal ''. Zet op true als de baas erom vraagt ("met vergaderclichés", "maak het herkenbaar", "net een echte vergadering"). Geef dan 2 tot 4 debaterende rollen elk een ander cliché uit de clichélijst dat past bij hun functie. De Jury nooit; de kritische klant liever niet.
 - Rollen geven nooit scores of complimenten. Ze komen met concrete bezwaren en concrete voorstellen. Zet dat in hun instructie.
 - Geef elke rol in de instructie ook een eigen manier van praten, zodat ze als echte mensen klinken en van elkaar verschillen: bijv. "praat kortaf en droog", "enthousiast, maakt veel vergelijkingen met thuis", "nuchter, rekent alles hardop voor", "vriendelijk maar laat zich niet afschepen".
@@ -190,10 +191,12 @@ export function normalizeCast(
 
   roles = [...debaters, jury[0]];
 
-  // Ongezouten kan alleen bij Grok; webzoeken alleen bij modellen die dat kunnen.
+  roles = roles.map((r) => fixJury(r, opts.models));
+
+  // Ongecensureerd kan bij elke deelnemer (fixJury houdt de Jury netjes); webzoeken alleen bij modellen die dat kunnen.
   for (const r of roles) {
     const m = getModel(r.modelKey);
-    r.ongezouten = !!r.ongezouten && (m?.provider === "xai" || /^grok/i.test(r.customModel ?? ""));
+    r.ongezouten = !!r.ongezouten && !r.isJury;
     if (m && !supportsWebSearch(m) && !r.customModel) r.webzoeken = false;
   }
 
@@ -281,7 +284,7 @@ export async function editCast(
   const { data, usage } = await generateJson(CastChatSchema, {
     model,
     system: SYSTEM,
-    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om vergaderclichés, zet vergadercliches=true en deel clichés uit; wil de baas ze weg, zet vergadercliches=false. Vraagt de baas een specifiek cliché voor een rol ("maak de CFO de Parkeerder"), zet dat cliché bij die rol. Vraagt de baas om een rol "zonder censuur" of "ongezouten", geef die rol dan een Grok-model (als dat in de lijst staat) en zet ongezouten=true. Wil de baas Grok weer "gecensureerd" of "netjes", zet ongezouten=false. Geef de volledige nieuwe cast terug.`,
+    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om vergaderclichés, zet vergadercliches=true en deel clichés uit; wil de baas ze weg, zet vergadercliches=false. Vraagt de baas een specifiek cliché voor een rol ("maak de CFO de Parkeerder"), zet dat cliché bij die rol. Vraagt de baas om een rol "zonder censuur" of "ongezouten", zet ongezouten=true bij die rol (niet bij de Jury); verander het model alleen als de baas daarom vraagt. Wil de baas een rol weer "gecensureerd" of "netjes", zet ongezouten=false. Geef de volledige nieuwe cast terug.`,
     maxTokens: 5000,
   });
   return {

@@ -1,7 +1,6 @@
 "use client";
 
 import type { Role, RolePrep } from "@/lib/types";
-import { getModel } from "@/lib/config";
 import { clicheOf } from "@/lib/cliches";
 import { AiBadge, CensorToggle, Portrait } from "./ui";
 
@@ -24,7 +23,6 @@ export function RoleCard({
   onToggleOngezouten?: () => void;
   onEdit?: () => void;
 }) {
-  const isGrok = getModel(role.modelKey)?.provider === "xai" || /^grok/i.test(role.customModel ?? "");
   return (
     <div className={`card p-4 flex gap-4 items-start animate-rise ${role.isJury ? "bg-sun" : ""}`} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="relative">
@@ -69,9 +67,9 @@ export function RoleCard({
             </Badge>
           ))}
         </div>
-        {isGrok && onToggleOngezouten && (
+        {!role.isJury && onToggleOngezouten && (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border-2 border-ink bg-cream px-3 py-2">
-            <span className="font-semibold text-sm">Grok-censuur:</span>
+            <span className="font-semibold text-sm">Censuur:</span>
             <CensorToggle value={!!role.ongezouten} onChange={(v) => v !== !!role.ongezouten && onToggleOngezouten()} />
           </div>
         )}

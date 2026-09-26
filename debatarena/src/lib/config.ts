@@ -171,6 +171,17 @@ export const TTS = {
   pricePer1kChars: 0.05,
 };
 
+/**
+ * Uitspraak: het snelle model laat Nederlands soms Vlaams klinken;
+ * het multilingual-model houdt het accent van de stem beter vast.
+ */
+export const TTS_MODELS = {
+  nederlands: { naam: "Beste Nederlands", model: "eleven_multilingual_v2", pricePer1kChars: 0.1 },
+  snel: { naam: "Snelst", model: "eleven_flash_v2_5", pricePer1kChars: 0.05 },
+} as const;
+export type TtsKeuze = keyof typeof TTS_MODELS;
+export const DEFAULT_TTS: TtsKeuze = "nederlands";
+
 export const STT = {
   model: "gpt-4o-mini-transcribe",
   /** USD per minuut audio */

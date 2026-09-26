@@ -12,6 +12,7 @@ type Info = {
   status: Partial<Record<KeyProvider, KeyStatus>>;
   usage: Record<string, { tokens: number; costEur: number; calls: number }>;
   models: { key: string; label: string; provider: string; model: string; gevraagd: string }[];
+  kostenlimiet: number;
 };
 type Err = { message: string; oplossing?: string } | null;
 
@@ -111,6 +112,8 @@ export default function SettingsPage() {
               ))}
             </ul>
           </section>
+
+          <LimitCard value={info.kostenlimiet} onSaved={setInfo} />
 
           {info.keys.elevenlabs && (
             <section className="card p-5 space-y-2">
@@ -341,5 +344,48 @@ function KeyRow({
         </p>
       )}
     </li>
+  );
+}
+
+function LimitCard({ value, onSaved }: { value: number; onSaved: (i: Info) => void }) {
+  const [v, setV] = useState(String(value).replace(".", ","));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string; oplossing?: string } | null>(null);
+  async function save() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const d = await api<Info>("/api/settings", { method: "POST", json: { kostenlimiet: Number(v.replace(",", ".")) } });
+      onSaved(d);
+      setMsg({ ok: true, text: "Opgeslagen. Geldt voor nieuwe vergaderingen." });
+    } catch (e) {
+      const err = toError(e);
+      setMsg({ ok: false, text: err.message, oplossing: err.oplossing });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="card p-5 space-y-2">
+      <h2 className="font-display font-extrabold text-lg">💶 Kostenlimiet per vergadering</h2>
+      <p className="text-sm text-ink/70">
+        Vóór elke beurt kijkt de app hoeveel de vergadering al gekost heeft. Is de limiet bereikt, dan start er geen nieuwe beurt en kies jij: verhogen, afronden of stoppen.
+        Per vergadering kun je de limiet nog aanpassen.
+      </p>
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <span className="font-semibold">€</span>
+        <input className="field !py-2 !w-32" inputMode="decimal" aria-label="Standaard kostenlimiet in euro" value={v} onChange={(e) => setV(e.target.value)} />
+        <button className="btn-primary !py-2" disabled={busy}>
+          {busy ? <Spinner /> : "Opslaan"}
+        </button>
+      </form>
+      {msg && (msg.ok ? <p className="text-sm rounded-xl bg-mint px-3 py-2">✓ {msg.text}</p> : <ErrorNote error={{ message: msg.text, oplossing: msg.oplossing }} />)}
+    </section>
   );
 }

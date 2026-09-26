@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getModel, resolveModel, supportsWebSearch } from "@/lib/config";
+import { resolveModel, supportsWebSearch } from "@/lib/config";
 import { CLICHES } from "@/lib/cliches";
 import type { Cast, Role } from "@/lib/types";
 import { CensorToggle, Switch } from "./ui";
@@ -163,9 +163,9 @@ export function CastEditor({
                 Webzoeken
                 {!supportsWebSearch(resolveModel(r.modelKey, r.customModel)) && <span className="text-xs">(kan dit model niet)</span>}
               </label>
-              {(getModel(r.modelKey)?.provider === "xai" || /^grok/i.test(r.customModel ?? "")) && (
+              {!r.isJury && (
                 <span className="flex items-center gap-2">
-                  Grok: <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => setRole(r.id, { ongezouten: v })} />
+                  Censuur: <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => setRole(r.id, { ongezouten: v })} />
                 </span>
               )}
               {!r.isJury && (

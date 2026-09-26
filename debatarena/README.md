@@ -7,20 +7,23 @@ Laat een team van AI-rollen hardop debatteren over jouw vraagstuk. Jij bent de b
 1. **Stel je vraag.** Typ of spreek in waar je over wilt debatteren. Sleep er desgewenst bestanden bij (pdf, Word, Excel, csv, tekst of afbeeldingen).
 2. **Klik op "Stel samen".** Binnen een paar seconden staat er een team klaar: drie of vier rollen met elk een eigen belang, plus een Jury. Er zit altijd een kritische klant of koper bij.
 3. **Pas aan als je wilt.** Zeg het gewoon: "Maak de inkoper strenger", "Voeg een jurist toe" of "Maar 2 rondes". Wie alles zelf wil regelen, vindt de knoppen onder *Geavanceerd*.
-4. **Start het debat.** Terwijl jij kijkt, hebben de rollen hun huiswerk gedaan: ze lezen jouw bijlages, zoeken op het web en nemen maximaal vijf feiten met bron mee. Is dat nog bezig, dan zie je live wat ze bekijken.
-5. **Grijp in wanneer je wilt.**
+4. **Start het debat.** Eerst doen de rollen hun huiswerk: ze lezen jouw bijlages, zoeken op het web en nemen maximaal vijf feiten met bron mee. Je ziet hoeveel er al klaar zijn, op wie je nog wacht en wat die aan het bekijken is. Na uiterlijk twee minuten begint het debat vanzelf, of je klikt op *Nu beginnen*.
+5. **De opening.** De Jury zit de vergadering voor. Die heet iedereen welkom (ook de gast), zegt waarom jullie er zitten en welk besluit je aan het eind wilt nemen, legt uit hoe het gaat en geeft het woord aan de eerste spreker.
+6. **Grijp in wanneer je wilt.**
    - **Hand opsteken**: de spreker stopt direct, jij hebt het woord.
    - **Stop**: het debat staat stil. Daarna ga je verder of rond je af.
    - **Hamer**: je neemt een besluit. Vanaf dan gaat iedereen daarvan uit.
    - **Richting geven**: stuur het gesprek een kant op.
    - **Vraag aan één rol**: die rol antwoordt als eerste.
-6. **De uitspraak.** De Jury vraagt of je nog iets wilt zeggen en doet dan uitspraak. Je krijgt een samenvatting, je besluiten, een strategie, de aannames (afvinkbaar), de punten van onenigheid, de bronnen en het hele gesprek.
+7. **De uitspraak.** De Jury vraagt of je nog iets wilt zeggen en doet dan uitspraak. Je krijgt een samenvatting, je besluiten, een strategie, de aannames (afvinkbaar), de punten van onenigheid, de bronnen en het hele gesprek.
+
+De tekst verschijnt in een rustig leestempo, woord voor woord, en de volgende spreker wacht tot je hem hebt kunnen lezen. Onderaan kies je 📖 **Rustig**, **Normaal** of **Snel**. Met stemmen aan loopt de tekst gelijk op met de stem.
 
 Een uitspraak zonder bron noemen we *onbewezen*. Die komt vanzelf bij de aannames terecht, zodat je weet wat je nog moet checken.
 
 ## Persona's aanpassen
 
-Klik op een rolkaart op **✏️ Aanpassen**. Daar pas je alles van een persona aan: naam, functie, waar hij op let, zijn instructie en manier van praten, welke AI hem speelt, zijn stem (met luisterknop), webzoeken, zijn vergadercliché en bij Grok de censuur. Met *Nieuw portret* tekent de tekenaar hem opnieuw. Tijdens de vergadering kan het ook: tik op een portret en kies *Persona aanpassen*.
+Klik op een rolkaart op **✏️ Aanpassen**. Daar pas je alles van een persona aan: naam, functie, waar hij op let, zijn instructie en manier van praten, welke AI hem speelt, zijn stem (met luisterknop), webzoeken, zijn vergadercliché en de censuur. Met *Nieuw portret* tekent de tekenaar hem opnieuw. Tijdens de vergadering kan het ook: tik op een portret en kies *Persona aanpassen*.
 
 De rollen zijn collega's uit je eigen bedrijf, en er zit altijd één klant of gast bij. Iedereen denkt vanuit Nederlandse bedrijven en praat zoals mensen aan tafel echt praten.
 
@@ -32,7 +35,9 @@ Met **⏹ Stop** staat alles direct stil, ook het geluid. Je kiest dan: verder v
 
 Op de resultaatpagina staat **🎧 Beluister de vergadering**: de vergadering wordt afgespeeld met een stem voor elke rol en ook voor jou als baas. Wat nog niet was ingesproken, wordt dan ingesproken en bewaard. Met **⬇ Download als mp3** krijg je de hele vergadering als één audiobestand.
 
-Bij *Instellingen → Stemmen* zie je al je ElevenLabs-stemmen. De app herkent je Nederlandse stemmen en gebruikt die automatisch. Je kunt ook zelf aanvinken welke stemmen meedoen.
+Bij *Instellingen → Stemmen* zie je al je ElevenLabs-stemmen. De app herkent je Nederlandse stemmen en gebruikt die automatisch. Stemmen met een Vlaams of Belgisch accent (🇧🇪) doen nooit automatisch mee. Je kunt ook zelf aanvinken welke stemmen meedoen.
+
+Bij **Uitspraak** kies je het stemmodel. *Beste Nederlands* (standaard) houdt het Nederlandse accent goed vast. *Snelst* reageert iets vlotter, maar klinkt soms Vlaams.
 
 ## Als een AI het niet doet
 
@@ -48,7 +53,7 @@ De app vraagt zelf op welke modellen jouw sleutels mogen gebruiken. Bestaat een 
 
 ## Stemmen
 
-Met een ElevenLabs-sleutel praten de rollen hardop. Kies uit: uit, alleen de Jury, of iedereen (dan zijn beurten maximaal 80 woorden). Het tempo zet je op 1x, 1,25x of 1,5x. Stop en Hand opsteken kappen het geluid direct af.
+Met een ElevenLabs-sleutel praten de rollen hardop. Kies uit: uit, alleen de Jury, of iedereen (dan zijn beurten maximaal 80 woorden). Het tempo (Rustig, Normaal, Snel) geldt ook voor de stemmen. Stop en Hand opsteken kappen het geluid direct af.
 
 ## Installeren
 
@@ -86,11 +91,13 @@ Het team krijgt zoveel mogelijk verschillende AI's. Wil je het anders, zeg dan b
 
 Gemini en Grok zoeken zelf niet op het web. Ze doen hun huiswerk met jouw bijlages.
 
-### Grok: gecensureerd of ongecensureerd
+### Gecensureerd of ongecensureerd
 
-Elke Grok-rol heeft een schakelaar: **Gecensureerd** (standaard) of **Ongecensureerd**. Ongecensureerd zegt Grok alles zonder filter: brutaal, sarcastisch en vloeken mag. Hij prikt door mooie praatjes heen, ook die van jou. Hij sloopt wel argumenten, niet mensen om wie ze zijn.
+Elke deelnemer heeft een schakelaar: **Gecensureerd** (standaard) of **🌶️ Ongecensureerd**. Ongecensureerd zegt die rol alles zonder filter: brutaal, sarcastisch, en vloeken mag en gebeurt ook echt. Hij prikt door mooie praatjes heen, ook die van jou. Hij sloopt wel argumenten, niet mensen om wie ze zijn. Grok gaat het verst; Claude, ChatGPT en Gemini worden ook scherp, maar blijven iets netter.
 
-De schakelaar staat op de kaart van de Grok-rol, onder *Geavanceerd* en onderaan in de arena, zodat je hem ook midden in het debat kunt omzetten. Je kunt het ook gewoon zeggen: "Laat Grok zonder censuur los" of "Maak Grok weer gecensureerd". Een ongecensureerde rol herken je aan het pepertje 🌶️.
+De schakelaars staan op het voorstelscherm (*Censuur per deelnemer*), op elke rolkaart en in de arena bovenaan onder **🌶️ Censuur**, zodat je ze ook midden in het debat kunt omzetten. Je kunt het ook gewoon zeggen: "Laat de CFO zonder censuur los" of "Maak Grok weer gecensureerd". Een ongecensureerde rol herken je aan het pepertje 🌶️.
+
+De Jury is nooit ongecensureerd. Dat is altijd een slimme, nuchtere voorzitter, gespeeld door een sterk model (Claude of ChatGPT, nooit Grok).
 
 ## Vergaderclichés
 
@@ -102,6 +109,10 @@ Welke rol welk type speelt, kies je zelf onder *Geavanceerd*. De Jury laat het g
 
 Onderaan in de arena zie je de kosten en het aantal tokens tot nu toe. Klik erop voor de uitsplitsing: per rol (met welke AI), per onderdeel (samenstellen, portretten, huiswerk, beurten, uitspraak, stemmen) en per model. Je ziet ook hoeveel tokens uit de cache kwamen; die kosten maar een fractie. Hetzelfde overzicht staat op de resultaatpagina, en in *Geschiedenis* zie je per debat de kosten en tokens.
 
+## Kostenlimiet per vergadering
+
+Elke vergadering heeft een maximum, standaard **€ 2**. Onderaan in de arena zie je "€ 0,45 van max € 2,00"; vanaf 80% wordt dat oranje. Is het maximum bereikt, dan praat er niemand meer en kies je: **+ € 1 en verder**, **Afronden** (de Jury mag altijd nog uitspraak doen) of **Beëindigen**. Het standaardbedrag stel je in bij *Instellingen*; per vergadering pas je het aan op het voorstelscherm (💶 Max €).
+
 ## Modellen en kosten
 
 Alle modellen en prijzen staan in één bestand: `src/lib/config.ts`. In de app zie je vriendelijke namen zoals "Claude, sterkste". Wil je per rol een ander model, vul dan onder *Geavanceerd* een eigen modelnaam in.
@@ -112,7 +123,7 @@ Om kosten te besparen onthoudt de app de vaste context (vraagstuk, bijlages, hui
 
 ## Inspreken
 
-Overal waar je kunt typen, kun je ook inspreken. De app gebruikt de spraakherkenning van je browser (Nederlands). Kan je browser dat niet, dan neemt de app je stem op en laat OpenAI hem uitschrijven.
+Overal waar je kunt typen, kun je ook inspreken. Klik op de microfoon, praat, en druk op **Stuur ➤** als je klaar bent (of nog een keer op de microfoon). De app gebruikt de spraakherkenning van je browser (Nederlands). Kan je browser dat niet, dan neemt de app je stem op en laat OpenAI hem uitschrijven.
 
 ## Pagina's
 

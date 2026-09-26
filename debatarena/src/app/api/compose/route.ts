@@ -3,6 +3,7 @@ import { composeCast } from "@/lib/casting";
 import { AppError } from "@/lib/errors";
 import { prepare } from "@/lib/prep";
 import { body, handle } from "@/lib/route";
+import { defaultLimit } from "@/lib/budget";
 import { getRun } from "@/lib/runs";
 import type { Usage } from "@/lib/usage";
 import { recordUsage } from "@/lib/usage-db";
@@ -54,6 +55,7 @@ export const POST = handle(async (req: Request) => {
     usage = r.usage;
   }
 
+  if (cast.kostenlimiet === undefined) cast = { ...cast, kostenlimiet: await defaultLimit() };
   const { count } = await db().from("runs").select("id", { count: "exact", head: true });
   const { data: run, error } = await db()
     .from("runs")

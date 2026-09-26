@@ -116,7 +116,7 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await noOverflow(page, "voorstel");
   });
 
-  await step(`[${label}] Grok ongecensureerd zetten en clichés aan/uit`, async () => {
+  await step(`[${label}] deelnemer ongecensureerd zetten en clichés aan/uit`, async () => {
     await page.getByRole("radio", { name: /Ongecensureerd/ }).first().click();
     await page.getByText("🌶️ Ongecensureerd").first().waitFor();
     const sw = page.getByRole("switch", { name: /Vergaderclichés/ });
@@ -150,6 +150,8 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     assert.ok(said.length > 0, "met stemmen aan wordt er hardop gesproken");
     assert.ok(!(await page.getByText("🎭").count()), "clichés niet zichtbaar in de arena");
     assert.ok(await page.getByText("Anneke", { exact: true }).count(), "'Dr.' niet als voornaam");
+    assert.ok(await page.getByText(/opent de vergadering/).count(), "de voorzitter opent de vergadering");
+    assert.ok(await page.getByRole("radiogroup", { name: "Tempo" }).count(), "leestempo instelbaar");
     await page.getByRole("button", { name: /tokens/ }).click();
     await page.getByText("Tokens en kosten van dit debat").waitFor();
     await page.getByText("Per rol").waitFor();
@@ -175,8 +177,12 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.getByText("We verhogen niet voor juni").first().waitFor();
   });
 
-  await step(`[${label}] Grok midden in het debat terugzetten naar gecensureerd`, async () => {
+  await step(`[${label}] censuur per deelnemer midden in het debat aanpassen`, async () => {
+    await page.getByRole("button", { name: /🌶️ Censuur: 1 ongecensureerd/ }).click();
+    await shot("4a-censuur");
+    await noOverflow(page, "censuur");
     await page.getByRole("radio", { name: "Gecensureerd" }).first().click();
+    await page.getByRole("button", { name: /🌶️ Censuur ▴/ }).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll("[role=radio][aria-checked=true]")].some((b) => b.textContent === "Gecensureerd"));
   });
 

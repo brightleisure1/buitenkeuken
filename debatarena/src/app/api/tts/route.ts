@@ -1,11 +1,12 @@
 import { after } from "next/server";
-import { TTS } from "@/lib/config";
 import { AppError } from "@/lib/errors";
 import { body, handle } from "@/lib/route";
+import { assertBudget } from "@/lib/budget";
+import { getRun } from "@/lib/runs";
 import { emptyUsage } from "@/lib/usage";
 import { recordUsage } from "@/lib/usage-db";
 import { db, upload } from "@/lib/supabase";
-import { ttsStream } from "@/lib/voices";
+import { currentTts, ttsStream } from "@/lib/voices";
 
 export const maxDuration = 60;
 
@@ -24,6 +25,7 @@ export const POST = handle(async (req: Request) => {
   if (!msg || msg.run_id !== runId) throw new AppError("Dit bericht bestaat niet.", "Herlaad de pagina.");
   const cached = (msg.audio as { idx: number; url: string }[]).find((a) => a.idx === idx);
   if (cached) return Response.redirect(cached.url, 302);
+  assertBudget(await getRun(runId), "nieuwe stemmen inspreken");
 
   const spoken = text.replace(/\*[^*]+\*/g, "").replace(/\s+/g, " ").trim();
   if (!spoken) return new Response(null, { status: 204 });
@@ -41,9 +43,10 @@ export const POST = handle(async (req: Request) => {
     if (!buf.length) return;
     const url = await upload("audio", `${runId}/${messageId}-${idx}.mp3`, buf, "audio/mpeg");
     await db().rpc("add_audio", { p_msg: messageId, p_item: { idx, url } });
-    const u = emptyUsage("elevenlabs", TTS.model);
+    const tts = await currentTts();
+    const u = emptyUsage("elevenlabs", tts.model);
     u.units = text.length;
-    u.costUsd = (text.length / 1000) * TTS.pricePer1kChars;
+    u.costUsd = (text.length / 1000) * tts.pricePer1kChars;
     await recordUsage(runId, "stem", u, msg.role_id);
   });
   return new Response(toClient, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });

@@ -2,6 +2,7 @@ import { fastModel } from "@/lib/casting";
 import { generateText } from "@/lib/llm";
 import { historyBlocks, quipInstruction, roleSystem } from "@/lib/prompts";
 import { body, handle } from "@/lib/route";
+import { assertBudget } from "@/lib/budget";
 import { getMessages, getRun, roleById } from "@/lib/runs";
 import { recordUsage } from "@/lib/usage-db";
 
@@ -10,6 +11,7 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
   const { id } = await params;
   const { roleId } = await body<{ roleId?: string }>(req);
   const run = await getRun(id);
+  assertBudget(run, "een extra zinnetje");
   const role = roleById(run, roleId);
   if (!role) return Response.json({ text: "" });
   const messages = await getMessages(id);

@@ -1,12 +1,12 @@
-import { TTS } from "@/lib/config";
 import { AppError } from "@/lib/errors";
 import { handle } from "@/lib/route";
+import { assertBudget } from "@/lib/budget";
 import { getMessages, getRun } from "@/lib/runs";
 import { voiceMap } from "@/lib/stemmen";
 import { db, download, upload } from "@/lib/supabase";
 import { emptyUsage } from "@/lib/usage";
 import { recordUsage } from "@/lib/usage-db";
-import { ttsStream } from "@/lib/voices";
+import { currentTts, ttsStream } from "@/lib/voices";
 
 export const maxDuration = 300;
 
@@ -21,6 +21,7 @@ export const GET = handle(async (_req: Request, { params }: { params: Promise<{ 
     throw new AppError("Er zijn geen stemmen beschikbaar.", "Voeg bij Instellingen een ElevenLabs-sleutel toe.");
   }
   const messages = (await getMessages(id)).filter((m) => (m.kind === "turn" || m.kind === "boss") && m.content);
+  if (messages.some((m) => !m.audio?.length)) assertBudget(run, "de ontbrekende stemmen inspreken");
   const parts: Buffer[] = [];
   let chars = 0;
   for (const m of messages) {
@@ -44,9 +45,10 @@ export const GET = handle(async (_req: Request, { params }: { params: Promise<{ 
     await db().rpc("add_audio", { p_msg: m.id, p_item: { idx: 1000, url } });
   }
   if (chars) {
-    const u = emptyUsage("elevenlabs", TTS.model);
+    const tts = await currentTts();
+    const u = emptyUsage("elevenlabs", tts.model);
     u.units = chars;
-    u.costUsd = (chars / 1000) * TTS.pricePer1kChars;
+    u.costUsd = (chars / 1000) * tts.pricePer1kChars;
     await recordUsage(id, "stem", u);
   }
   const name = (run.title ?? "vergadering").replace(/[^\w\- ]+/g, "").trim() || "vergadering";

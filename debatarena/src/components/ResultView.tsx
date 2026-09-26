@@ -73,7 +73,7 @@ export function ResultView({ id }: { id: string }) {
   }, []);
 
   if (!data) {
-    return <div className="flex-1 grid place-items-center p-6 text-center">{error ? <ErrorNote error={error} /> : <FunWait lines={LOADING_LINES} className="text-lg" />}</div>;
+    return <div className="flex-1 grid place-items-center p-6 text-center">{error ? <ErrorNote error={error} /> : <FunWait lines={LOADING_LINES} size="lg" />}</div>;
   }
 
   const { run, messages } = data;
@@ -83,9 +83,10 @@ export function ResultView({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-xl p-6 space-y-4 text-center">
         {making ? (
-          <p className="text-lg">
-            <FunWait lines={JURY_LINES} />
-          </p>
+          <div className="card p-6 bg-sun text-left">
+            <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-2">De Jury beraadslaagt</span>
+            <FunWait lines={JURY_LINES} size="lg" />
+          </div>
         ) : (
           <>
             <ErrorNote error={error} />

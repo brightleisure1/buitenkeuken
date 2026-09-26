@@ -1,7 +1,8 @@
 import { after } from "next/server";
 import { attachmentsFor, runAttachments } from "@/lib/attachments";
 import { applyCliches } from "@/lib/cliches";
-import { MAX_ROUNDS, MODELS, resolveModel } from "@/lib/config";
+import { fixJury } from "@/lib/jury";
+import { MAX_ROUNDS, MODELS } from "@/lib/config";
 import { prepare } from "@/lib/prep";
 import { nextStep } from "@/lib/planner";
 import { body, handle } from "@/lib/route";
@@ -43,17 +44,18 @@ export const PATCH = handle(async (req: Request, { params }: Ctx) => {
   const patch: Partial<Run> = {};
   if (input.cast) {
     const c = input.cast;
-    const before = input.handmatig ? null : await getRun(id);
-    // Clichés alleen automatisch uitdelen als de schakelaar net aan is gezet.
-    const autoFill = !!c.cliches && !!before && !before.cast.cliches;
+    const before = await getRun(id);
+    // Clichés alleen automatisch uitdelen als de schakelaar net aan is gezet (niet bij handmatige keuze).
+    const autoFill = !input.handmatig && !!c.cliches && !before.cast.cliches;
     patch.cast = applyCliches({
       ...c,
       rondes: Math.min(MAX_ROUNDS, Math.max(1, Math.round(Number(c.rondes) || 3))),
+      kostenlimiet:
+        c.kostenlimiet === null ? null : Number(c.kostenlimiet) > 0 ? Math.round(Number(c.kostenlimiet) * 100) / 100 : (before.cast.kostenlimiet ?? null),
       rollen: c.rollen.map((r) => {
         const customModel = r.customModel?.trim() || null;
-        // Ongezouten kan alleen bij Grok.
-        const ongezouten = !!r.ongezouten && resolveModel(r.modelKey, customModel).provider === "xai";
-        return { ...r, customModel, ongezouten };
+        // Ongecensureerd kan bij elke deelnemer; fixJury houdt de Jury netjes.
+        return fixJury({ ...r, customModel, ongezouten: !!r.ongezouten });
       }),
     }, autoFill);
   }

@@ -12,10 +12,13 @@ export function nextStep(run: Run, messages: Message[]): Step {
 
   const wrappedUp = messages.some((m) => m.kind === "system" && m.meta.wrapUp);
 
+  // Een vergadering begint met een opening door de voorzitter (de Jury).
+  if (jury && !turns.length && !wrappedUp) return { type: "turn", roleId: jury.id, round: 1, meta: { opening: true } };
+
   // Hoeveelste ronde loopt er?
   let current = R;
   for (let r = 1; r <= R; r++) {
-    const spoken = new Set(turns.filter((t) => t.round === r && !t.meta.extra && !t.meta.answer).map((t) => t.role_id));
+    const spoken = new Set(turns.filter((t) => t.round === r && isRegular(t)).map((t) => t.role_id));
     if (debaters.some((d) => !spoken.has(d.id))) {
       current = r;
       break;
@@ -31,7 +34,7 @@ export function nextStep(run: Run, messages: Message[]): Step {
 
   if (!wrappedUp) {
     for (let r = 1; r <= R; r++) {
-      const regular = turns.filter((t) => t.round === r && !t.meta.extra && !t.meta.answer);
+      const regular = turns.filter((t) => t.round === r && isRegular(t));
       const spoken = new Set(regular.map((t) => t.role_id));
       // Laatkomers en rondvraagterroristen komen in hun ronde als laatste aan het woord.
       const next = orderForRound(debaters, r, R).find((d) => !spoken.has(d.id));
@@ -56,6 +59,11 @@ export function nextStep(run: Run, messages: Message[]): Step {
 
   if (!run.result) return { type: "result" };
   return { type: "done" };
+}
+
+/** Een gewone beurt in de ronde: geen extra beurt, antwoord, opening of uitspraak. */
+function isRegular(t: Message) {
+  return !t.meta.extra && !t.meta.answer && !t.meta.opening && !t.meta.verdict;
 }
 
 export function currentRound(run: Run, messages: Message[]) {

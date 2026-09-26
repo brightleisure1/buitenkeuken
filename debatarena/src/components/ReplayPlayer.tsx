@@ -6,7 +6,14 @@ import { TAG_MOOD } from "@/lib/text";
 import type { Highlight, Message, Mood, Role } from "@/lib/types";
 import { Stage, firstName, type FeedItem } from "./Stage";
 
-const SPEEDS = [1, 2, 4];
+const SPEEDS = [1, 1.5, 2, 4];
+
+/** Alleen hele woorden laten zien, dan springt er niets. */
+function wordCut(full: string, n: number) {
+  if (n >= full.length) return full;
+  const i = full.lastIndexOf(" ", n);
+  return i > 0 ? full.slice(0, i) : "";
+}
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Regieaanwijzingen (*pakt spullen in*) niet uitspreken. */
 const speakable = (t: string) => t.replace(/\*[^*]+\*/g, "").replace(/\s+/g, " ").trim();
@@ -113,17 +120,17 @@ export function ReplayPlayer({
         prefetch(items[i + 1]);
       }
       const total = m.content.length;
-      // Met stem: ongeveer op spreektempo meelezen; zonder stem: vlot doorlezen.
-      const step = voiced ? 0.7 : 3;
+      // Met stem: op spreektempo meelezen; zonder stem: rustig leestempo (tekens per seconde).
+      const cps = voiced ? 14 : 19;
       for (let c = 0; c < total; ) {
         if (runRef.current !== token) return;
-        c = Math.min(total, c + step * speedRef.current);
+        c = Math.min(total, c + cps * speedRef.current * 0.05);
         setShown(Math.floor(c));
-        await sleep(40);
+        await sleep(50);
       }
       await speech.idle();
       if (runRef.current !== token) return;
-      await sleep(700 / speedRef.current);
+      await sleep(1400 / speedRef.current);
     }
     if (runRef.current === token) setPlaying(false);
   }
@@ -150,7 +157,7 @@ export function ReplayPlayer({
   if (started) {
     items.slice(0, index + 1).forEach((m, i) => {
       const current = i === index;
-      const text = current && playing ? m.content.slice(0, shown) : m.content;
+      const text = current && playing ? wordCut(m.content, shown) : m.content;
       const streaming = current && playing && shown < m.content.length;
       const note = onlyHighlights ? highlights?.find((h) => h.messageId === m.id)?.waarom : m.meta.interrupted ? "onderbroken" : undefined;
       feed.push({ id: m.id, who: m.kind === "boss" ? "baas" : m.role_id!, text, tag: m.tag, sources: streaming ? [] : m.sources, streaming, note });
@@ -159,7 +166,7 @@ export function ReplayPlayer({
   const cur = items[Math.min(index, items.length - 1)];
   const role = roles.find((r) => r.id === cur?.role_id);
   const mood: Mood = cur?.tag ? TAG_MOOD[cur.tag] : "neutraal";
-  const roundLabel = !started ? "Terugkijken" : cur?.meta.verdict ? "Uitspraak" : onlyHighlights ? "Hoogtepunten" : `Ronde ${cur?.round ?? 1} van ${rounds}`;
+  const roundLabel = !started ? "Terugkijken" : cur?.meta.verdict ? "Uitspraak" : cur?.meta.opening ? "Opening" : onlyHighlights ? "Hoogtepunten" : `Ronde ${cur?.round ?? 1} van ${rounds}`;
 
   return (
     <div className={`flex flex-col ${fullHeight ? "h-[100dvh]" : "h-[calc(100dvh-58px)]"}`}>
@@ -200,7 +207,7 @@ export function ReplayPlayer({
           <span className="flex items-center gap-1 shrink-0">
             {SPEEDS.map((s) => (
               <button key={s} onClick={() => setSpeed(s)} className={`rounded-full px-2.5 py-1 border-2 ${speed === s ? "bg-ink text-cream border-ink" : "border-ink/30 bg-white"}`}>
-                {s}x
+                {String(s).replace(".", ",")}x
               </button>
             ))}
           </span>

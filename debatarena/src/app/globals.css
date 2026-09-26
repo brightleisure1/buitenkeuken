@@ -57,6 +57,24 @@ body {
 }
 .animate-rise { animation: rise 0.3s ease-out both; }
 
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.12); }
+}
+.animate-wiggle { animation: wiggle 1.1s ease-in-out infinite; display: inline-block; }
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(228 87 46 / 0.45), 3px 3px 0 0 var(--color-ink); }
+  50% { box-shadow: 0 0 0 8px rgb(228 87 46 / 0), 3px 3px 0 0 var(--color-ink); }
+}
+.animate-glow { animation: glow 1.6s ease-out infinite; }
+
+@keyframes floaty {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -5px); }
+}
+.animate-floaty { animation: floaty 1.4s ease-in-out infinite; }
+
 @keyframes caret { 50% { opacity: 0; } }
 .caret::after {
   content: "▍";

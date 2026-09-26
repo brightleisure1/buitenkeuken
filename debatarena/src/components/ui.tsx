@@ -193,7 +193,7 @@ export function Switch({ checked, onChange, children, disabled }: { checked: boo
 export function CensorToggle({ value, onChange, size = "sm" }: { value: boolean; onChange: (ongecensureerd: boolean) => void; size?: "xs" | "sm" }) {
   return (
     <Segmented
-      label="Grok gecensureerd of ongecensureerd"
+      label="Gecensureerd of ongecensureerd"
       size={size}
       value={value ? "uit" : "aan"}
       onChange={(v) => onChange(v === "uit")}

@@ -1,5 +1,5 @@
 import "server-only";
-import { TTS } from "./config";
+import { DEFAULT_TTS, TTS, TTS_MODELS, type TtsKeuze } from "./config";
 import { AppError, friendly } from "./errors";
 import { getKey, getSetting, requireKey, setSetting } from "./settings";
 
@@ -7,8 +7,10 @@ export interface Voice {
   id: string;
   naam: string;
   omschrijving: string;
-  /** Spreekt (ook) Nederlands */
+  /** Spreekt Nederlands (uit Nederland) */
   nl: boolean;
+  /** Vlaams/Belgisch accent: doet niet automatisch mee */
+  vlaams: boolean;
   /** Eigen/toegevoegde stem (geen standaard ElevenLabs-stem) */
   eigen: boolean;
   gender: "man" | "vrouw" | null;
@@ -28,7 +30,19 @@ interface ElVoice {
   fine_tuning?: { language?: string | null } | null;
 }
 
-const NL = /\b(nl|nl-nl|nl-be|dutch|nederlands|netherlands|flemish|vlaams|belgian)\b/i;
+const NL = /\b(nl|nl-nl|dutch|nederlands|netherlands|holland|hollands)\b/i;
+const VLAAMS = /\b(nl-be|flemish|vlaams|vlaamse|belgian|belgisch|belgium|belgië|antwerp|antwerpen|gent|ghent)\b/i;
+
+/** Stem met een Vlaams/Belgisch accent (die willen we niet voor een Nederlandse vergadering). */
+export function isFlemish(v: ElVoice) {
+  const l = v.labels ?? {};
+  return (
+    VLAAMS.test(`${l.language ?? ""} ${l.accent ?? ""} ${l.description ?? ""}`) ||
+    (v.verified_languages ?? []).some((x) => /^nl-be/i.test(x.locale ?? "") || VLAAMS.test(x.accent ?? "")) ||
+    VLAAMS.test(v.name) ||
+    VLAAMS.test(v.description ?? "")
+  );
+}
 
 export function isDutch(v: ElVoice) {
   const l = v.labels ?? {};
@@ -54,13 +68,14 @@ export async function fetchVoices(key: string): Promise<Voice[]> {
         omschrijving: [v.labels?.gender, v.labels?.age, v.labels?.accent, v.labels?.description ?? v.labels?.descriptive, v.labels?.use_case]
           .filter(Boolean)
           .join(", "),
-        nl: isDutch(v),
+        nl: isDutch(v) && !isFlemish(v),
+        vlaams: isFlemish(v),
         eigen: (v.category ?? "premade") !== "premade",
         gender: g.startsWith("m") ? ("man" as const) : g.startsWith("f") || g.startsWith("v") ? ("vrouw" as const) : null,
         preview: v.preview_url ?? null,
       };
     })
-    .sort((a, b) => Number(b.nl) - Number(a.nl) || Number(b.eigen) - Number(a.eigen) || a.naam.localeCompare(b.naam));
+    .sort((a, b) => Number(b.nl) - Number(a.nl) || Number(a.vlaams) - Number(b.vlaams) || Number(b.eigen) - Number(a.eigen) || a.naam.localeCompare(b.naam));
 }
 
 /** Alle stemmen uit je ElevenLabs-bibliotheek, een uur gecachet. Leeg zonder sleutel. */
@@ -68,7 +83,7 @@ export async function listVoices(): Promise<Voice[]> {
   const key = await getKey("elevenlabs");
   if (!key) return [];
   const cached = await getSetting<{ at: number; voices: Voice[] }>("voices_cache");
-  if (cached && Date.now() - cached.at < 3600_000 && cached.voices.length && "nl" in cached.voices[0]) return cached.voices;
+  if (cached && Date.now() - cached.at < 3600_000 && cached.voices.length && "vlaams" in cached.voices[0]) return cached.voices;
   try {
     const voices = await fetchVoices(key);
     await setSetting("voices_cache", { at: Date.now(), voices });
@@ -90,7 +105,9 @@ export async function refreshVoices(): Promise<Voice[]> {
  * je eigen keuze bij Instellingen, anders je Nederlandse stemmen, anders je eigen stemmen, anders alles.
  */
 export async function debateVoices(): Promise<Voice[]> {
-  const all = await listVoices();
+  // Vlaamse stemmen doen nooit automatisch mee.
+  const everything = await listVoices();
+  const all = everything.filter((v) => !v.vlaams).length ? everything.filter((v) => !v.vlaams) : everything;
   const chosen = await getSetting<string[]>("voice_selection");
   if (chosen?.length) {
     const picked = all.filter((v) => chosen.includes(v.id));
@@ -102,13 +119,24 @@ export async function debateVoices(): Promise<Voice[]> {
   return eigen.length ? eigen : all;
 }
 
+/** Welk stemmodel: beste Nederlandse uitspraak of zo snel mogelijk. */
+export async function ttsKeuze(): Promise<TtsKeuze> {
+  const v = await getSetting<{ keuze: string }>("tts_model").catch(() => null);
+  return v && v.keuze in TTS_MODELS ? (v.keuze as TtsKeuze) : DEFAULT_TTS;
+}
+
+export async function currentTts() {
+  return TTS_MODELS[await ttsKeuze()];
+}
+
 /** Start een ElevenLabs-stream voor één zin. */
 export async function ttsStream(voiceId: string, text: string): Promise<Response> {
   const key = await requireKey("elevenlabs");
+  const tts = await currentTts();
   const res = await fetch(`${API}/text-to-speech/${encodeURIComponent(voiceId)}/stream?output_format=${TTS.outputFormat}`, {
     method: "POST",
     headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
-    body: JSON.stringify({ text, model_id: TTS.model, language_code: "nl" }),
+    body: JSON.stringify({ text, model_id: tts.model, ...(tts.model === "eleven_flash_v2_5" ? { language_code: "nl" } : {}) }),
   });
   if (!res.ok || !res.body) {
     if (res.status === 422 || res.status === 400) {

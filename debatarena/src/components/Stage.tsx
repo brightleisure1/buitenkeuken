@@ -32,6 +32,7 @@ export function Stage({
   activeId,
   mood,
   feed,
+  thinkingId,
   roundLabel,
   headerExtra,
   banner,
@@ -48,6 +49,8 @@ export function Stage({
   activeId: string | null;
   mood: Mood;
   feed: FeedItem[];
+  /** Wie er nu nadenkt (denkwolkje boven het portret) */
+  thinkingId?: string | null;
   roundLabel: string;
   headerExtra?: React.ReactNode;
   banner?: React.ReactNode;
@@ -69,7 +72,10 @@ export function Stage({
   const lastLen = feed.map((f) => f.text.length + (f.waiting ? 1 : 0)).join(",");
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (el && stuck) el.scrollTop = el.scrollHeight;
+    if (!el || !stuck) return;
+    // Rustig meeschuiven in plaats van verspringen.
+    const gap = el.scrollHeight - el.clientHeight - el.scrollTop;
+    if (gap > 0) el.scrollTo({ top: el.scrollHeight, behavior: gap < 240 ? "smooth" : "auto" });
   }, [lastLen, stuck, banner]);
   useEffect(() => {
     const el = scroller.current;
@@ -120,6 +126,11 @@ export function Stage({
               </span>
               {looking?.[r.id] && (
                 <span className="mt-1 text-[10px] sm:text-[11px] text-center text-ink/70 bg-sky rounded-lg px-1.5 py-0.5 line-clamp-2 animate-rise">{looking[r.id]}</span>
+              )}
+              {thinkingId === r.id && !quips?.[r.id] && (
+                <span className="absolute top-0 left-1/2 -translate-y-1/2 z-10 text-xl sm:text-2xl animate-floaty pointer-events-none" aria-hidden>
+                  💭
+                </span>
               )}
               {quips?.[r.id] && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-max max-w-[200px] text-xs bg-white border-2 border-ink rounded-2xl px-2.5 py-1.5 animate-pop shadow">
@@ -195,14 +206,21 @@ function FeedBubble({
     );
   }
   const mood: Mood = item.tag === "bezwaar" ? "sceptisch" : item.tag === "akkoord" ? "enthousiast" : "neutraal";
+  // Alleen een nieuwe spreker schuift in beeld; een bericht dat klaar is, blijft rustig staan.
   return (
-    <div className="flex gap-2.5 items-start animate-rise">
-      <div className="shrink-0 mt-1">
+    <div className={`flex gap-2.5 items-start ${item.waiting && !clean ? "animate-rise" : ""}`}>
+      <div className={`shrink-0 mt-1 ${item.waiting && !clean ? "animate-bounce" : ""}`}>
         <Portrait name={role?.naam ?? "?"} portraits={role ? portraits[role.id] : undefined} mood={mood} index={index} size={36} />
       </div>
       <div
         className={`min-w-0 flex-1 rounded-3xl rounded-tl-md border-2 px-4 py-2.5 ${
-          item.streaming ? "border-coral bg-white shadow-[3px_3px_0_0_var(--color-ink)]" : role?.isJury ? "border-ink/15 bg-sun" : "border-ink/15 bg-white"
+          item.waiting && !clean
+            ? "border-coral bg-peach/60 animate-glow"
+            : item.streaming
+              ? "border-coral bg-white shadow-[3px_3px_0_0_var(--color-ink)]"
+              : role?.isJury
+                ? "border-ink/15 bg-sun"
+                : "border-ink/15 bg-white"
         }`}
       >
         <p className="text-[11px] sm:text-xs font-semibold text-ink/60 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
@@ -212,9 +230,9 @@ function FeedBubble({
           {item.note && <span className="font-normal italic">· {item.note}</span>}
         </p>
         {item.waiting && !clean ? (
-          <p className="text-[15px] sm:text-base text-ink/60 py-0.5">
-            <FunWait lines={item.waiting} every={1800} />
-          </p>
+          <div className="py-2 text-ink/80 min-h-[4.5rem] flex items-center">
+            <FunWait lines={item.waiting} every={2600} size="lg" />
+          </div>
         ) : (
           <p className={`text-[15px] sm:text-base leading-relaxed whitespace-pre-wrap break-words ${item.streaming ? "caret" : ""}`}>{clean}</p>
         )}

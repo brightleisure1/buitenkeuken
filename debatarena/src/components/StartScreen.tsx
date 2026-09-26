@@ -7,7 +7,7 @@ import { api, datum, euro } from "@/lib/client";
 import type { RunPayload } from "@/lib/payload";
 import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
-import { MicButton } from "./MicButton";
+import { MicButton, type MicHandle } from "./MicButton";
 import { RoleCard } from "./RoleCard";
 import { CensorToggle, ErrorNote, Portrait, Segmented, Spinner, Switch, toError } from "./ui";
 import { PersonaEditor } from "./PersonaEditor";
@@ -43,6 +43,12 @@ export function StartScreen() {
   const [chat, setChat] = useState<{ van: "baas" | "regie"; tekst: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatInterim, setChatInterim] = useState("");
+  const chatMic = useRef<MicHandle>(null);
+  const questionMic = useRef<MicHandle>(null);
+  const [chatListening, setChatListening] = useState(false);
+  const [questionListening, setQuestionListening] = useState(false);
+  /** Na het inspreken meteen samenstellen */
+  const composeAfter = useRef(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -120,8 +126,8 @@ export function StartScreen() {
     }
   }
 
-  async function compose() {
-    const q = question.trim();
+  async function compose(text?: string) {
+    const q = (text ?? question).trim();
     if (!q) return;
     setError(null);
     setPhase("composing");
@@ -252,22 +258,47 @@ export function StartScreen() {
                 </Link>
               )}
             </span>
+            <label className="flex items-center gap-1.5 text-sm">
+              <strong>💶 Max</strong>€
+              <input
+                key={`${run.id}-${cast.kostenlimiet ?? "geen"}`}
+                className="field !py-1 !px-2 !w-20 !rounded-xl"
+                inputMode="decimal"
+                aria-label="Kostenlimiet voor deze vergadering in euro"
+                defaultValue={cast.kostenlimiet ? String(cast.kostenlimiet).replace(".", ",") : ""}
+                placeholder="geen"
+                onBlur={(e) => {
+                  const eur = Number(e.target.value.replace(",", "."));
+                  const next = e.target.value.trim() === "" ? null : eur > 0 ? eur : cast.kostenlimiet ?? null;
+                  if (next !== (cast.kostenlimiet ?? null)) void saveAdvanced({ ...cast, kostenlimiet: next });
+                }}
+              />
+            </label>
             <span className="text-xs text-ink/50">Kosten tot nu toe: {euro(run.cost_eur)}</span>
           </div>
-          {cast.rollen
-            .filter((r) => providerOf(r).naam === "Grok")
-            .map((r) => (
-              <div key={r.id} className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-ink bg-white px-4 py-3">
-                <span className="font-display font-extrabold">🌶️ Grok-censuur</span>
-                <span className="text-sm text-ink/70">voor {r.naam}</span>
-                <span className="sm:ml-auto">
-                  <CensorToggle
-                    value={!!r.ongezouten}
-                    onChange={(v) => void saveAdvanced({ ...cast, rollen: cast.rollen.map((x) => (x.id === r.id ? { ...x, ongezouten: v } : x)) })}
-                  />
-                </span>
-              </div>
-            ))}
+          <div className="mt-3 rounded-2xl border-2 border-ink bg-white px-4 py-3">
+            <p className="font-display font-extrabold">🌶️ Censuur per deelnemer</p>
+            <p className="text-xs text-ink/60 mb-2">
+              Ongecensureerd: brutaal, sarcastisch, vloeken mag. Grok gaat het verst; Claude, ChatGPT en Gemini worden scherper maar blijven wat netter. De Jury blijft altijd netjes.
+            </p>
+            <div className="divide-y divide-ink/10">
+              {cast.rollen
+                .filter((r) => !r.isJury)
+                .map((r) => (
+                  <div key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2">
+                    <span className="text-sm font-semibold">{r.naam}</span>
+                    <span className="text-xs text-ink/60">{providerOf(r).naam}</span>
+                    <span className="ml-auto">
+                      <CensorToggle
+                        size="xs"
+                        value={!!r.ongezouten}
+                        onChange={(v) => void saveAdvanced({ ...cast, rollen: cast.rollen.map((x) => (x.id === r.id ? { ...x, ongezouten: v } : x)) })}
+                      />
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-3">
@@ -302,7 +333,8 @@ export function StartScreen() {
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void sendChat(chatInput);
+              if (chatListening) chatMic.current?.stop();
+              else void sendChat(chatInput);
             }}
           >
             <input
@@ -312,9 +344,15 @@ export function StartScreen() {
               placeholder='Bijv. "Maak de inkoper strenger" of "Maar 2 rondes"'
               disabled={chatBusy}
             />
-            <MicButton onText={(t) => void sendChat(t)} onInterim={setChatInterim} onError={(m) => setError({ message: m })} />
-            <button className="btn-ghost shrink-0" disabled={chatBusy || !chatInput.trim()}>
-              {chatBusy ? <Spinner /> : "Pas aan"}
+            <MicButton
+              ref={chatMic}
+              onListening={setChatListening}
+              onText={(t) => void sendChat(chatInput ? `${chatInput} ${t}` : t)}
+              onInterim={setChatInterim}
+              onError={(m) => setError({ message: m })}
+            />
+            <button className="btn-ghost shrink-0" disabled={chatBusy || !(chatInput.trim() || chatInterim.trim() || chatListening)}>
+              {chatBusy ? <Spinner /> : chatListening ? "Stuur ➤" : "Pas aan"}
             </button>
           </form>
         </div>
@@ -398,7 +436,16 @@ export function StartScreen() {
           />
           <MicButton
             size="lg"
-            onText={(t) => setQuestion((q) => (q ? `${q} ${t}` : t))}
+            ref={questionMic}
+            onListening={setQuestionListening}
+            onText={(t) => {
+              const q = question ? `${question} ${t}` : t;
+              setQuestion(q);
+              if (composeAfter.current) {
+                composeAfter.current = false;
+                void compose(q);
+              }
+            }}
             onInterim={(t) => setInterim(t ? (question ? `${question} ${t}` : t) : "")}
             onError={(m) => setError({ message: m })}
           />
@@ -446,7 +493,14 @@ export function StartScreen() {
               e.target.value = "";
             }}
           />
-          <button onClick={compose} disabled={!question.trim() || uploading || phase === "composing"} className="btn-primary text-lg px-8 py-3.5 sm:ml-auto">
+          <button
+            onClick={() => {
+              if (questionListening) {
+                composeAfter.current = true;
+                questionMic.current?.stop();
+              } else void compose();
+            }}
+            disabled={!(question.trim() || interim.trim() || questionListening) || uploading || phase === "composing"} className="btn-primary text-lg px-8 py-3.5 sm:ml-auto">
             {phase === "composing" ? (
               <>
                 <Spinner /> Bezig…
@@ -462,9 +516,10 @@ export function StartScreen() {
 
       {phase === "composing" && (
         <div className="grid gap-3">
-          <p className="text-lg font-semibold text-center">
-            <FunWait lines={CASTING_LINES} />
-          </p>
+          <div className="card p-5 sm:p-6 bg-sun animate-pop">
+            <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-2">Je team wordt samengesteld</span>
+            <FunWait lines={CASTING_LINES} size="lg" every={1600} />
+          </div>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="card p-4 flex gap-4 items-center opacity-60 animate-pulse" aria-hidden>
               <div className="h-[72px] w-[72px] rounded-full bg-peach border-[3px] border-ink grid place-items-center text-3xl">?</div>

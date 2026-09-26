@@ -89,7 +89,7 @@ function answer({ system, user, schemaProps }) {
   const tag = eens ? "bezwaar" : ronde === 1 ? "akkoord" : turnCounter % 2 ? "bezwaar" : "voorstel";
   const baas = user.match(/De baas (?:zei net|geeft net richting|heeft net besloten): "([^"]+)"/);
   const reactie = baas ? `Over wat de baas zei, "${baas[1]}": dat neem ik mee. ` : "";
-  const ongezouten = /ONGEZOUTEN MODUS/.test(system) ? "Wat een onzin, eerlijk gezegd. " : "";
+  const ongezouten = /ONGECENSUREERD \(/.test(system) ? "Wat een onzin, eerlijk gezegd. " : "";
   const cliche = (system.match(/JE VERGADERCLICHÉ: (.+)/) ?? [])[1];
   const clicheZin = cliche ? `(${cliche.trim()} spreekt.) ` : "";
   return {
@@ -414,7 +414,9 @@ const server = http.createServer(async (req, res) => {
           { voice_id: "nlCarla", name: "Carla - Nederlands", category: "generated", labels: { gender: "female", age: "old" } },
           { voice_id: "nlDaan", name: "Daan", category: "professional", labels: { gender: "male", language: "nl" } },
           { voice_id: "nlEva", name: "Eva", category: "professional", labels: { gender: "female" }, fine_tuning: { language: "nl" } },
-          { voice_id: "nlFrank", name: "Frank", category: "professional", labels: { gender: "male", accent: "Flemish" } },
+          // Vlaamse stemmen: niet automatisch gebruiken
+          { voice_id: "beFrank", name: "Frank", category: "professional", labels: { gender: "male", accent: "Flemish" } },
+          { voice_id: "beLies", name: "Lies", category: "professional", labels: { gender: "female" }, verified_languages: [{ language: "nl", locale: "nl-BE" }] },
         ],
       });
     }

@@ -24,6 +24,8 @@ const run: any = { cast: { rondes: 2, stemmen: "uit", bijlages: {}, titel: "t", 
 let seq = 0;
 const msgs: any[] = [];
 const turn = (role_id: string, round: number, tag = "bezwaar", meta = {}) => msgs.push({ seq: ++seq, kind: "turn", role_id, round, tag, meta, content: "x", sources: [] });
+assert.deepEqual(nextStep(run, msgs), { type: "turn", roleId: "j", round: 1, meta: { opening: true } }, "de voorzitter opent");
+turn("j", 1, "voorstel", { opening: true });
 assert.deepEqual(nextStep(run, msgs), { type: "turn", roleId: "a", round: 1, meta: {} });
 turn("a", 1, "akkoord"); turn("b", 1, "akkoord"); turn("c", 1, "akkoord");
 assert.deepEqual(nextStep(run, msgs), { type: "turn", roleId: "a", round: 1, meta: { extra: "eensgezind" } });

@@ -46,7 +46,7 @@ export function PersonaEditor({
 
   const set = (patch: Partial<Role>) => setR((x) => ({ ...x, ...patch }));
   const model = resolveModel(r.modelKey, r.customModel);
-  const isGrok = model.provider === "xai";
+  const canUncensor = !r.isJury;
   const canSearch = supportsWebSearch(model);
   const usedCliches = new Set(cast.rollen.filter((x) => x.id !== r.id).map((x) => x.cliche).filter(Boolean));
 
@@ -140,11 +140,14 @@ export function PersonaEditor({
           <Field label="Eigen modelnaam (optioneel)" value={r.customModel ?? ""} placeholder="bijv. gemini-2.5-pro" onChange={(v) => set({ customModel: v || null })} />
         </div>
 
-        {isGrok && (
+        {canUncensor && (
           <div className="rounded-2xl border-2 border-ink bg-white p-3 flex flex-wrap items-center gap-3">
-            <span className="font-semibold">Grok</span>
+            <span className="font-semibold">Censuur</span>
             <CensorToggle value={!!r.ongezouten} onChange={(v) => set({ ongezouten: v })} />
-            <span className="text-xs text-ink/60 basis-full">Ongecensureerd: brutaal, sarcastisch, vloeken mag. Sloopt argumenten, geen mensen.</span>
+            <span className="text-xs text-ink/60 basis-full">
+              Ongecensureerd: brutaal, sarcastisch, vloeken mag. Sloopt argumenten, geen mensen.
+              {model.provider !== "xai" ? ` ${providerOf(r).naam} blijft iets netter dan Grok.` : ""}
+            </span>
           </div>
         )}
 

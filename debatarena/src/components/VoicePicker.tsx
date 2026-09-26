@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
-import { ErrorNote, Spinner, toError } from "./ui";
+import { ErrorNote, Segmented, Spinner, toError } from "./ui";
 
-type Voice = { id: string; naam: string; omschrijving: string; nl: boolean; eigen: boolean; gender: string | null; preview: string | null };
+type Voice = { id: string; naam: string; omschrijving: string; nl: boolean; vlaams?: boolean; eigen: boolean; gender: string | null; preview: string | null };
+type Uitspraak = "nederlands" | "snel";
 
 /** Kies welke ElevenLabs-stemmen de Debatarena gebruikt. */
 export function VoicePicker() {
@@ -15,12 +16,14 @@ export function VoicePicker() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<{ message: string; oplossing?: string } | null>(null);
   const [filter, setFilter] = useState<"alle" | "nl">("nl");
+  const [uitspraak, setUitspraak] = useState<Uitspraak>("nederlands");
   const audio = useRef<HTMLAudioElement | null>(null);
 
   async function load(fresh = false) {
     try {
-      const d = await api<{ voices: Voice[]; inUse: string[]; eigenKeuze: boolean }>(`/api/voices${fresh ? "?vernieuw=1" : ""}`);
+      const d = await api<{ voices: Voice[]; inUse: string[]; eigenKeuze: boolean; uitspraak?: Uitspraak }>(`/api/voices${fresh ? "?vernieuw=1" : ""}`);
       setVoices(d.voices);
+      if (d.uitspraak) setUitspraak(d.uitspraak);
       setChosen(new Set(d.inUse));
       setOwn(d.eigenKeuze);
       if (!d.voices.some((v) => v.nl)) setFilter("alle");
@@ -49,6 +52,15 @@ export function VoicePicker() {
     }
   }
 
+  async function saveUitspraak(v: Uitspraak) {
+    setUitspraak(v);
+    try {
+      await api("/api/voices", { method: "POST", json: { uitspraak: v } });
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
   function play(url: string | null) {
     audio.current?.pause();
     if (!url) return;
@@ -64,6 +76,21 @@ export function VoicePicker() {
 
   return (
     <div className="space-y-3">
+      <div className="rounded-2xl border-2 border-ink/15 bg-white px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+        <span className="font-semibold">Uitspraak</span>
+        <Segmented
+          label="Uitspraak"
+          value={uitspraak}
+          onChange={(v) => void saveUitspraak(v)}
+          options={[
+            { value: "nederlands", label: "🇳🇱 Beste Nederlands" },
+            { value: "snel", label: "⚡ Snelst" },
+          ]}
+        />
+        <span className="basis-full text-xs text-ink/55">
+          Het snelle model klinkt soms Vlaams. &lsquo;Beste Nederlands&rsquo; houdt het Nederlandse accent beter vast (iets trager, ongeveer twee keer zo duur per zin).
+        </span>
+      </div>
       <p className="text-sm text-ink/70">
         {own
           ? "Je hebt zelf gekozen welke stemmen meedoen."
@@ -100,8 +127,10 @@ export function VoicePicker() {
             <span className="min-w-0 flex-1">
               <span className="font-semibold">
                 {v.nl && "🇳🇱 "}
+                {v.vlaams && "🇧🇪 "}
                 {v.naam}
               </span>
+              {v.vlaams && <span className="ml-1.5 text-[11px] rounded-full bg-peach px-1.5 py-0.5">Vlaams, doet niet mee</span>}
               <span className="block text-xs text-ink/55 truncate">{v.omschrijving || (v.eigen ? "Eigen stem" : "Standaardstem")}</span>
             </span>
             {v.preview && (

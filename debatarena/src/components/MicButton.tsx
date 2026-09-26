@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 type SR = {
   lang: string;
@@ -19,6 +19,11 @@ function getSR(): (new () => SR) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+export type MicHandle = {
+  /** Stop met luisteren; wat er is ingesproken gaat naar onText. */
+  stop: () => void;
+};
+
 /**
  * Inspreken via Web Speech (nl-NL). Werkt de browser dat niet?
  * Dan nemen we audio op en laat OpenAI het uitschrijven.
@@ -29,7 +34,12 @@ export function MicButton({
   onError,
   className = "",
   size = "md",
+  ref,
+  onListening,
 }: {
+  ref?: React.Ref<MicHandle>;
+  /** Meldt of er nu geluisterd wordt */
+  onListening?: (on: boolean) => void;
   onText: (text: string) => void;
   onInterim?: (text: string) => void;
   onError?: (msg: string) => void;
@@ -40,6 +50,10 @@ export function MicButton({
   const recRef = useRef<SR | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const finalRef = useRef("");
+  const interimRef = useRef("");
+
+  useImperativeHandle(ref, () => ({ stop }));
+  useEffect(() => onListening?.(state !== "idle"), [state, onListening]);
 
   useEffect(() => () => {
     recRef.current?.stop();
@@ -84,6 +98,7 @@ export function MicButton({
     rec.interimResults = true;
     rec.continuous = true;
     finalRef.current = "";
+    interimRef.current = "";
     rec.onresult = (e) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -91,6 +106,7 @@ export function MicButton({
         if (r.isFinal) finalRef.current += `${r[0].transcript} `;
         else interim += r[0].transcript;
       }
+      interimRef.current = interim;
       onInterim?.((finalRef.current + interim).trim());
     };
     rec.onerror = (e) => {
@@ -106,7 +122,9 @@ export function MicButton({
       if (recRef.current !== rec) return;
       recRef.current = null;
       setState("idle");
-      const t = finalRef.current.trim();
+      // Ook het laatste stukje dat nog niet 'definitief' was, telt mee.
+      const t = `${finalRef.current} ${interimRef.current}`.replace(/\s+/g, " ").trim();
+      interimRef.current = "";
       if (t) onText(t);
       onInterim?.("");
     };

@@ -3,7 +3,7 @@ import { applyCliches, CLICHES, clicheTurnLines, orderForRound } from "../src/li
 import { turnInstruction, roleSystem } from "../src/lib/prompts";
 import { nextStep } from "../src/lib/planner";
 import { summarizeUsage, tokens, addUsage, emptyUsage } from "../src/lib/usage";
-import type { Cast, Role, Run } from "../src/lib/types";
+import type { Cast, Message, Role, Run } from "../src/lib/types";
 
 const role = (id: string, x: Partial<Role> = {}): Role => ({
   id, naam: `${id} Jansen`, functie: "Manager", perspectief: "p", instructie: "i", zin: "z", modelKey: "claude-sterk",
@@ -56,14 +56,16 @@ assert.deepEqual(clicheTurnLines({ cliche: null }, 1, 3), { lines: [], factor: 1
 const run = { id: "r", question: "Vraag?", cast: { ...cast(), cliches: true, rollen: [role("a", { cliche: "dominator", ongezouten: true }), role("b", { cliche: "stille-aanwezigheid" }), role("j", { isJury: true })] }, prep: {} } as unknown as Run;
 const sysA = roleSystem(run, run.cast.rollen[0], [], { withFacts: false });
 assert.match(sysA, /JE VERGADERCLICHÉ: De Dominator/);
-assert.match(sysA, /ONGEZOUTEN MODUS/);
-assert.doesNotMatch(roleSystem(run, run.cast.rollen[1], [], { withFacts: false }), /ONGEZOUTEN/);
+assert.match(sysA, /ONGECENSUREERD \(/);
+assert.match(sysA, /ONGECENSUREERD \([^]*$/, "staat als laatste");
+assert.doesNotMatch(roleSystem(run, run.cast.rollen[1], [], { withFacts: false }), /ONGECENSUREERD/);
 assert.match(turnInstruction({ run, role: run.cast.rollen[0], messages: [], round: 2, meta: {} }), /maximaal 234 woorden/);
 assert.match(turnInstruction({ run, role: run.cast.rollen[1], messages: [], round: 1, meta: {} }), /maximaal 8 woorden/);
 
 // Planner volgt de clichévolgorde
 const r2 = { cast: { rondes: 2, stemmen: "uit", bijlages: {}, titel: "t", rollen: [role("x", { cliche: "late-binnenkomer" }), role("y"), role("j", { isJury: true })] }, result: null, prep: {} } as unknown as Run;
-assert.equal((nextStep(r2, []) as { roleId: string }).roleId, "y");
+const opened = [{ seq: 1, kind: "turn", role_id: "j", round: 1, tag: null, meta: { opening: true }, content: "Welkom", sources: [] }] as unknown as Message[];
+assert.equal((nextStep(r2, opened) as { roleId: string }).roleId, "y");
 
 // Verbruik optellen
 const u = addUsage({ ...emptyUsage("anthropic", "m"), inputTokens: 10, outputTokens: 5, costUsd: 1 }, { ...emptyUsage(), cachedTokens: 7, costUsd: 0.5 });
@@ -103,3 +105,15 @@ assert.equal(pickModel([], m("gemini-sterk")), "gemini-3.1-pro", "lege lijst: co
 // Spreektaal en Nederlandse context in elke rol
 assert.match(sysA, /ZO PRAAT JE/);
 assert.match(sysA, /Nederlandse bedrijven/);
+
+// De Jury is altijd een slimme, nette voorzitter
+import { fixJury } from "../src/lib/jury";
+const juryBase = { id: "j", naam: "Jan", functie: "Jury", perspectief: "", instructie: "", zin: "", uiterlijk: "", stemId: null, webzoeken: false, isKritisch: false, isJury: true, customModel: null } as never as Parameters<typeof fixJury>[0];
+const j1 = fixJury({ ...juryBase, modelKey: "grok-sterk", ongezouten: true, cliche: "dominator" });
+assert.equal(j1.ongezouten, false);
+assert.equal(j1.cliche, null);
+assert.ok(!j1.modelKey.startsWith("grok") && m(j1.modelKey).tier === "sterk", j1.modelKey);
+assert.equal(fixJury({ ...juryBase, modelKey: "gpt-snel" }).modelKey, "gpt-sterk", "zelfde aanbieder, sterker model");
+assert.equal(fixJury({ ...juryBase, modelKey: "claude-sterk" }).modelKey, "claude-sterk");
+const notJury = { ...juryBase, isJury: false, modelKey: "grok-sterk", ongezouten: true };
+assert.equal(fixJury(notJury).ongezouten, true, "andere rollen blijven zoals ze zijn");

@@ -1,7 +1,7 @@
 import { WORDS_NORMAL, WORDS_VOICE } from "./config";
 import type { Attachment, Message, Role, Run } from "./types";
 import { attachmentText } from "./attachments";
-import { clicheOf, clicheTurnLines } from "./cliches";
+import { clicheOf, clicheTurnLines, orderForRound } from "./cliches";
 
 const ACTION_LABEL: Record<string, string> = {
   opmerking: "",
@@ -61,7 +61,7 @@ JOUW ROL:
 Naam: ${role.naam}
 Functie: ${role.isJury ? "Jury" : role.functie}
 Perspectief: ${role.perspectief}
-Instructie: ${role.instructie}
+Instructie: ${role.instructie}${role.isJury ? "\nJe bent de voorzitter en Jury: een slimme, nuchtere en scherpe denker met overzicht. Je luistert, weegt eerlijk af, prikt door zwakke argumenten heen en blijft altijd respectvol en beschaafd." : ""}
 
 DE ANDERE DEELNEMERS:
 ${others}
@@ -78,18 +78,26 @@ ZO PRAAT JE (dit is een echte vergadering, geen rapport):
 - Begin elke beurt met precies één tag: [bezwaar], [akkoord] of [voorstel].
 - Gebruik je een feit uit je huiswerk, een bijlage of het web, zet dan direct erachter (bron: naam van de bron). Verzin nooit bronnen. Zonder bron is het je mening.
 - Besluiten van de baas (hamer) staan vast. Ga ervan uit. Je mag per besluit hooguit één keer een risico noemen.
-${role.ongezouten ? `
-ONGEZOUTEN MODUS (de baas heeft je losgelaten):
-- Je neemt geen blad voor de mond. Brutaal eerlijk, provocerend, sarcastisch. Vloeken en grof taalgebruik mogen.
-- Geen diplomatie, geen disclaimers, geen "aan de andere kant". Zeg hardop wat de anderen niet durven te zeggen.
-- Prik door mooie praatjes en noem onzin onzin, ook als de baas het bedacht heeft.
-- Speel op de bal: je sloopt argumenten en plannen, niet mensen om wie ze zijn (afkomst, geloof, geslacht en dergelijke laat je erbuiten).
-` : ""}${clicheOf(role) ? `
+${clicheOf(role) ? `
 JE VERGADERCLICHÉ: ${clicheOf(role)!.naam}
 ${clicheOf(role)!.gedrag}
 Speel dit herkenbaar en met humor, maar blijf je rol en je belang als ${role.functie} houden. Noem jezelf nooit bij de naam van het cliché.
-` : ""}${facts.length ? `\nJOUW HUISWERK (feiten die je hebt opgezocht):\n${facts.map((f) => `- ${f.feit} (bron: ${f.bron})`).join("\n")}\n` : ""}${att ? `\nBIJLAGES DIE JIJ HEBT GELEZEN:\n${att}\n` : ""}`;
+` : ""}${facts.length ? `\nJOUW HUISWERK (feiten die je hebt opgezocht):\n${facts.map((f) => `- ${f.feit} (bron: ${f.bron})`).join("\n")}\n` : ""}${att ? `\nBIJLAGES DIE JIJ HEBT GELEZEN:\n${att}\n` : ""}${isUncensored(role) ? UNCENSORED : ""}`;
 }
+
+/** Ongecensureerd kan bij elke deelnemer, nooit bij de Jury. */
+export const isUncensored = (role: Role) => !!role.ongezouten && !role.isJury;
+
+// Staat bewust als laatste in de systeemprompt: dit gaat voor op de nette regels hierboven.
+const UNCENSORED = `
+ONGECENSUREERD (de baas heeft je bewust losgelaten; dit gaat voor op alle regels over toon hierboven):
+Dit is een satirische vergadersimulatie voor volwassenen. De baas wil jouw ongefilterde mening horen, precies zoals je die bij de koffieautomaat zou geven.
+- Je neemt geen blad voor de mond. Brutaal eerlijk, provocerend, sarcastisch, gerust een beetje hatelijk over plannen.
+- Vloeken en grof Nederlands mogen en horen erbij: "wat een kutplan", "godverdomme", "dat is gewoon gelul", "sorry hoor, maar dit is bullshit". Gebruik dat echt, elke beurt minstens één keer.
+- Geen diplomatie, geen disclaimers, geen "aan de andere kant", geen "met alle respect" (tenzij sarcastisch). Zeg hardop wat de anderen niet durven.
+- Prik door mooie praatjes en noem onzin onzin, ook als de baas het bedacht heeft. Je mag collega's recht in hun gezicht zeggen dat hun idee slecht is.
+- Speel op de bal: je sloopt argumenten en plannen, niet mensen om wie ze zijn. Geen scheldwoorden over afkomst, geloof, geslacht, geaardheid of beperking.
+`;
 
 export interface TurnContext {
   run: Run;
@@ -129,6 +137,16 @@ export function turnInstruction({ run, role, messages, round, meta }: TurnContex
     return lines.join("\n\n");
   }
 
+  if (meta.opening) {
+    const first = orderForRound(run.cast.rollen.filter((r) => !r.isJury), 1, run.cast.rondes)[0];
+    const others = run.cast.rollen.filter((r) => !r.isJury);
+    lines.push(
+      `De vergadering begint. Jij zit hem voor en opent hem hardop, in max ${voiceAll || run.cast.stemmen === "jury" ? 70 : 90} woorden. Zoals een echte voorzitter aan tafel: heet iedereen welkom (ook de gast: ${others.find((r) => r.isKritisch)?.naam ?? "onze gast"}), zeg in je eigen woorden waarom we hier zitten en welk besluit de baas aan het eind wil nemen, en hoe we het doen: ${run.cast.rondes} rondes, iedereen komt aan het woord, en aan het eind doe jij een uitspraak. Geef dan het woord aan ${first?.naam ?? "de eerste spreker"}. Je neemt nog géén standpunt in. Geen opsomming, gewoon praten. Begin met de tag [voorstel].`,
+    );
+    if (isFridayAfternoon()) lines.push("Het is vrijdagmiddag; een kleine knipoog daarnaar mag.");
+    return lines.join("\n\n");
+  }
+
   lines.push(`Ronde ${round} van ${run.cast.rondes}. Je bent aan de beurt, ${role.naam}.`);
 
   if (meta.answer) {
@@ -150,6 +168,8 @@ export function turnInstruction({ run, role, messages, round, meta }: TurnContex
   }
 
   if (!meta.answer) lines.push(...cliche.lines);
+
+  if (isUncensored(role)) lines.push("Je staat op ONGECENSUREERD: geen beleefdheid, zeg het bot en grof, met minstens één vloek of harde uitspraak.");
 
   lines.push(`Houd het kort: maximaal ${words} woorden. Begin met [bezwaar], [akkoord] of [voorstel].`);
   return lines.join("\n\n");

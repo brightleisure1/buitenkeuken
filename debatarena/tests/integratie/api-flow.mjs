@@ -222,13 +222,15 @@ await step("Achtergrond: portretten (3 stemmingen) en huiswerk met bronnen", asy
 
 await step("Stemmen: Nederlandse stemmen herkend, eigen keuze mogelijk, stem voor de baas", async () => {
   const v = await call("/api/voices");
-  assert.equal(v.data.voices.length, 9);
-  assert.deepEqual(v.data.voices.filter((x) => x.nl).map((x) => x.id).sort(), ["nlAnna", "nlBram", "nlCarla", "nlDaan", "nlEva", "nlFrank"]);
-  assert.ok(v.data.inUse.every((id) => id.startsWith("nl")), "automatisch alleen Nederlandse");
+  assert.equal(v.data.voices.length, 10);
+  assert.deepEqual(v.data.voices.filter((x) => x.nl).map((x) => x.id).sort(), ["nlAnna", "nlBram", "nlCarla", "nlDaan", "nlEva"]);
+  assert.deepEqual(v.data.voices.filter((x) => x.vlaams).map((x) => x.id).sort(), ["beFrank", "beLies"], "Vlaamse stemmen herkend");
+  assert.ok(v.data.inUse.every((id) => id.startsWith("nl")), "automatisch alleen Nederlandse, geen Vlaamse");
+  assert.equal(v.data.uitspraak, "nederlands", "standaard de beste Nederlandse uitspraak");
   const pick = await call("/api/voices", { method: "POST", json: { ids: ["nlAnna", "nlBram"] } });
   assert.deepEqual(pick.data.inUse.sort(), ["nlAnna", "nlBram"]);
   const back = await call("/api/voices", { method: "POST", json: { ids: [] } });
-  assert.equal(back.data.inUse.length, 6);
+  assert.equal(back.data.inUse.length, 5);
   const r = await call(`/api/runs/${run.id}`);
   const stemmen = r.data.stemmen;
   assert.ok(stemmen.baas, "de baas heeft een stem");
@@ -259,7 +261,7 @@ await step("Aanpassen via chat: Grok ongecensureerd en 3 rondes", async () => {
   run.cast = r.data.run.cast;
 });
 
-await step("Geavanceerd: clichés uit/aan, ongecensureerd alleen bij Grok", async () => {
+await step("Geavanceerd: clichés uit/aan, ongecensureerd bij elke deelnemer", async () => {
   const off = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { cast: { ...run.cast, cliches: false } } });
   assert.ok(off.data.run.cast.rollen.every((x) => !x.cliche));
   const on = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { cast: { ...off.data.run.cast, cliches: true } } });
@@ -267,12 +269,17 @@ await step("Geavanceerd: clichés uit/aan, ongecensureerd alleen bij Grok", asyn
   const claude = on.data.run.cast.rollen.find((x) => x.modelKey.startsWith("claude"));
   const trick = { ...on.data.run.cast, rollen: on.data.run.cast.rollen.map((x) => (x.id === claude.id ? { ...x, ongezouten: true } : x)) };
   const t = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { cast: trick } });
-  assert.equal(t.data.run.cast.rollen.find((x) => x.id === claude.id).ongezouten, false, "Claude kan niet ongecensureerd");
+  assert.equal(t.data.run.cast.rollen.find((x) => x.id === claude.id).ongezouten, true, "ook Claude kan ongecensureerd");
   run.cast = t.data.run.cast;
 });
 
 await step("Start debat en ronde 1: iedereen eens → verdacht eensgezind, extra beurt kritische rol", async () => {
   await call(`/api/runs/${run.id}/start`, { method: "POST" });
+  const opening = await turn(run.id);
+  const os = opening.events.find((e) => e.t === "start");
+  assert.equal(os.step.meta.opening, true, "de voorzitter opent de vergadering");
+  assert.equal(os.message.role_id, run.cast.rollen.find((x) => x.isJury).id);
+  assert.ok((await fakeLog()).some((l) => /opent hem hardop/.test(l.user ?? "")), "opening-instructie verstuurd");
   const debaters = run.cast.rollen.filter((x) => !x.isJury);
   for (let i = 0; i < debaters.length; i++) {
     const t = await turn(run.id);
@@ -336,7 +343,7 @@ await step("Model valt uit: een ander model neemt het over", async () => {
   assert.equal(end.message.role_id, grok.id, "de vervanger sprak namens de Grok-rol");
 });
 
-await step("Prompts: Grok ongecensureerd, clichés, prompt caching", async () => {
+await step("Prompts: ongecensureerd, clichés, prompt caching", async () => {
   const log = await fakeLog();
   assert.ok(!log.some((l) => l.unknownModel), "geen verzoeken met een onbekende modelnaam");
   assert.ok(log.some((l) => l.provider === "google" && l.model === "gemini-3-pro-preview"), "Gemini met de juiste naam");
@@ -345,8 +352,13 @@ await step("Prompts: Grok ongecensureerd, clichés, prompt caching", async () =>
   const isGrokRole = (l) => l.system.includes(`Naam: ${grokRole.naam}`);
   const grokTurns = turns.filter(isGrokRole);
   assert.ok(grokTurns.some((l) => l.provider === "xai"), "Grok heeft gesproken");
-  assert.ok(grokTurns.every((l) => l.system.includes("ONGEZOUTEN MODUS")), "de Grok-persona is ongecensureerd, ook als een vervanger spreekt");
-  assert.ok(turns.filter((l) => !isGrokRole(l)).every((l) => !l.system.includes("ONGEZOUTEN MODUS")), "andere persona's niet");
+  assert.ok(grokTurns.every((l) => l.system.includes("ONGECENSUREERD (")), "de Grok-persona is ongecensureerd, ook als een vervanger spreekt");
+  const spicy = new Set(run.cast.rollen.filter((x) => x.ongezouten && !x.isJury).map((x) => `Naam: ${x.naam}`));
+  const isSpicy = (l) => [...spicy].some((n) => l.system.includes(n));
+  assert.ok(turns.filter((l) => !isSpicy(l)).every((l) => !l.system.includes("ONGECENSUREERD (")), "wie netjes staat, blijft netjes");
+  assert.ok(turns.filter(isSpicy).every((l) => /ONGECENSUREERD:/.test(l.user)), "ook in elke beurt herinnerd");
+  const juryRole = run.cast.rollen.find((x) => x.isJury);
+  assert.ok(log.filter((l) => l.system?.includes(`Naam: ${juryRole.naam}`)).every((l) => !l.system.includes("ONGECENSUREERD (")), "de Jury blijft netjes");
   assert.ok(turns.some((l) => l.system.includes("JE VERGADERCLICHÉ")), "cliché in de rolinstructie");
   assert.ok(turns.every((l) => l.system.includes("ZO PRAAT JE") && l.system.includes("Nederlandse bedrijven")), "spreektaal en Nederlandse context");
   const claude = turns.filter((l) => l.provider === "anthropic");
@@ -407,6 +419,13 @@ await step("Stem: ElevenLabs-audio wordt per zin gecachet", async () => {
   assert.equal(again.status, 302, "tweede keer uit de cache");
   const u = (await call(`/api/runs/${run.id}`)).data.usage;
   assert.ok(u.perKind.some((k) => k.label === "Stemmen"));
+  const tts = (await fakeLog()).filter((l) => l.provider === "elevenlabs");
+  assert.equal(tts.at(-1).model, "eleven_multilingual_v2", "Nederlands accent-model");
+  await call("/api/voices", { method: "POST", json: { uitspraak: "snel" } });
+  const fast = await fetch(`${APP}/api/tts`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ ...body, idx: 1 }) });
+  await fast.arrayBuffer();
+  assert.equal((await fakeLog()).filter((l) => l.provider === "elevenlabs").at(-1).model, "eleven_flash_v2_5");
+  await call("/api/voices", { method: "POST", json: { uitspraak: "nederlands" } });
 });
 
 await step("De hele vergadering als mp3", async () => {
@@ -415,7 +434,8 @@ await step("De hele vergadering als mp3", async () => {
   assert.match(r.headers.get("content-disposition") ?? "", /attachment/);
   const size = (await r.arrayBuffer()).byteLength;
   const msgs = (await call(`/api/runs/${run.id}`)).data.messages.filter((m) => (m.kind === "turn" || m.kind === "boss") && m.content);
-  assert.equal(size, msgs.length * 2048, "één stuk per bericht, in volgorde");
+  const parts = msgs.reduce((n, m) => n + m.audio.length, 0);
+  assert.equal(size, parts * 2048, "alle stukken van elk bericht, in volgorde");
   assert.ok(msgs.every((m) => m.audio.length), "alle audio is nu bewaard");
   const said = (await fakeLog()).filter((l) => l.provider === "elevenlabs");
   assert.ok(said.every((l) => !/\*[^*]+\*/.test(l.text)), "regieaanwijzingen niet uitgesproken");
@@ -481,6 +501,53 @@ await step("Vergadering beëindigen zonder uitspraak, en later alsnog laten oord
   const r = await call(`/api/runs/${id}/result`, { method: "POST" });
   assert.equal(r.status, 200);
   assert.equal((await call(`/api/runs/${id}`)).data.run.status, "done");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
+await step("Jury: nooit ongecensureerd, altijd een sterk model (geen Grok)", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Budget en jury testen" } });
+  assert.equal(c.status, 200, JSON.stringify(c.data));
+  const jury = c.data.run.cast.rollen.find((x) => x.isJury);
+  assert.ok(!jury.modelKey.startsWith("grok"), "Jury is geen Grok");
+  assert.ok(!jury.ongezouten);
+  assert.equal(c.data.run.cast.kostenlimiet, 2, "standaardlimiet €2");
+  const trick = { ...c.data.run.cast, rollen: c.data.run.cast.rollen.map((x) => (x.isJury ? { ...x, ongezouten: true, modelKey: "grok-sterk" } : x)) };
+  const t = await call(`/api/runs/${c.data.run.id}`, { method: "PATCH", json: { handmatig: true, cast: trick } });
+  const j = t.data.run.cast.rollen.find((x) => x.isJury);
+  assert.equal(j.ongezouten, false, "Jury kan niet ongecensureerd");
+  assert.ok(!j.modelKey.startsWith("grok"), "Jury wordt geen Grok");
+  assert.match(j.modelKey, /sterk/, "Jury krijgt een sterk model");
+  run.budget = c.data.run.id;
+});
+
+await step("Kostenlimiet: stopt nieuwe beurten, ophogen gaat door, afronden mag nog", async () => {
+  const id = run.budget;
+  const cost = await waitFor(async () => {
+    const r = await call(`/api/runs/${id}`);
+    return r.data.run.cost_eur >= 0.01 && r.data.run;
+  }, "kosten van de voorbereiding");
+  const low = await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...cost.cast, kostenlimiet: 0.01 } } });
+  assert.equal(low.data.run.cast.kostenlimiet, 0.01);
+  await call(`/api/runs/${id}/start`, { method: "POST" });
+  const stop = await turn(id);
+  assert.equal(stop.json?.step?.type, "budget", JSON.stringify(stop));
+  assert.equal(stop.json.step.limit, 0.01);
+  const quip = await call(`/api/runs/${id}/quip`, { method: "POST", json: { roleId: low.data.run.cast.rollen[0].id } });
+  assert.equal(quip.status, 402);
+  assert.match(quip.data.error ?? quip.data.message ?? JSON.stringify(quip.data), /kostenlimiet/);
+  const up = await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...low.data.run.cast, kostenlimiet: 50 } } });
+  assert.equal(up.data.run.cast.kostenlimiet, 50);
+  const go = await turn(id);
+  assert.ok(go.events?.find((e) => e.t === "end"), "na ophogen gaat het debat door");
+  await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...up.data.run.cast, kostenlimiet: 0.01 } } });
+  assert.equal((await turn(id)).json.step.type, "budget");
+  await call(`/api/runs/${id}/boss`, { method: "POST", json: { action: "afronden" } });
+  assert.equal((await turn(id)).json.step.type, "final_word");
+  await call(`/api/runs/${id}/boss`, { method: "POST", json: { action: "laatste_woord", text: "Graag een helder besluit" } });
+  const verdict = await turn(id);
+  assert.equal(verdict.events?.find((e) => e.t === "start")?.step.meta.verdict, true, "de Jury mag boven de limiet nog oordelen");
+  const r = await call(`/api/runs/${id}/result`, { method: "POST" });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
   await call(`/api/runs/${id}`, { method: "DELETE" });
 });
 

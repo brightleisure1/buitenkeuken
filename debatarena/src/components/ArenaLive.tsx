@@ -7,8 +7,8 @@ import { api, euro, readNdjson } from "@/lib/client";
 import type { RunPayload } from "@/lib/payload";
 import { SpeechQueue } from "@/lib/speech";
 import { TAG_MOOD, extractSources, splitSentences } from "@/lib/text";
-import type { BossAction, Message, MessageMeta, Mood, Role, Tag } from "@/lib/types";
-import { MicButton } from "./MicButton";
+import type { BossAction, Message, MessageMeta, Mood, Prep, Role, Tag } from "@/lib/types";
+import { MicButton, type MicHandle } from "./MicButton";
 import { ReplayPlayer } from "./ReplayPlayer";
 import { Stage, firstName, type FeedItem } from "./Stage";
 import { FunWait } from "./FunWait";
@@ -16,7 +16,6 @@ import { PersonaEditor } from "./PersonaEditor";
 import { JURY_LINES, LOADING_LINES, prepLines, turnWaitLines } from "@/lib/wachten";
 import { CostPanel } from "./CostPanel";
 import { CensorToggle, ErrorNote, Segmented, Spinner, toError } from "./ui";
-import { providerOf } from "@/lib/config";
 import { tokens } from "@/lib/usage";
 
 type Err = { message: string; oplossing?: string } | null;
@@ -24,6 +23,23 @@ type Live = { id: string; roleId: string; round: number; tag: Tag | null; text: 
 type Mode = "opmerking" | "richting" | "hamer" | "vraag";
 
 const PREP_TIMEOUT_MS = 120_000;
+
+/** Leestempo: tekens per seconde als je leest, snelheid van de stem, en pauze tussen sprekers. */
+const TEMPO = {
+  rustig: { cps: 13, speech: 0.95, pause: 2200 },
+  normaal: { cps: 19, speech: 1.1, pause: 1400 },
+  snel: { cps: 32, speech: 1.3, pause: 600 },
+} as const;
+type Tempo = keyof typeof TEMPO;
+/** Ongeveer het spreektempo van een stem, in tekens per seconde. */
+const VOICE_CPS = 14;
+
+/** Alleen hele woorden laten zien, dan springt er niets. */
+function wordCut(full: string, n: number) {
+  if (n >= full.length) return full;
+  const i = full.lastIndexOf(" ", Math.floor(n));
+  return i > 0 ? full.slice(0, i) : "";
+}
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean }) {
@@ -39,7 +55,24 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   const [interim, setInterim] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<Err>(null);
-  const [rate, setRate] = useState(1);
+  const [tempo, setTempoState] = useState<Tempo>(() => {
+    try {
+      const t = typeof window !== "undefined" ? localStorage.getItem("debatarena-tempo") : null;
+      return t && t in TEMPO ? (t as Tempo) : "normaal";
+    } catch {
+      return "normaal";
+    }
+  });
+  const tempoRef = useRef<Tempo>(tempo);
+  const setTempo = (t: Tempo) => {
+    tempoRef.current = t;
+    setTempoState(t);
+    try {
+      localStorage.setItem("debatarena-tempo", t);
+    } catch {
+      /* geen opslag, prima */
+    }
+  };
   const [orde, setOrde] = useState(false);
   const [quips, setQuips] = useState<Record<string, string | undefined>>({});
   const [prepStarted] = useState(() => Date.now());
@@ -47,18 +80,25 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  /** Wachten op de volgende beurt (verzoek is weg, nog geen tekst) */
+  const [pending, setPending] = useState(false);
+  const [budgetHit, setBudgetHit] = useState(false);
 
   const pausedRef = useRef(false);
   const loopingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const speechRef = useRef<SpeechQueue | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const micRef = useRef<MicHandle>(null);
+  const [listening, setListening] = useState(false);
+  const [censorOpen, setCensorOpen] = useState(false);
   const hammerClicks = useRef<number[]>([]);
   const dataRef = useRef<RunPayload | null>(null);
 
   const speech = () => {
     if (!speechRef.current) {
       speechRef.current = new SpeechQueue();
+      speechRef.current.setRate(TEMPO[tempoRef.current].speech);
       speechRef.current.onError = (m) => setError({ message: m, oplossing: "Het debat gaat door zonder geluid voor deze zin." });
     }
     return speechRef.current;
@@ -96,12 +136,15 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         const ctrl = new AbortController();
         abortRef.current = ctrl;
         let res: Response;
+        setPending(true);
         try {
           res = await fetch(`/api/runs/${id}/turn`, { method: "POST", signal: ctrl.signal });
         } catch (e) {
+          setPending(false);
           if ((e as Error).name === "AbortError") break;
           throw e;
         }
+        if (!res.headers.get("content-type")?.includes("ndjson")) setPending(false);
         if (!res.ok) {
           const d = await res.json().catch(() => ({}));
           setError({ message: d.error ?? "Er ging iets mis.", oplossing: d.oplossing });
@@ -115,6 +158,13 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             continue;
           }
           const type = d.step?.type;
+          if (type === "budget") {
+            setBudgetHit(true);
+            setPausedBoth(true);
+            speech().stop();
+            await reload();
+            break;
+          }
           if (type === "final_word") {
             setPhase("laatste_woord");
             setPausedBoth(true);
@@ -145,6 +195,19 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         let spoken = "";
         let idx = 0;
         let voice: string | null = null;
+        // De tekst komt in vlagen binnen; we tonen hem in een rustig, vast leestempo.
+        let full = "";
+        let shown = 0;
+        const cps = () => (voice ? VOICE_CPS * TEMPO[tempoRef.current].speech : TEMPO[tempoRef.current].cps);
+        const tick = setInterval(() => {
+          if (!cur || shown >= full.length) return;
+          shown = Math.min(full.length, shown + cps() * 0.05);
+          const text = wordCut(full, shown);
+          if (text !== cur.text) {
+            cur.text = text;
+            setLive({ ...cur });
+          }
+        }, 50);
         const speak = (s: string) => {
           const clean = extractSources(s).clean;
           if (voice && cur && clean) speech().say({ runId: id, messageId: cur.id, idx: idx++, text: clean, voiceId: voice });
@@ -152,6 +215,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         try {
           await readNdjson(res, (ev) => {
             if (ev.t === "start") {
+              setPending(false);
               const m = ev.message as Message;
               const role = dataRef.current?.run.cast.rollen.find((r) => r.id === m.role_id);
               voice = voiceFor(role);
@@ -161,8 +225,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
               cur.tag = ev.tag as Tag;
               setLive({ ...cur });
             } else if (ev.t === "delta" && cur) {
-              cur.text += ev.text as string;
-              setLive({ ...cur });
+              full += ev.text as string;
               spoken += ev.text as string;
               const { done, rest } = splitSentences(spoken);
               done.forEach(speak);
@@ -176,19 +239,26 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             }
           });
         } catch (e) {
-          if ((e as Error).name !== "AbortError") throw e;
+          if ((e as Error).name !== "AbortError") {
+            clearInterval(tick);
+            throw e;
+          }
         }
+        // Eerst uitlezen (of uitpraten), dan pas de volgende.
+        while (shown < full.length && !ctrl.signal.aborted && !pausedRef.current) await sleep(80);
+        clearInterval(tick);
+        if (!pausedRef.current) await speech().idle();
         await reload();
         setLive(null);
         if (pausedRef.current) break;
-        await speech().idle();
-        await sleep(600);
+        await sleep(TEMPO[tempoRef.current].pause);
       }
     } catch (e) {
       setError(toError(e));
       setPausedBoth(true);
     } finally {
       loopingRef.current = false;
+      setPending(false);
     }
   }, [id, reload, router]);
 
@@ -254,7 +324,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
     return () => clearInterval(t);
   }, [portraitsPending, phase, reload]);
 
-  useEffect(() => speechRef.current?.setRate(rate), [rate]);
+  useEffect(() => speechRef.current?.setRate(TEMPO[tempo].speech), [tempo]);
 
   // ---------- de baas grijpt in ----------
   function interrupt() {
@@ -344,6 +414,20 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
     }
   }
 
+  async function raiseLimit(extra: number) {
+    const cur = dataRef.current;
+    if (!cur) return;
+    const next = Math.round(((cur.run.cast.kostenlimiet ?? cur.run.cost_eur) + extra) * 100) / 100;
+    try {
+      await api(`/api/runs/${id}`, { method: "PATCH", json: { handmatig: true, cast: { ...cur.run.cast, kostenlimiet: next } } });
+      await reload();
+      setBudgetHit(false);
+      resume();
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
   async function setVoices(stemmen: "uit" | "jury" | "iedereen") {
     const cur = dataRef.current;
     if (!cur) return;
@@ -394,7 +478,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   if (!data) {
     return (
       <div className="flex-1 grid place-items-center p-6 text-center">
-        {error ? <ErrorNote error={error} /> : <FunWait lines={LOADING_LINES} className="text-lg" />}
+        {error ? <ErrorNote error={error} /> : <FunWait lines={LOADING_LINES} size="lg" />}
       </div>
     );
   }
@@ -424,7 +508,9 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
 
   const roles = run.cast.rollen;
   const jury = roles.find((r) => r.isJury);
-  const grokRoles = roles.filter((r) => providerOf(r).naam === "Grok");
+  const limit = run.cast.kostenlimiet ?? null;
+  const participants = roles.filter((r) => !r.isJury);
+  const spicy = participants.filter((r) => r.ongezouten).length;
   const portraits = Object.fromEntries(roles.map((r) => [r.id, run.prep[r.id]?.portraits]));
 
   // Het hele gesprek tot nu toe, plus wat er nu gezegd wordt.
@@ -435,6 +521,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         m.meta.interrupted ? "onderbroken" : null,
         m.meta.extra === "eensgezind" ? "verdacht eensgezind…" : null,
         m.meta.answer ? "antwoordt de baas" : null,
+        m.meta.opening ? "opent de vergadering" : null,
         m.meta.fallback ? `${m.meta.fallback.van} deed het niet, ${m.meta.fallback.naar} sprak namens deze rol` : null,
       ].filter(Boolean);
       feed.push({ id: m.id, who: m.role_id!, text: m.content, tag: m.tag, sources: m.sources, note: notes.join(" · ") || undefined });
@@ -453,8 +540,13 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
       tag: live.tag,
       streaming: true,
       waiting: turnWaitLines(liveRole),
-      note: live.meta.extra === "eensgezind" ? "verdacht eensgezind…" : undefined,
+      note: live.meta.extra === "eensgezind" ? "verdacht eensgezind…" : live.meta.opening ? "opent de vergadering" : undefined,
     });
+  }
+  // Tussen de beurten: laat al zien wie de volgende is en wat die doet.
+  const next = !live && pending && !paused && phase === "debat" && data.step?.type === "turn" ? roles.find((r) => r.id === (data.step as { roleId: string }).roleId) : undefined;
+  if (next) {
+    feed.push({ id: "volgende", who: next.id, text: "", streaming: true, waiting: turnWaitLines(next) });
   }
   if (phase === "laatste_woord" && jury) {
     feed.push({ id: "laatste-woord", who: jury.id, text: "Wil je nog iets zeggen voordat ik uitspraak doe?" });
@@ -470,8 +562,13 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
 
   const round = live?.round ?? Math.max(1, ...messages.filter((m) => m.kind === "turn").map((m) => m.round ?? 1));
   const roundLabel =
-    phase === "laatste_woord" || live?.meta.verdict ? "Uitspraak" : phase === "prep" ? "Voorbereiding" : `Ronde ${round} van ${run.cast.rondes}`;
-  const voicesOn = run.cast.stemmen !== "uit" && data.keys.elevenlabs;
+    phase === "laatste_woord" || live?.meta.verdict
+      ? "Uitspraak"
+      : phase === "prep"
+        ? "Voorbereiding"
+        : live?.meta.opening || (phase === "debat" && !messages.some((m) => m.kind === "turn"))
+          ? "Opening"
+          : `Ronde ${round} van ${run.cast.rondes}`;
 
   const looking =
     phase === "prep"
@@ -479,38 +576,49 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
           roles.map((r) => {
             const p = run.prep[r.id];
             if (r.isJury) return [r.id, undefined];
-            if (p?.homeworkStatus === "klaar") return [r.id, p.facts?.length ? `${p.facts.length} feiten verzameld ✓` : "Klaar ✓"];
-            return [r.id, p?.looking?.at(-1) ?? "Denkt na…"];
+            if (p?.homeworkStatus === "klaar") return [r.id, p.facts?.length ? `✓ Klaar: ${p.facts.length} feiten` : "✓ Klaar"];
+            if (p?.homeworkStatus === "mislukt") return [r.id, "✓ Klaar (zonder huiswerk)"];
+            return [r.id, `⏳ ${p?.looking?.at(-1) ?? "Zoekt nog feiten…"}`];
           }),
         )
       : undefined;
 
   const banner =
     phase === "prep" ? (
-      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-2xl bg-sky border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">
-        <FunWait lines={prepLines(roles)} />
-        <button
-          onClick={() => {
-            setPhase("debat");
-            void loop();
-          }}
-          className="underline font-normal"
-        >
-          Niet wachten
-        </button>
-      </div>
+      <PrepBanner
+        roles={roles}
+        prep={run.prep}
+        started={prepStarted}
+        onStart={() => {
+          setPhase("debat");
+          void loop();
+        }}
+      />
     ) : phase === "oordeel" ? (
-      <div className="rounded-2xl bg-sun border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">
-        <FunWait lines={JURY_LINES} />
+      <div className="w-full max-w-2xl rounded-3xl bg-sun border-2 border-ink px-5 py-4 shadow-[3px_3px_0_0_var(--color-ink)] animate-pop">
+        <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-1">De Jury beraadslaagt</span>
+        <FunWait lines={JURY_LINES} size="lg" />
       </div>
     ) : null;
 
-  const headerExtra = grokRoles.map((r) => (
-    <span key={r.id} className="flex items-center gap-1.5 rounded-full border-2 border-ink bg-white pl-3 pr-1 py-0.5 text-xs sm:text-sm">
-      <span className="font-semibold">Grok ({firstName(r.naam)})</span>
-      <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => void setGrok(r.id, v)} />
-    </span>
-  ));
+  const headerExtra = [
+    <button
+      key="censuur"
+      onClick={() => setCensorOpen((v) => !v)}
+      aria-expanded={censorOpen}
+      className={`rounded-full border-2 border-ink px-3 py-0.5 text-xs sm:text-sm font-semibold ${spicy ? "bg-coral text-white" : "bg-white"}`}
+    >
+      🌶️ Censuur{spicy ? `: ${spicy} ongecensureerd` : ""} {censorOpen ? "▴" : "▾"}
+    </button>,
+    ...(censorOpen
+      ? participants.map((r) => (
+          <span key={r.id} className="flex items-center gap-1.5 rounded-full border-2 border-ink bg-white pl-3 pr-1 py-0.5 text-xs sm:text-sm">
+            <span className="font-semibold">{firstName(r.naam)}</span>
+            <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => void setGrok(r.id, v)} />
+          </span>
+        ))
+      : []),
+  ];
 
   const placeholder =
     phase === "laatste_woord"
@@ -538,6 +646,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         activeId={activeId}
         mood={mood}
         feed={feed}
+        thinkingId={live && !live.text ? live.roleId : (next?.id ?? null)}
         roundLabel={roundLabel}
         headerExtra={headerExtra}
         banner={banner}
@@ -547,8 +656,13 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         goldenChair={run.debate_number === 10}
         footer={
           <>
-            <button onClick={() => setShowCost((v) => !v)} className="underline decoration-dotted underline-offset-2 hover:text-ink" title="Bekijk tokens en kosten per rol">
-              {euro(run.cost_eur)} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
+            <button
+              onClick={() => setShowCost((v) => !v)}
+              className={`underline decoration-dotted underline-offset-2 hover:text-ink ${limit && run.cost_eur >= limit * 0.8 ? "text-coral font-semibold" : ""}`}
+              title="Bekijk tokens en kosten per rol"
+            >
+              {euro(run.cost_eur)}
+              {limit ? ` van max ${euro(limit)}` : ""} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
             </button>
             {data.keys.elevenlabs && (
               <span className="flex items-center gap-1.5">
@@ -566,21 +680,53 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                 />
               </span>
             )}
-            {voicesOn && (
-              <span className="ml-auto flex items-center gap-1">
-                Tempo
-                {[1, 1.25, 1.5].map((r) => (
-                  <button key={r} onClick={() => setRate(r)} className={`rounded-full px-2 py-0.5 border ${rate === r ? "bg-ink text-cream border-ink" : "border-ink/30"}`}>
-                    {String(r).replace(".", ",")}x
-                  </button>
-                ))}
-              </span>
-            )}
+            <span className="ml-auto flex items-center gap-1.5">
+              📖
+              <Segmented
+                label="Tempo"
+                size="xs"
+                value={tempo}
+                onChange={(v) => setTempo(v as Tempo)}
+                options={[
+                  { value: "rustig", label: "Rustig" },
+                  { value: "normaal", label: "Normaal" },
+                  { value: "snel", label: "Snel" },
+                ]}
+              />
+            </span>
           </>
         }
       >
         <div className="space-y-2">
           {error && <ErrorNote error={error} onClose={() => setError(null)} />}
+
+          {budgetHit && phase === "debat" && (
+            <div className="rounded-2xl bg-peach border-2 border-ink p-3 space-y-2 text-sm" role="dialog" aria-label="Kostenlimiet bereikt">
+              <p className="font-semibold">
+                💶 De kostenlimiet is bereikt: {euro(run.cost_eur)} van max {euro(limit ?? run.cost_eur)}. Er start geen nieuwe beurt.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-ghost !py-1.5" onClick={() => void raiseLimit(1)}>
+                  + €1 en verder
+                </button>
+                <button
+                  className="btn-primary !py-1.5"
+                  onClick={async () => {
+                    if (await post("afronden")) {
+                      setBudgetHit(false);
+                      resume();
+                    }
+                  }}
+                >
+                  ⚖️ Afronden: Jury doet uitspraak
+                </button>
+                <button className="btn-ghost !py-1.5" onClick={endMeeting}>
+                  ⏹ Beëindigen
+                </button>
+              </div>
+              <p className="text-xs text-ink/60">Afronden kost nog een paar cent voor de uitspraak van de Jury.</p>
+            </div>
+          )}
 
           {stopPanel && phase === "debat" && (
             <div className="rounded-2xl bg-sun border-2 border-ink p-3 space-y-2 text-sm" role="dialog" aria-label="De vergadering staat stil">
@@ -634,7 +780,9 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void send();
+              // Nog aan het inspreken? Dan stoppen we de microfoon; die stuurt het daarna zelf.
+              if (listening) micRef.current?.stop();
+              else void send();
             }}
           >
             <input
@@ -646,6 +794,8 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
               className={`field !py-2.5 min-w-0 ${mode === "hamer" ? "ring-4 ring-coral/40" : ""}`}
             />
             <MicButton
+              ref={micRef}
+              onListening={setListening}
               onText={(t) => {
                 setInterim("");
                 void send(input ? `${input} ${t}` : t);
@@ -656,10 +806,11 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
               }}
               onError={(m) => setError({ message: m })}
             />
-            <button className="btn-primary !px-4 shrink-0" disabled={sending || !input.trim()}>
-              {sending ? <Spinner /> : phase === "laatste_woord" ? "Zeg het" : mode === "hamer" ? "Besluit" : "Zeg"}
+            <button className="btn-primary !px-4 shrink-0" disabled={sending || !(input.trim() || interim.trim() || listening)}>
+              {sending ? <Spinner /> : listening ? "Stuur ➤" : phase === "laatste_woord" ? "Zeg het" : mode === "hamer" ? "Besluit" : "Zeg"}
             </button>
           </form>
+          {listening && <p className="text-xs text-ink/60 -mt-1">🎙️ Ik luister… Klaar? Druk op <b>Stuur</b> (of nog een keer op de microfoon).</p>}
 
           {phase === "laatste_woord" ? (
             <div className="flex flex-wrap gap-2">
@@ -802,5 +953,54 @@ function Ctrl({ children, onClick, active }: { children: React.ReactNode; onClic
     >
       {children}
     </button>
+  );
+}
+
+/** Duidelijk maken waar je op wacht: wie nog bezig is, hoeveel er klaar zijn en wanneer het vanzelf begint. */
+function PrepBanner({ roles, prep, started, onStart }: { roles: Role[]; prep: Prep; started: number; onStart: () => void }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const debaters = roles.filter((r) => !r.isJury);
+  const pending = debaters.filter((r) => {
+    const s = prep[r.id]?.homeworkStatus;
+    return s !== "klaar" && s !== "mislukt";
+  });
+  const done = debaters.length - pending.length;
+  const left = Math.max(0, Math.ceil((started + PREP_TIMEOUT_MS - now) / 1000));
+  const klok = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  const namen = pending.map((r) => firstName(r.naam));
+  const wie = namen.length > 1 ? `${namen.slice(0, -1).join(", ")} en ${namen.at(-1)}` : namen[0];
+  return (
+    <div className="w-full max-w-2xl rounded-3xl bg-sky border-2 border-ink px-4 sm:px-5 py-3 shadow-[3px_3px_0_0_var(--color-ink)] animate-pop space-y-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="font-display font-extrabold text-base sm:text-lg">
+          Huiswerk: {done} van {debaters.length} klaar
+        </span>
+        <span className="text-xs sm:text-sm text-ink/70">Het debat begint vanzelf{pending.length ? ` (uiterlijk over ${klok})` : ""}</span>
+      </div>
+      <div className="h-2 rounded-full bg-white border border-ink/30 overflow-hidden" aria-hidden>
+        <div className="h-full bg-ink transition-all duration-700" style={{ width: `${debaters.length ? (done / debaters.length) * 100 : 100}%` }} />
+      </div>
+      <p className="text-sm text-ink/80">
+        {pending.length ? (
+          <>
+            Iedereen zoekt vooraf een paar feiten op over jouw vraag. We wachten nog op <b>{wie}</b>.
+          </>
+        ) : (
+          "Iedereen is klaar. We beginnen…"
+        )}
+      </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <FunWait lines={prepLines(pending)} size="lg" />
+        {pending.length > 0 && (
+          <button onClick={onStart} className="btn-ghost !py-1.5 text-sm shrink-0" title="Wie nog niet klaar is, doet mee zonder die feiten">
+            Nu beginnen, zonder {namen.length > 1 ? "hun" : "dat"} huiswerk
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

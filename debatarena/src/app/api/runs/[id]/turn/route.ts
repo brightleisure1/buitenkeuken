@@ -6,6 +6,7 @@ import { streamText } from "@/lib/llm";
 import { nextStep } from "@/lib/planner";
 import { historyBlocks, isFridayAfternoon, roleSystem, turnInstruction } from "@/lib/prompts";
 import { handle } from "@/lib/route";
+import { limitOf, overBudget } from "@/lib/budget";
 import { getMessages, getRun, insertMessage, roleById, updateMessage, updateRun } from "@/lib/runs";
 import { recordUsage } from "@/lib/usage-db";
 import { db } from "@/lib/supabase";
@@ -38,6 +39,10 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
 
   const step = nextStep(run, messages);
   if (step.type !== "turn") return Response.json({ step });
+  // Kostenlimiet: geen nieuwe beurten meer, alleen de uitspraak van de Jury mag nog.
+  if (overBudget(run) && !step.meta.verdict) {
+    return Response.json({ step: { type: "budget", limit: limitOf(run), cost: run.cost_eur } });
+  }
 
   const role = roleById(run, step.roleId)!;
   const all = await runAttachments(id);

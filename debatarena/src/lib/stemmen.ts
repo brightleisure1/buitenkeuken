@@ -10,7 +10,8 @@ export async function voiceMap(cast: Cast): Promise<Record<string, string>> {
   const all = await listVoices();
   if (!all.length) return {};
   const pool = await debateVoices();
-  const known = new Set(all.map((v) => v.id));
+  // Vlaamse stemmen worden vervangen door een Nederlandse.
+  const known = new Set(all.filter((v) => !v.vlaams).map((v) => v.id));
   const used = new Set<string>();
   const out: Record<string, string> = {};
   for (const r of cast.rollen) {

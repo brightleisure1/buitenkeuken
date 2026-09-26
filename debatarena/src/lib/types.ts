@@ -34,6 +34,8 @@ export interface Cast {
   stemmen: VoiceMode;
   /** Vergaderclichés aan of uit */
   cliches?: boolean;
+  /** Maximale kosten van deze vergadering in euro (null = geen limiet) */
+  kostenlimiet?: number | null;
   /** attachmentId -> "iedereen" of role.id */
   bijlages: Record<string, string>;
 }
@@ -63,6 +65,8 @@ export interface MessageMeta {
   answer?: boolean;
   extra?: "eensgezind";
   verdict?: boolean;
+  /** De voorzitter (Jury) opent de vergadering */
+  opening?: boolean;
   finalWord?: boolean;
   finalWordSkipped?: boolean;
   wrapUp?: boolean;
@@ -146,4 +150,5 @@ export type Step =
   | { type: "turn"; roleId: string; round: number; meta: MessageMeta }
   | { type: "final_word" }
   | { type: "result" }
+  | { type: "budget"; limit: number; cost: number }
   | { type: "done" };

@@ -69,18 +69,18 @@ export const CASTING_LINES = [
   "🍪 Er wordt een schaaltje koekjes neergezet…",
 ];
 
-export function prepLines(roles: Role[]): string[] {
-  const deb = roles.filter((r) => !r.isJury);
-  const n = (i: number) => voornaam(deb[i % Math.max(1, deb.length)] ?? { naam: "Iemand" });
-  return [
-    `📚 ${n(0)} leest de stukken nog even door…`,
-    `✏️ ${n(1)} slijpt een potlood…`,
-    `🔎 ${n(2)} googelt nog snel iets…`,
-    `☕ ${n(3)} haalt koffie voor de hele tafel…`,
-    `🗒️ ${n(0)} maakt spiekbriefjes…`,
-    `🧮 ${n(1)} rekent iets uit op de achterkant van een envelop…`,
-    "🎨 De tekenaar maakt de portretten af…",
+/** Zinnetjes over wie er nog bezig is met de voorbereiding (alleen die mensen). */
+export function prepLines(pending: Role[]): string[] {
+  if (!pending.length) return ["✅ Iedereen is klaar, we beginnen…"];
+  const lines = (n: string) => [
+    `🔎 ${n} zoekt nog iets op internet…`,
+    `📚 ${n} leest de stukken nog even door…`,
+    `🗒️ ${n} maakt spiekbriefjes…`,
+    `🧮 ${n} rekent iets uit op de achterkant van een envelop…`,
   ];
+  const per = pending.map((r) => lines(voornaam(r)));
+  // Om en om, zodat je iedereen die nog bezig is voorbij ziet komen.
+  return per[0].flatMap((_, i) => per.map((l) => l[i]));
 }
 
 export const JURY_LINES = [
