@@ -258,6 +258,8 @@ export interface Keten {
   stap: string;
   /** Waar in de keten we zijn (voor het flowschema) */
   fase?: "huiswerk" | "versie1" | "review" | "herschrijven" | "slotcheck" | "klaar";
+  /** Sinds wanneer de huidige stap loopt (ms) */
+  sinds?: number;
   auteur: { ai: string; model: string };
   kruis: { ai: string; model: string } | null;
   rondes: KetenRonde[];

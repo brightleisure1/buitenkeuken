@@ -707,8 +707,10 @@ await step("Review-keten: versie 1, reviews van rollen én een ander model, oord
   const debaters = done.run.cast.rollen.filter((r) => !r.isJury).length;
   assert.equal(r1.reviews.filter((r) => r.soort === "persona").length, debaters, "elke rol leest mee");
   assert.ok(r1.reviews.some((r) => r.soort === "kruis"), "de tegenlezer leest mee");
-  const ids = r1.reviews.flatMap((r) => r.punten.map((p) => p.id));
-  assert.deepEqual(r1.oordelen.map((o) => o.id).sort(), [...ids].sort(), "elk punt krijgt een oordeel");
+  const ids = r1.reviews.flatMap((r) => r.punten.filter((p) => p.zwaarte !== "laag").map((p) => p.id));
+  assert.deepEqual(r1.oordelen.map((o) => o.id).sort(), [...ids].sort(), "elk wezenlijk punt krijgt een oordeel");
+  const klein = r1.reviews.flatMap((r) => r.punten.filter((p) => p.zwaarte === "laag").map((p) => p.id));
+  assert.ok(klein.length > 0 && klein.every((id) => !r1.oordelen.some((o) => o.id === id)), "kleine punten gaan niet naar de schrijver");
   assert.ok(r1.oordelen.some((o) => o.oordeel === "niet"), "niet alles wordt klakkeloos overgenomen");
   assert.ok(r1.wijzigingen.length > 0);
   assert.equal(k.rondes[1].oordelen.length, 0, "alleen kleine punten over: geen nieuwe versie");
@@ -721,13 +723,15 @@ await step("Review-keten: versie 1, reviews van rollen én een ander model, oord
   const log = await fakeLog();
   const v1 = log.find((l) => l.schemaProps?.includes("besluit") && l.schemaProps.includes("analyse"));
   assert.equal(v1.model, "claude-opus-5-5", "versie 1 door het slimste Claude-model");
-  assert.equal(v1.effort, "high", "diep nagedacht");
   assert.match(v1.user, /Maximaal €80.000/, "met het antwoord op de vraag vooraf");
   assert.match(v1.user, /VASTE RANDVOORWAARDEN[^]*vaste gasten/, "met de randvoorwaarden");
   const kruis = log.find((l) => l.schemaProps?.includes("punten") && /tegenlezer/i.test(l.system));
   assert.equal(kruis.model, "gpt-5.5");
   const herz = log.find((l) => l.schemaProps?.includes("oordelen"));
   assert.match(herz.user, /Wees niet volgzaam/);
+  assert.doesNotMatch(herz.user, /\(laag\)/, "alleen hoog en midden");
+  assert.equal(herz.effort, "medium", "herschrijven op de middelste denkstand: sneller");
+  assert.equal(v1.effort, "medium");
 });
 
 await step("Review-keten: de baas grijpt in en vraagt nog een ronde", async () => {

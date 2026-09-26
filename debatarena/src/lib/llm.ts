@@ -39,6 +39,8 @@ export interface Prompt {
   cacheKey?: string;
   /** Zwaarder nadenken (Jury-uitslag) */
   deep?: boolean;
+  /** Denkstand expliciet kiezen (gaat voor 'deep'); sneller en goedkoper dan 'high' */
+  effort?: "low" | "medium" | "high";
 }
 
 const WHO: Record<Provider, Who> = { anthropic: "Anthropic", openai: "OpenAI", google: "Google", xai: "xAI" };
@@ -147,7 +149,7 @@ function anthropicSystem(p: Prompt): Anthropic.TextBlockParam[] {
 }
 
 function anthropicExtras(p: Prompt) {
-  const effort = p.deep ? "high" : p.model.effort;
+  const effort = p.model.effort === null && !p.deep && !p.effort ? null : (p.effort ?? (p.deep ? "high" : p.model.effort));
   return effort ? { output_config: { effort } } : {};
 }
 
@@ -177,12 +179,12 @@ function compatMessages(p: Prompt): OpenAI.Chat.ChatCompletionMessageParam[] {
 }
 
 function compatExtras(p: Prompt) {
-  const effort = p.deep && p.model.reasoning ? "medium" : p.model.reasoning;
+  const effort = p.model.reasoning ? (p.effort ?? (p.deep ? "medium" : p.model.reasoning)) : p.model.reasoning;
   return effort ? { reasoning_effort: effort } : {};
 }
 
 function openaiReasoning(p: Prompt) {
-  const effort = p.deep ? "medium" : p.model.reasoning;
+  const effort = p.effort ?? (p.deep ? "medium" : p.model.reasoning);
   return effort ? { reasoning: { effort } } : {};
 }
 

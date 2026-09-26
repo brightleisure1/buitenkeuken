@@ -116,8 +116,9 @@ export async function runKeten(id: string) {
         k.kruis = kruis ? { ai: ai(kruis), model: kruis.model } : null;
         k.stap = `${ai(auteur)} schrijft versie 1…`;
         k.fase = "versie1";
+        k.sinds = Date.now();
       });
-      const v1 = await generateJson(AdviesDocSchema, { model: auteur, system: systeem, images, instruction: `${ctx}\nSchrijf het adviesdocument. Regels:\n${DOC_REGELS}`, maxTokens: 8000, deep: true }, 1);
+      const v1 = await generateJson(AdviesDocSchema, { model: auteur, system: systeem, images, instruction: `${ctx}\nSchrijf het adviesdocument. Regels:\n${DOC_REGELS}`, maxTokens: 8000, effort: "medium" }, 1);
       const eur = await recordUsage(id, "versie", v1.usage);
       keten = await patchKeten(id, (k) => {
         k.rondes = [{ nr: 1, doc: v1.data, reviews: [], oordelen: [], wijzigingen: [] }];
@@ -205,6 +206,7 @@ async function stap(id: string, tekst: string, fase: NonNullable<Keten["fase"]>)
   await patchKeten(id, (k) => {
     k.stap = tekst;
     k.fase = fase;
+    k.sinds = Date.now();
     k.status = "bezig";
     k.fout = undefined;
   });
@@ -233,7 +235,7 @@ async function reviewRonde(run: Run, ronde: KetenRonde, kruis: ModelConfig | nul
         model,
         system: personaSysteem(role),
         instruction: `${ctx}\nHIER IS HET ADVIESDOCUMENT (versie ${ronde.nr}):\n\n${doc}\n${eerder ? `\nAL EERDER BESPROKEN (niet herhalen):\n${eerder}\n` : ""}
-Lees dit vanuit jouw rol en jouw belang. Geef maximaal 4 punten die het advies beter maken voor het besluit: wat mis je, wat klopt er vanuit jouw praktijk niet, wat zou jou of jouw mensen tegenhouden, welke voorwaarde stel je. Wees concreet en gebruik je vakkennis. Is het stuk vanuit jouw blik goed genoeg, geef dan 0 of 1 punt. Geen complimenten.`,
+Lees dit vanuit jouw rol en jouw belang. Geef maximaal 3 punten die het advies beter maken voor het besluit: wat mis je, wat klopt er vanuit jouw praktijk niet, wat zou jou of jouw mensen tegenhouden, welke voorwaarde stel je. Wees concreet en gebruik je vakkennis. Is het stuk vanuit jouw blik goed genoeg, geef dan 0 of 1 punt. Geen complimenten.`,
         maxTokens: 1500,
       },
       1,
@@ -246,7 +248,7 @@ Lees dit vanuit jouw rol en jouw belang. Geef maximaal 4 punten die het advies b
       functie: role.functie,
       soort: "persona" as const,
       ai: PROVIDERS[model.provider].naam,
-      punten: r.data.punten.slice(0, 4).map((p, j) => ({ ...p, id: `r${ronde.nr}-p${i}-${j}` })),
+      punten: r.data.punten.slice(0, 3).map((p, j) => ({ ...p, id: `r${ronde.nr}-p${i}-${j}` })),
     };
   });
   if (kruis) {
@@ -258,9 +260,9 @@ Lees dit vanuit jouw rol en jouw belang. Geef maximaal 4 punten die het advies b
             model: kruis,
             system: `Je bent een scherpe, onafhankelijke tegenlezer. Je beoordeelt het werk van een andere AI voor een directie die er een besluit op neemt. ${NL} Je bent kritisch, maar alleen waar het ertoe doet.`,
             instruction: `${ctx}\nHIER IS HET ADVIESDOCUMENT (versie ${ronde.nr}), geschreven door een andere AI:\n\n${doc}\n${eerder ? `\nAL EERDER BESPROKEN (niet herhalen):\n${eerder}\n` : ""}
-Geef maximaal 6 reviewpunten: fouten, zwakke of ontbrekende redeneringen, gemiste opties of risico's, cijfers zonder onderbouwing, interne tegenspraak, en stappen die in de praktijk niet uitvoerbaar zijn. Per punt een concreet voorstel. Geen punten over stijl.`,
+Geef maximaal 5 reviewpunten: fouten, zwakke of ontbrekende redeneringen, gemiste opties of risico's, cijfers zonder onderbouwing, interne tegenspraak, en stappen die in de praktijk niet uitvoerbaar zijn. Per punt een concreet voorstel. Geen punten over stijl.`,
             maxTokens: 2500,
-            deep: true,
+            effort: "medium",
           },
           1,
         ).catch(() => null);
@@ -272,7 +274,7 @@ Geef maximaal 6 reviewpunten: fouten, zwakke of ontbrekende redeneringen, gemist
           functie: `${PROVIDERS[kruis.provider].naam}, ander model`,
           soort: "kruis" as const,
           ai: PROVIDERS[kruis.provider].naam,
-          punten: r.data.punten.slice(0, 6).map((p, j) => ({ ...p, id: `r${ronde.nr}-k-${j}` })),
+          punten: r.data.punten.slice(0, 5).map((p, j) => ({ ...p, id: `r${ronde.nr}-k-${j}` })),
         };
       })(),
     );
@@ -290,8 +292,13 @@ Je leest een adviesdocument voor de directie en geeft feedback vanuit jouw rol, 
 }
 
 async function herzien(run: Run, keten: Keten, ronde: KetenRonde, auteur: ModelConfig, systeem: string, ctx: string, images: Awaited<ReturnType<typeof attachmentImages>>) {
+  // Alleen de wezenlijke punten (hoog en midden) gaan naar de schrijver: dat scheelt tijd en voorkomt dat het stuk dichtslibt.
   const punten = ronde.reviews
-    .flatMap((rv) => rv.punten.map((p) => `[${p.id}] (${p.zwaarte}) ${rv.soort === "kruis" ? `Tegenlezer (${rv.ai})` : `${rv.naam}, ${rv.functie}`}: ${p.punt} → voorstel: ${p.voorstel}`))
+    .flatMap((rv) =>
+      rv.punten
+        .filter((p) => p.zwaarte !== "laag")
+        .map((p) => `[${p.id}] (${p.zwaarte}) ${rv.soort === "kruis" ? `Tegenlezer (${rv.ai})` : `${rv.naam}, ${rv.functie}`}: ${p.punt} → voorstel: ${p.voorstel}`),
+    )
     .join("\n");
   const baas = keten.baas.opmerkingen.filter((o) => !o.verwerkt);
   const overrides = Object.entries(keten.baas.overrides).map(([id, v]) => {
@@ -305,12 +312,14 @@ async function herzien(run: Run, keten: Keten, ronde: KetenRonde, auteur: ModelC
       system: systeem,
       images,
       instruction: `${ctx}\nJOUW HUIDIGE VERSIE (versie ${ronde.nr}):\n\n${docText(ronde.doc)}\n\nREVIEWPUNTEN:\n${punten}\n${baas.length ? `\nOPMERKINGEN VAN DE BAAS (altijd verwerken):\n${baas.map((o) => `- ${o.tekst}`).join("\n")}\n` : ""}${overrides.filter(Boolean).length ? `\nBESLISSINGEN VAN DE BAAS OVER EERDERE PUNTEN (altijd volgen):\n${overrides.filter(Boolean).join("\n")}\n` : ""}
-Beoordeel elk reviewpunt op zijn merites en geef per id een oordeel: "over" (overnemen), "deels" of "niet", met één zin reden. Neem over wat het besluit echt beter maakt. Wijs af wat onjuist is, niet relevant, of al gedekt, ook als het van een belangrijke rol komt. Wees niet volgzaam: alles overnemen om iedereen tevreden te houden maakt het stuk vager en slechter. Houd het document compact.
+Beoordeel elk reviewpunt kritisch en geef per id een oordeel: "over", "deels" of "niet", met één zin reden.
+Neem een punt alleen over als het (a) een echte fout of onjuiste aanname herstelt, (b) het besluit, de voorwaarden of de volgorde van stappen wezenlijk verandert, of (c) een risico toevoegt dat het besluit kan laten mislukken. Al het andere wijs je af of neem je deels over: wat al gedekt is, wat een detail is, wat alleen het belang van één rol dient zonder het besluit beter te maken, en wat het stuk langer maakt zonder het scherper te maken. Tegenstrijdige punten weeg je tegen elkaar af en je kiest.
+Wees niet volgzaam. Het is normaal dat een flink deel van de punten 'niet' of 'deels' krijgt; alles overnemen maakt het stuk vager en slechter. Het document mag niet langer worden dan de vorige versie tenzij dat echt nodig is.
 Schrijf daarna de nieuwe versie van het document, met dezelfde regels:
 ${DOC_REGELS}
 En som kort op wat er veranderde.`,
-      maxTokens: 12000,
-      deep: true,
+      maxTokens: 9000,
+      effort: "medium",
     },
     1,
   );
@@ -342,7 +351,7 @@ async function slotcheck(run: Run, keten: Keten, eind: AdviesDoc, ctx: string) {
 Al gehoorde perspectieven: ${gehoord}, en een tegenlezer van een ander model.
 Doe de slotcheck: is dit klaar om op te besluiten? Denk ook aan perspectieven die nog niet aan bod kwamen (bijvoorbeeld de klant, de werkvloer, de financier, de toezichthouder) en noem hooguit 3 laatste aanvullingen. Noem de belangrijkste punten die bewust niet zijn overgenomen, en of je dat terecht vindt. Kies het review-inzicht dat het advies het meest verbeterde.`,
       maxTokens: 4000,
-      deep: true,
+      effort: "medium",
     },
     1,
   ).catch(() => null);

@@ -37,8 +37,13 @@ export function Werkblad({ id }: { id: string }) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data ophalen; state wordt pas na de fetch gezet
-    load().catch((e) => setError(toError(e)));
-  }, [load]);
+    load()
+      .then((d) => {
+        // Liep de keten nog toen de server herstartte? Dan pakt dit hem weer op (dubbel starten kan niet).
+        if (d.run.keten?.status === "bezig") void api(`/api/runs/${id}/keten`, { method: "POST", json: {} }).catch(() => {});
+      })
+      .catch((e) => setError(toError(e)));
+  }, [load, id]);
 
   const bezig = data?.run.keten?.status === "bezig" || (data?.run.status === "running" && !data?.run.keten);
   useEffect(() => {
@@ -378,6 +383,7 @@ function ReviewBlok({
                     </span> <span className="text-ink/60">— {o.reden}</span>
                   </p>
                 )}
+                {!o && p.zwaarte === "laag" && ronde.oordelen.length > 0 && <p className="text-xs mt-1.5 text-ink/45">Klein punt, niet aan de schrijver voorgelegd.</p>}
                 {o && kanOmdraaien && (
                   <p className="no-print text-xs mt-1.5 flex flex-wrap items-center gap-2">
                     {ov ? (

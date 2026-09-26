@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Keten } from "@/lib/types";
 
 type State = "klaar" | "bezig" | "straks" | "fout";
@@ -61,13 +62,34 @@ export function KetenFlow({ keten, meelezers }: { keten: Keten | null | undefine
         ))}
       </ol>
       {k?.status === "bezig" && (
-        <p className="mt-4 flex items-center gap-2 text-sm text-ink/70">
+        <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink/70">
           <span className="h-1.5 w-1.5 rounded-full bg-coral animate-pulse" aria-hidden />
           {k.stap}
+          {k.sinds && <Klok sinds={k.sinds} />}
+          {k.fase && DUUR[k.fase] && <span className="text-xs text-ink/45">meestal {DUUR[k.fase]}</span>}
         </p>
       )}
     </section>
   );
+}
+
+/** Hoe lang een stap meestal duurt, zodat je weet waar je op wacht. */
+const DUUR: Partial<Record<NonNullable<Keten["fase"]>, string>> = {
+  huiswerk: "een halve minuut",
+  versie1: "1 tot 2 minuten",
+  review: "een halve minuut",
+  herschrijven: "1 tot 2 minuten",
+  slotcheck: "een halve minuut",
+};
+
+function Klok({ sinds }: { sinds: number }) {
+  const [nu, setNu] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNu(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const s = Math.max(0, Math.round((nu - sinds) / 1000));
+  return <span className="tabular-nums text-ink/50">· {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}</span>;
 }
 
 function Bol({ state, nr }: { state: State; nr: number }) {
