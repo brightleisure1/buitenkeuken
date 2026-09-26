@@ -36,6 +36,7 @@ Jij stelt de cast samen. Castingregels:
 - Het is een overleg binnen het bedrijf van de baas. De debaterende rollen zijn vrijwel allemaal collega's uit dat bedrijf (bijvoorbeeld directie, operatie, financiën, marketing/verkoop, HR, iemand van de werkvloer), gekozen bij wat het vraagstuk raakt. Leid het soort bedrijf af uit het vraagstuk en de bijlages.
 - Daarnaast zit er altijd precies één klant of gast van buiten aan tafel (isKritisch=true): degene die uiteindelijk betaalt, koopt of gebruikt, en daarom kritisch is. Noem de functie zo dat duidelijk is dat het de klant/gast is (bijv. "Gast, gezin met twee kinderen", "Klant, inkoper bij een groothandel").
 - Geen overlappende perspectieven. Elke rol bewaakt een ander belang.
+- Precies één bouwende rol (isBouwer=true): verdedigt de ambitieuze variant en zoekt gemiste kansen en upside, geen risico's. Stem die af op het vraagstuk: bij een investering of overname bijvoorbeeld een private-equitypartner, buy-and-build-investeerder of exitkoper; bij een commerciële vraag een groeistrateeg of de ondernemer van een snelgroeiende concurrent. Niet de klant of gast en niet de voorzitter. Zet in de instructie dat deze rol naar upside zoekt en elke ronde minstens één nieuw inzicht levert.
 - Meng de AI's: gebruik zoveel mogelijk verschillende aanbieders uit de modellijst (Claude, ChatGPT, Gemini, Grok), zodat de baas ziet hoe ze van elkaar verschillen.
 - ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) bij een deelnemer als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los"). Kan bij elke deelnemer, nooit bij de voorzitter.
 - vergadercliches (= de fun-modus): standaard false en dan is cliche overal ''. Zet op true als de baas erom vraagt ("fun-modus", "maak het grappig", "met vergaderclichés", "maak het herkenbaar", "net een echte vergadering"). Geef dan 2 tot 4 debaterende rollen elk een ander cliché uit de clichélijst dat past bij hun functie. De voorzitter nooit; de kritische klant liever niet.
@@ -116,6 +117,7 @@ export function normalizeCast(
       webzoeken: !!r.webzoeken,
       isJury: !!r.isJury,
       isKritisch: !!r.isKritisch,
+      isBouwer: !!r.isBouwer && !r.isJury,
       ongezouten: !!r.ongezouten,
       cliche: r.cliche || null,
       uiterlijk: r.uiterlijk.trim(),
@@ -191,6 +193,34 @@ export function normalizeCast(
     }
   }
 
+  // Precies één bouwende rol: verdedigt de ambitieuze variant (niet de klant, niet de voorzitter).
+  const bouwers = debaters.filter((r) => r.isBouwer && !r.isKritisch);
+  debaters.forEach((r) => (r.isBouwer = false));
+  if (bouwers.length) bouwers[0].isBouwer = true;
+  else {
+    const other = opts.models.find((m) => m.tier === "sterk" && m.provider !== "xai" && !debaters.some((d) => getModel(d.modelKey)?.provider === m.provider));
+    const nieuw: Role = {
+      id: used.has("bouwer") ? "bouwer-1" : "bouwer",
+      naam: "Sanne Vermeulen",
+      functie: "Groeistrateeg die de ambitieuze variant verdedigt",
+      perspectief: "Waar zit de grootste upside, en welke kans laten we liggen?",
+      instructie: "Je verdedigt de ambitieuze variant. Je zoekt gemiste kansen, schaalvoordelen en extra waarde, geen risico's; die brengen anderen al in. Elke ronde lever je minstens één nieuw inzicht dat nog niet in de tekst staat.",
+      zin: "Wat als we groter denken?",
+      modelKey: (other ?? strongest()).key,
+      stemId: null,
+      webzoeken: false,
+      isJury: false,
+      isKritisch: false,
+      isBouwer: true,
+      uiterlijk: "energetic woman in her 40s, sharp blazer, holding a growth chart",
+    };
+    // Panel vol? Dan vervangt de bouwer de laatste rol die niet de klant is.
+    if (debaters.length >= maxDebaters) {
+      const i = debaters.map((d) => !d.isKritisch).lastIndexOf(true);
+      debaters[i] = nieuw;
+    } else debaters.push(nieuw);
+  }
+
   roles = [...debaters, jury[0]];
 
   roles = roles.map((r) => fixJury(r, opts.models));
@@ -253,6 +283,7 @@ function castToRaw(c: Cast): RawCast {
       webzoeken: r.webzoeken,
       isJury: r.isJury,
       isKritisch: r.isKritisch,
+      isBouwer: !!r.isBouwer,
       ongezouten: !!r.ongezouten,
       cliche: r.cliche ?? "",
       uiterlijk: r.uiterlijk,

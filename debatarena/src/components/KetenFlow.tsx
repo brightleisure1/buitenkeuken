@@ -4,15 +4,17 @@ import { useEffect, useState } from "react";
 import type { Keten } from "@/lib/types";
 
 type State = "klaar" | "bezig" | "straks" | "fout";
-const FASEN = ["huiswerk", "versie1", "review", "herschrijven", "slotcheck", "klaar"] as const;
+const FASEN = ["huiswerk", "verbreden", "samenvoegen", "review", "herschrijven", "slotcheck", "redactie", "klaar"] as const;
+const AANTAL = FASEN.length;
 
 /** Waar staan we? Oudere ketens hebben nog geen fase: afleiden uit de inhoud. */
 function faseVan(k: Keten | null | undefined): number {
   if (!k) return 0;
-  if (k.status === "klaar") return 5;
+  if (k.status === "klaar") return AANTAL - 1;
+  if (k.fase === "versie1") return 1; // oudere ketens
   if (k.fase) return FASEN.indexOf(k.fase);
   if (!k.rondes.length) return 0;
-  return k.rondes.at(-1)!.reviews.length ? 3 : 2;
+  return k.rondes.at(-1)!.reviews.length ? 4 : 3;
 }
 
 type Stap = { titel: string; detail: string; state: State; lus?: boolean };
@@ -28,21 +30,23 @@ export function KetenFlow({ keten, meelezers }: { keten: Keten | null | undefine
   const laatste = k?.rondes.filter((r) => r.oordelen.length).at(-1);
   const over = laatste ? laatste.oordelen.filter((o) => o.oordeel !== "niet").length : 0;
 
+  const concepten = k?.concepten?.map((c) => c.ai).join(", ");
   const stappen: Stap[] = [
-    { titel: "Vraag", detail: "met jouw antwoorden", state: "klaar" },
     { titel: "Huiswerk", detail: "feiten met bron", state: st(0) },
-    { titel: "Versie 1", detail: k?.auteur.ai ? `door ${k.auteur.ai}` : "slimste model", state: st(1) },
-    { titel: "Reviews", detail: `${meelezers} rollen${k?.kruis ? ` + ${k.kruis.ai}` : ""}`, state: st(2), lus: true },
-    { titel: "Herschrijven", detail: laatste ? `${over} van ${laatste.oordelen.length} overgenomen` : "per punt beoordeeld", state: st(3), lus: true },
-    { titel: "Slotcheck", detail: "voorzitter", state: st(4) },
-    { titel: "Advies", detail: k?.status === "klaar" ? `${k.rondes.length} versies` : "klaar om te besluiten", state: fase >= 5 ? "klaar" : "straks" },
+    { titel: "Eerste versies", detail: concepten || "2 tot 3 modellen", state: st(1) },
+    { titel: "Samenvoegen", detail: k?.herkomst ? `${k.herkomst.filter((h) => h.status === "opgenomen").length} inzichten` : "tot versie 1", state: st(2) },
+    { titel: "Reviews", detail: `${meelezers} rollen${k?.kruis ? ` + ${k.kruis.ai}` : ""}`, state: st(3), lus: true },
+    { titel: "Herschrijven", detail: laatste ? `${over} van ${laatste.oordelen.length} overgenomen` : "eerst beoordelen", state: st(4), lus: true },
+    { titel: "Slotcheck", detail: "voorzitter", state: st(5) },
+    { titel: "Eindredactie", detail: "leesbaar en gecontroleerd", state: st(6) },
+    { titel: "Advies", detail: k?.status === "klaar" ? "klaar" : "om op te besluiten", state: fase >= AANTAL - 1 ? "klaar" : "straks" },
   ];
 
   return (
     <section className="card px-4 py-4 sm:px-6 sm:py-5" aria-label="Voortgang van de review-keten">
-      <ol className="relative grid grid-cols-1 gap-3 sm:grid-cols-7 sm:gap-0">
+      <ol className="relative grid grid-cols-1 gap-3 sm:grid-cols-8 sm:gap-0">
         {/* De review-lus: licht gemarkeerd achter 'Reviews' en 'Herschrijven' */}
-        <li aria-hidden className="pointer-events-none absolute hidden sm:block inset-y-[-6px] left-[calc(3/7*100%)] w-[calc(2/7*100%)] rounded-2xl bg-coral/[0.06] ring-1 ring-coral/15">
+        <li aria-hidden className="pointer-events-none absolute hidden sm:block inset-y-[-6px] left-[calc(3/8*100%)] w-[calc(2/8*100%)] rounded-2xl bg-coral/[0.06] ring-1 ring-coral/15">
           <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 text-[11px] font-medium text-coral ring-1 ring-coral/20">
             Ronde {ronde} van {max}
           </span>
@@ -77,6 +81,9 @@ export function KetenFlow({ keten, meelezers }: { keten: Keten | null | undefine
 const DUUR: Partial<Record<NonNullable<Keten["fase"]>, string>> = {
   huiswerk: "een halve minuut",
   versie1: "1 tot 2 minuten",
+  verbreden: "1 tot 2 minuten",
+  samenvoegen: "1 tot 2 minuten",
+  redactie: "1 tot 2 minuten",
   review: "een halve minuut",
   herschrijven: "1 tot 2 minuten",
   slotcheck: "een halve minuut",

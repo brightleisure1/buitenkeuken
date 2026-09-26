@@ -52,7 +52,13 @@ function textOf(x) {
   return "";
 }
 
-function adviesDoc(versie) {
+function adviesDoc(versie, inhoud = "discipline") {
+  const extra =
+    inhoud === "buy-and-build"
+      ? " Groei via buy-and-build met add-on-overnames."
+      : inhoud === "beide"
+        ? " Houd financieringsdiscipline aan (DSCR minimaal 1,5) en groei daarna via buy-and-build met add-on-overnames."
+        : " Houd financieringsdiscipline aan (DSCR minimaal 1,5).";
   return {
     besluit: `Verhoog de prijzen gefaseerd met 6% (versie ${versie})`,
     samenvatting: "Verhoog in twee stappen. Ontzie vaste klanten het eerste jaar. Meet het effect per klantgroep.",
@@ -60,7 +66,7 @@ function adviesDoc(versie) {
       { optie: "Gefaseerd 6%", voor: "Marge herstelt", tegen: "Risico op verloop" },
       { optie: "Niets doen", voor: "Geen onrust", tegen: "Marge daalt verder" },
     ],
-    analyse: "De marge staat onder druk (bron: CBS).\n\nEen gefaseerde verhoging beperkt het verloop.",
+    analyse: `De marge staat onder druk (bron: CBS).\n\nEen gefaseerde verhoging beperkt het verloop.${extra}`,
     aannames: [{ aanname: "Klanten accepteren 6%", risico: "Verloop", hoeTesten: "Proef op twee parken" }],
     stappen: [{ stap: "Prijslijst herzien", waarom: "Nodig voor de verhoging", eersteActie: "Doorrekenen", eigenaar: "CFO", termijn: "2 weken" }],
   };
@@ -74,11 +80,74 @@ function field(text, label) {
 let turnCounter = 0;
 
 /** Kiest een antwoord op basis van wat er gevraagd wordt. */
-function answer({ system, user, schemaProps }) {
+function answer({ system, user, schemaProps, model = "" }) {
   const all = `${system}\n${user}`;
   if (schemaProps) {
     // ---------- review-keten ----------
     if (schemaProps.includes("vragen")) return { json: { vragen: ["Wat is het maximale budget?", "Wanneer moet het besluit vallen?"] } };
+    // Verbreden: elk model een eigen eerste versie. GPT komt met buy-and-build, Claude met financieringsdiscipline.
+    if (schemaProps.includes("inzichten") && schemaProps.includes("document")) {
+      const gpt = /gpt/.test(model);
+      return {
+        json: {
+          document: adviesDoc(gpt ? "B" : "A", gpt ? "buy-and-build" : "discipline"),
+          inzichten: gpt
+            ? ["Groei via buy-and-build: koop add-on-overnames in dezelfde niche", "AI-uplift eerst bewijzen in één proces"]
+            : ["Financieringsdiscipline: DSCR minimaal 1,5 en geen overmatige privéborg", "AI-uplift eerst bewijzen in één proces"],
+        },
+      };
+    }
+    if (schemaProps.includes("herkomst")) {
+      return {
+        json: {
+          document: adviesDoc(1, "beide"),
+          herkomst: [
+            { inzicht: "Financieringsdiscipline met DSCR minimaal 1,5", bron: ["A"], status: "opgenomen", reden: "Kern van een verantwoorde overname" },
+            { inzicht: "Buy-and-build met add-on-overnames", bron: ["B"], status: "opgenomen", reden: "Grootste upside" },
+            { inzicht: "AI-uplift eerst bewijzen in één proces", bron: ["A", "B"], status: "opgenomen", reden: "Beide versies" },
+            { inzicht: "Alles in één keer transformeren", bron: ["B"], status: "weggelaten", reden: "Te riskant" },
+          ],
+        },
+      };
+    }
+    // Beoordelen (apart van herschrijven)
+    if (schemaProps.includes("oordelen") && !schemaProps.includes("document")) {
+      const ids = [...user.matchAll(/\[(r\d+-[pkb][\d-]*)\]/g)].map((m) => m[1]);
+      return {
+        json: {
+          oordelen: ids.map((id, i) =>
+            id.includes("-b")
+              ? { id, oordeel: "over", criterium: "kans", reden: "Vergroot de upside." }
+              : { id, oordeel: i % 3 === 2 ? "niet" : i % 3 === 1 ? "deels" : "over", criterium: i % 3 === 2 ? "geen" : "risico", reden: i % 3 === 2 ? "Al gedekt in stap 2." : "Maakt het besluit sterker." },
+          ),
+        },
+      };
+    }
+    // Herschrijven: alleen de overgenomen punten, met changelog per id
+    if (schemaProps.includes("changelog")) {
+      const ids = [...user.matchAll(/\[([^\]]+)\] (?:OVER|DEELS)/g)].map((m) => m[1]);
+      const baas = [...user.matchAll(/\[(b\d+)\] /g)].map((m) => m[1]);
+      const versie = Number((user.match(/Schrijf versie (\d+)/) ?? [])[1] ?? 2);
+      return { json: { document: adviesDoc(versie, "beide"), changelog: [...ids, ...baas].map((id) => ({ id, wijziging: `Punt ${id} verwerkt in de analyse` })) } };
+    }
+    // Eindredactie
+    if (schemaProps.includes("controle") && schemaProps.includes("document")) {
+      const ids = [...(user.split("CLAIMS DIE IN DE TEKST MOETEN STAAN")[1] ?? "").matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
+      return {
+        json: {
+          document: adviesDoc("eind", "beide"),
+          controle: ids.map((id) => ({ id, aanwezig: true, actie: "staat erin" })),
+          besluitAangepast: /VERANDEREN|RAKEN/.test(user) ? "Voorwaarde toegevoegd: eerst een co-investeerder vastleggen." : "",
+          consistentie: ["DSCR overal gelijkgetrokken naar 1,5"],
+        },
+      };
+    }
+    // Onafhankelijke controle: het laatste overgenomen punt staat er "echt" niet in
+    if (schemaProps.includes("resultaten")) {
+      const ids = [...(user.split("CLAIMS:")[1] ?? "").matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
+      const mis = ids.filter((i) => /^r\d/.test(i) && !/-b/.test(i)).at(-1);
+      return { json: { resultaten: ids.map((id) => ({ id, aanwezig: id !== mis, waar: id === mis ? "" : "analyse" })) } };
+    }
     if (schemaProps.includes("oordelen") && schemaProps.includes("document")) {
       const ids = [...user.matchAll(/\[(r\d+-[pk][\d-]*)\]/g)].map((m) => m[1]);
       const versie = Number((user.match(/JOUW HUIDIGE VERSIE \(versie (\d+)\)/) ?? [])[1] ?? 1) + 1;
@@ -94,6 +163,9 @@ function answer({ system, user, schemaProps }) {
     if (schemaProps.includes("punten")) {
       const v = Number((user.match(/ADVIESDOCUMENT \(versie (\d+)\)/) ?? [])[1] ?? 1);
       const tegenlezer = /tegenlezer/i.test(system);
+      if (/ambitieuze variant/.test(user)) {
+        return { json: { punten: [{ zwaarte: "hoog", punt: v >= 2 ? "Voeg een tweede add-on in een aangrenzende regio toe." : "Buy-and-build: koop na de eerste overname 2 tot 3 add-on-overnames in dezelfde niche.", voorstel: "Neem een add-on-strategie op met een eerste doelwit binnen 12 maanden." }] } };
+      }
       if (v >= 2) return { json: { punten: [{ zwaarte: "laag", punt: "Kleine verduidelijking bij stap 3.", voorstel: "Noem de eigenaar." }] } };
       return {
         json: {
@@ -113,6 +185,10 @@ function answer({ system, user, schemaProps }) {
       return {
         json: {
           oordeel: "Klaar om op te besluiten, mits de proef op twee parken slaagt.",
+          bevindingen: [
+            { tekst: "Met twee oprichterssalarissen is een co-investeerder vrijwel onvermijdelijk.", impact: "conclusie" },
+            { tekst: "Informeer de ondernemingsraad vooraf.", impact: "aanvulling" },
+          ],
           vertrouwen: "midden",
           waaromVertrouwen: "De prijselasticiteit is nog een schatting.",
           laatsteAanvullingen: ["Informeer de ondernemingsraad vooraf."],
@@ -188,6 +264,7 @@ function castFrom(user) {
     webzoeken: false,
     isJury: false,
     isKritisch: false,
+    isBouwer: false,
     ongezouten: false,
     cliche: "",
     uiterlijk: `a ${functie.toLowerCase()} in a blazer`,
@@ -268,7 +345,7 @@ async function anthropic(req, res, body) {
   const schemaProps = b.output_config?.format?.schema ? Object.keys(b.output_config.format.schema.properties ?? {}) : null;
   const hasCache = JSON.stringify(b).includes('"cache_control"');
   log.push({ provider: "anthropic", model: b.model, stream: !!b.stream, system, user, schemaProps, hasCache, tools: b.tools?.map((t) => t.type), effort: b.output_config?.effort });
-  const out = answer({ system, user, schemaProps });
+  const out = answer({ system, user, schemaProps, model: b.model });
   const text = out.json ? JSON.stringify(out.json) : out.text;
   const usage = { input_tokens: 1200, output_tokens: Math.ceil(text.length / 4), cache_read_input_tokens: hasCache ? 800 : 0, cache_creation_input_tokens: hasCache ? 300 : 0 };
   if (!b.stream) {
@@ -318,7 +395,7 @@ async function responses(req, res, body) {
   const user = textOf((b.input ?? []).flatMap((i) => i.content ?? []).map((c) => c.text ?? ""));
   const schemaProps = b.text?.format?.schema ? Object.keys(b.text.format.schema.properties ?? {}) : null;
   log.push({ provider: "openai", model: b.model, stream: !!b.stream, system, user, schemaProps, cacheKey: b.prompt_cache_key, tools: b.tools?.map((t) => t.type), reasoning: b.reasoning?.effort });
-  const out = answer({ system, user, schemaProps });
+  const out = answer({ system, user, schemaProps, model: b.model });
   const text = out.json ? JSON.stringify(out.json) : out.text;
   const usage = { input_tokens: 1500, input_tokens_details: { cached_tokens: 700 }, output_tokens: Math.ceil(text.length / 4), output_tokens_details: { reasoning_tokens: 0 }, total_tokens: 0 };
   const response = {
@@ -364,7 +441,7 @@ async function chat(provider, req, res, body) {
   const user = textOf(b.messages?.filter((m) => m.role === "user").at(-1)?.content);
   const schemaProps = b.response_format?.json_schema?.schema ? Object.keys(b.response_format.json_schema.schema.properties ?? {}) : null;
   log.push({ provider, model: b.model, stream: !!b.stream, system, user, schemaProps, reasoning: b.reasoning_effort });
-  const out = answer({ system, user, schemaProps });
+  const out = answer({ system, user, schemaProps, model: b.model });
   const text = out.json ? JSON.stringify(out.json) : out.text;
   const usage = { prompt_tokens: 1300, completion_tokens: Math.ceil(text.length / 4), total_tokens: 0, prompt_tokens_details: { cached_tokens: 400 } };
   const base = { id: "chatcmpl_fake", created: Math.floor(Date.now() / 1000), model: b.model };

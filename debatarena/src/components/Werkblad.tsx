@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, euro } from "@/lib/client";
 import { ketenMarkdown } from "@/lib/keten-markdown";
 import type { RunPayload } from "@/lib/payload";
-import type { AdviesDoc, Keten, KetenRonde, Oordeel, Review, ReviewPunt } from "@/lib/types";
+import type { AdviesDoc, Keten, KetenRonde, Oordeel, Review, ReviewPunt, Role } from "@/lib/types";
 import { tokens } from "@/lib/usage";
 import { CostPanel } from "./CostPanel";
 import { KetenFlow } from "./KetenFlow";
@@ -80,6 +80,7 @@ export function Werkblad({ id }: { id: string }) {
   const r = reviewRondes.find((x) => x.nr === toonRonde);
   const openBaas = (k?.baas.opmerkingen.filter((o) => !o.verwerkt).length ?? 0) + Object.keys(k?.baas.overrides ?? {}).length;
   const limit = run.cast.kostenlimiet ?? null;
+  const klaar = k?.status === "klaar";
 
   function download() {
     const blob = new Blob([ketenMarkdown(run)], { type: "text/markdown;charset=utf-8" });
@@ -123,8 +124,6 @@ export function Werkblad({ id }: { id: string }) {
         </div>
       </header>
 
-      <KetenFlow keten={k} meelezers={run.cast.rollen.filter((r) => !r.isJury).length} />
-
       {k?.status === "fout" && (
         <div className="card p-4 space-y-2">
           <ErrorNote error={k.fout ? { message: k.fout.error, oplossing: k.fout.oplossing } : { message: "Er ging iets mis." }} />
@@ -150,8 +149,52 @@ export function Werkblad({ id }: { id: string }) {
       )}
       <ErrorNote error={error} onClose={() => setError(null)} />
 
-      {k?.slot && <Slot keten={k} />}
-
+      {klaar && k?.eind ? (
+        <>
+          <AdviesKaart keten={k} />
+          {k.slot && <Slot keten={k} />}
+          <TotStand keten={k} rollen={run.cast.rollen} />
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
+          <div className="card p-5 space-y-3 no-print">
+            <h2 className="font-display font-bold text-lg">Jouw punt</h2>
+            <p className="text-sm text-ink/60">Wat moet er volgens jou anders? De schrijver verwerkt het altijd in de volgende versie.</p>
+            <form
+              className="space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!opmerking.trim()) return;
+                void post(`/api/runs/${id}/keten/baas`, { opmerking }).then(() => setOpmerking(""));
+              }}
+            >
+              <textarea className="field !py-2" rows={3} value={opmerking} onChange={(e) => setOpmerking(e.target.value)} placeholder="Bijv. 'Reken ook met een scenario waarin de subsidie niet doorgaat.'" />
+              <button className="btn-ghost !py-1.5" disabled={busy || !opmerking.trim()}>
+                Toevoegen
+              </button>
+            </form>
+            {k && k.baas.opmerkingen.length > 0 && (
+              <ul className="text-sm space-y-1">
+                {k.baas.opmerkingen.map((o) => (
+                  <li key={o.id} className={o.verwerkt ? "text-ink/50" : ""}>
+                    <span className={`mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle ${o.verwerkt ? "bg-emerald-500" : "bg-coral"}`} aria-hidden />
+                    {o.tekst}
+                    {o.verwerkt ? " (verwerkt)" : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {k?.status === "klaar" && (
+              <button className={openBaas ? "btn-primary !py-2" : "btn-ghost !py-2"} disabled={busy} onClick={() => void post(`/api/runs/${id}/keten`, { extra: true })}>
+                {busy ? <Spinner /> : openBaas ? `Verwerk jouw ${openBaas === 1 ? "punt" : `${openBaas} punten`} in een nieuwe ronde` : "Nog een ronde"}
+              </button>
+            )}
+            {k?.status === "bezig" && openBaas > 0 && <p className="text-xs text-ink/55">Wordt meegenomen in de volgende versie.</p>}
+          </div>
+          </div>
+          {run.result && k?.status === "klaar" && <Vergelijk id={id} result={run.result} totalCost={run.cost_eur} onChange={() => void load()} keten />}
+          <details className="card p-5">
+            <summary className="cursor-pointer font-display font-bold text-lg">Debatlog: versies, reviews en oordelen</summary>
+            <div className="mt-4 space-y-5">
+              <KetenFlow keten={k} meelezers={run.cast.rollen.filter((r) => !r.isJury).length} />
       <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-5 items-start">
         {/* Het document */}
         <section className="card p-5 space-y-4 min-w-0">
@@ -215,6 +258,80 @@ export function Werkblad({ id }: { id: string }) {
             )}
           </div>
 
+        </section>
+      </div>
+            </div>
+          </details>
+        </>
+      ) : (
+        <>
+          <KetenFlow keten={k} meelezers={run.cast.rollen.filter((r) => !r.isJury).length} />
+      <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-5 items-start">
+        {/* Het document */}
+        <section className="card p-5 space-y-4 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-display font-bold text-lg mr-auto">Het advies</h2>
+            {docs.map((d) => (
+              <button
+                key={d.nr}
+                onClick={() => setVersie(d.nr)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium ${toonVersie === d.nr ? "bg-ink text-white border-ink" : "border-ink/15 bg-white"}`}
+              >
+                Versie {d.nr}
+                {k?.status === "klaar" && d.nr === docs.length ? " · eind" : ""}
+              </button>
+            ))}
+          </div>
+          {huidigDoc ? (
+            <>
+              {vorigeRonde?.wijzigingen.length ? (
+                <div className="rounded-xl bg-mint/70 px-3 py-2 text-sm">
+                  <p className="font-semibold mb-1">Wat veranderde ten opzichte van versie {vorigeRonde.nr}</p>
+                  <ul className="list-disc pl-5 space-y-0.5">
+                    {vorigeRonde.wijzigingen.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <DocView doc={huidigDoc} />
+            </>
+          ) : (
+            <div className="space-y-3 py-2" aria-busy="true" aria-label="Versie 1 wordt geschreven">
+              <div className="h-6 w-3/4 rounded-lg bg-ink/[0.06] animate-pulse" />
+              <div className="h-3 w-full rounded bg-ink/[0.05] animate-pulse" />
+              <div className="h-3 w-11/12 rounded bg-ink/[0.05] animate-pulse" />
+              <div className="h-3 w-4/5 rounded bg-ink/[0.05] animate-pulse" />
+              <p className="pt-2 text-sm text-ink/55">Versie 1 verschijnt hier zodra hij klaar is. Dat duurt meestal een minuut of twee.</p>
+            </div>
+          )}
+        </section>
+
+        {/* De reviews */}
+        <section className="space-y-4 min-w-0">
+          <div className="card p-5 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display font-bold text-lg mr-auto">Reviews</h2>
+              {reviewRondes.map((x) => (
+                <button
+                  key={x.nr}
+                  onClick={() => setRonde(x.nr)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium ${toonRonde === x.nr ? "bg-ink text-white border-ink" : "border-ink/15 bg-white"}`}
+                >
+                  Ronde {x.nr}
+                </button>
+              ))}
+            </div>
+            {r ? (
+              <Ronde ronde={r} keten={k!} busy={busy} onOverride={(punt, override) => void post(`/api/runs/${id}/keten/baas`, { punt, override })} />
+            ) : (
+              <p className="text-sm text-ink/60">{bezig ? "De eerste reviews komen zo binnen." : "Nog geen reviews."}</p>
+            )}
+          </div>
+
+        </section>
+      </div>
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
           <div className="card p-5 space-y-3 no-print">
             <h2 className="font-display font-bold text-lg">Jouw punt</h2>
             <p className="text-sm text-ink/60">Wat moet er volgens jou anders? De schrijver verwerkt het altijd in de volgende versie.</p>
@@ -249,10 +366,9 @@ export function Werkblad({ id }: { id: string }) {
             )}
             {k?.status === "bezig" && openBaas > 0 && <p className="text-xs text-ink/55">Wordt meegenomen in de volgende versie.</p>}
           </div>
-        </section>
-      </div>
-
-      {run.result && k?.status === "klaar" && <Vergelijk id={id} result={run.result} totalCost={run.cost_eur} onChange={() => void load()} keten />}
+          </div>
+        </>
+      )}
 
       <details className="card p-5">
         <summary className="cursor-pointer font-display font-bold text-lg">Tokens en kosten</summary>
@@ -359,6 +475,7 @@ function ReviewBlok({
       <p className="text-sm font-semibold flex flex-wrap items-center gap-2">
         {rv.soort === "kruis" ? "Tegenlezer" : rv.naam}
         <span className="font-normal text-ink/60">{rv.functie}</span>
+        {rv.soort === "bouwer" && <span className="rounded-full bg-lilac px-2 py-px text-[10px] font-medium">bouwende rol, zoekt kansen</span>}
         <span className="text-[10px] rounded-full bg-ink/5 px-1.5 py-px font-medium">{rv.ai}</span>
       </p>
       {rv.punten.length === 0 ? (
@@ -380,6 +497,7 @@ function ReviewBlok({
                     <span className={`inline-flex items-center gap-1.5 font-semibold ${OORDEEL[o.oordeel].klas}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${OORDEEL[o.oordeel].dot}`} aria-hidden />
                       {OORDEEL[o.oordeel].tekst}
+                      {o.criterium && o.criterium !== "geen" && <span className="font-normal text-ink/50">· {o.criterium}</span>}
                     </span> <span className="text-ink/60">— {o.reden}</span>
                   </p>
                 )}
@@ -423,6 +541,18 @@ function Slot({ keten }: { keten: Keten }) {
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${kleur}`}>Vertrouwen: {s.vertrouwen}</span>
       </div>
       <p className="text-[15px] leading-relaxed">{s.oordeel}</p>
+      {s.bevindingen && s.bevindingen.length > 0 && (
+        <ul className="space-y-1 text-sm">
+          {s.bevindingen.map((b, i) => (
+            <li key={i}>
+              <span className={`mr-2 rounded-full px-1.5 py-px text-[10px] font-semibold uppercase ${b.impact === "conclusie" ? "bg-coral text-white" : "bg-ink/5 text-ink/60"}`}>
+                {b.impact === "conclusie" ? "verandert conclusie" : b.impact}
+              </span>
+              {b.tekst}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="text-sm text-ink/60">{s.waaromVertrouwen}</p>
       {s.laatsteAanvullingen.length > 0 && (
         <div className="text-sm">
@@ -450,6 +580,130 @@ function Slot({ keten }: { keten: Keten }) {
         <p className="text-sm rounded-xl bg-lilac/70 px-3 py-2">
           <b>Beste inzicht uit de reviews:</b> &ldquo;{s.besteInzicht.tekst}&rdquo; <span className="text-ink/60">— {s.besteInzicht.van}</span>
         </p>
+      )}
+    </section>
+  );
+}
+
+/** Het eindadvies, na redactie: dit is wat de baas leest. */
+function AdviesKaart({ keten }: { keten: Keten }) {
+  const d = keten.eind!;
+  return (
+    <section className="card p-5 sm:p-7 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink/55 mr-auto">Advies</h2>
+        {keten.slot && (
+          <span className="rounded-full bg-ink/5 px-3 py-1 text-xs font-medium">Vertrouwen voorzitter: {keten.slot.vertrouwen}</span>
+        )}
+      </div>
+      {keten.redactie?.besluitAangepast && (
+        <p className="rounded-xl bg-sun/70 px-3 py-2 text-sm">
+          <b>Besluit aangepast na de slotcheck:</b> {keten.redactie.besluitAangepast}
+        </p>
+      )}
+      <DocView doc={d} />
+    </section>
+  );
+}
+
+/** Hoe dit advies tot stand kwam: eerste versies, herkomst, panel, rondes en de eindcontrole. */
+function TotStand({ keten, rollen }: { keten: Keten; rollen: Role[] }) {
+  const k = keten;
+  const rondes = k.rondes.filter((r) => r.oordelen.length);
+  const alle = rondes.flatMap((r) => r.oordelen);
+  const tel = (o: Oordeel["oordeel"]) => alle.filter((x) => x.oordeel === o).length;
+  const debaters = rollen.filter((r) => !r.isJury);
+  const voorzitter = rollen.find((r) => r.isJury);
+  const opgenomen = (k.herkomst ?? []).filter((h) => h.status === "opgenomen");
+  const weggelaten = (k.herkomst ?? []).filter((h) => h.status === "weggelaten");
+  return (
+    <section className="card p-5 sm:p-7 space-y-5">
+      <h2 className="font-display font-bold text-lg">Hoe dit advies tot stand kwam</h2>
+
+      <div className="grid sm:grid-cols-3 gap-3 text-sm">
+        <div className="rounded-xl bg-ink/[0.03] p-3">
+          <p className="text-xs text-ink/55">Eerste versies</p>
+          <p className="font-semibold mt-0.5">{k.concepten?.length ? k.concepten.map((c) => `${c.label}: ${c.ai}`).join(" · ") : `${k.auteur.ai}`}</p>
+          <p className="text-xs text-ink/55 mt-1">Onafhankelijk geschreven, daarna samengevoegd door {k.auteur.ai}</p>
+        </div>
+        <div className="rounded-xl bg-ink/[0.03] p-3">
+          <p className="text-xs text-ink/55">Panel</p>
+          <p className="font-semibold mt-0.5">
+            {debaters.length} rollen{k.kruis ? ` + tegenlezer (${k.kruis.ai})` : ""}
+          </p>
+          <p className="text-xs text-ink/55 mt-1">Slotcheck: {voorzitter ? `${voorzitter.naam}, voorzitter` : "voorzitter"}</p>
+        </div>
+        <div className="rounded-xl bg-ink/[0.03] p-3">
+          <p className="text-xs text-ink/55">Rondes</p>
+          <p className="font-semibold mt-0.5">
+            {rondes.length} {rondes.length === 1 ? "ronde" : "rondes"} · {alle.length} punten beoordeeld
+          </p>
+          <p className="text-xs text-ink/55 mt-1">
+            {tel("over")} overgenomen · {tel("deels")} deels · {tel("niet")} niet
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-sm mb-2">Wie lazen er mee</h3>
+        <ul className="grid sm:grid-cols-2 gap-2 text-sm">
+          {debaters.map((r) => (
+            <li key={r.id} className="rounded-xl border border-ink/10 px-3 py-2">
+              <span className="font-medium">{r.naam}</span> <span className="text-ink/60">· {r.functie}</span>
+              {r.isBouwer && <span className="ml-2 rounded-full bg-lilac px-2 py-0.5 text-[11px] font-medium">bouwende rol</span>}
+              {r.isKritisch && <span className="ml-2 rounded-full bg-peach px-2 py-0.5 text-[11px] font-medium">klant of gast</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {(k.herkomst?.length ?? 0) > 0 && (
+        <div>
+          <h3 className="font-semibold text-sm mb-2">Herkomst van de inzichten in versie 1</h3>
+          <ul className="space-y-1.5 text-sm">
+            {opgenomen.map((h, i) => (
+              <li key={`o${i}`} className="flex gap-2">
+                <span className="shrink-0 flex gap-1">
+                  {h.bron.map((b) => (
+                    <span key={b} className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">
+                      {b}
+                    </span>
+                  ))}
+                </span>
+                <span>{h.inzicht}</span>
+              </li>
+            ))}
+          </ul>
+          {weggelaten.length > 0 && (
+            <details className="mt-2 text-sm">
+              <summary className="cursor-pointer text-ink/60">Weggelaten ({weggelaten.length})</summary>
+              <ul className="mt-1 space-y-1 text-ink/60">
+                {weggelaten.map((h, i) => (
+                  <li key={`w${i}`}>
+                    {h.inzicht} <span className="text-ink/45">({h.bron.join(", ")}) — {h.reden}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+
+      {k.redactie && (
+        <div className="text-sm space-y-1">
+          <h3 className="font-semibold">Eindredactie en controle</h3>
+          <p className="text-ink/70">
+            {k.redactie.gecontroleerd} claims gecontroleerd tegen de eindtekst
+            {k.redactie.gecorrigeerd.length ? `; ${k.redactie.gecorrigeerd.length} niet teruggevonden en als "niet overgenomen" gemarkeerd` : "; alles staat erin"}.
+          </p>
+          {k.redactie.consistentie.length > 0 && (
+            <ul className="list-disc pl-5 text-ink/65">
+              {k.redactie.consistentie.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </section>
   );

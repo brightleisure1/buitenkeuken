@@ -280,29 +280,44 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.waitForURL("**/werkblad/**");
   });
 
-  await step(`[${label}] review-keten: werkblad met versies, reviews, oordelen en slotcheck`, async () => {
-    await page.getByText("Slotcheck van de voorzitter").waitFor({ timeout: 60000 });
-    await page.getByText("ChatGPT, ander model").first().waitFor();
-    await page.getByText("Niet overgenomen", { exact: true }).first().waitFor();
-    await page.getByRole("button", { name: /Versie 2/ }).waitFor();
-    await page.getByText(/Wat veranderde ten opzichte van versie 1/).waitFor();
+  await step(`[${label}] review-keten: advies bovenaan, hoe het tot stand kwam, log inklapbaar`, async () => {
+    await page.getByText("Hoe dit advies tot stand kwam").waitFor({ timeout: 60000 });
+    await page.getByText("Slotcheck van de voorzitter").waitFor();
+    await page.getByText(/Besluit aangepast na de slotcheck/).waitFor();
+    await page.getByText("A: Claude · B: ChatGPT · C: Gemini").waitFor();
+    await page.getByText("bouwende rol", { exact: true }).first().waitFor();
+    await page.getByText(/Herkomst van de inzichten/).waitFor();
+    await page.getByText(/claims gecontroleerd tegen de eindtekst/).waitFor();
+    // Advies staat boven de herkomst, het log staat onderaan
+    const y = async (t) => (await page.getByText(t).first().boundingBox()).y;
+    assert.ok((await y("Advies")) < (await y("Hoe dit advies tot stand kwam")), "advies bovenaan");
+    assert.ok(!(await page.getByText("ChatGPT, ander model").first().isVisible()), "debatlog is ingeklapt");
     await shot("11-werkblad");
     await noOverflow(page, "werkblad");
+    await page.click("summary:has-text('Debatlog')");
+    await page.getByText("ChatGPT, ander model").first().waitFor();
+    await page.getByText("bouwende rol, zoekt kansen").first().waitFor();
+    await page.getByRole("button", { name: "Ronde 1", exact: true }).click();
+    await page.getByText("Niet overgenomen", { exact: true }).first().waitFor();
+    await page.getByRole("button", { name: /Versie 2/ }).waitFor();
+    await shot("11b-debatlog");
   });
 
   await step(`[${label}] review-keten: ingrijpen, nog een ronde, blind vergelijken`, async () => {
-    await page.getByRole("button", { name: "Toch overnemen" }).first().click();
-    await page.getByText("Jij: toch overnemen").first().waitFor();
+    // Een oordeel omdraaien kan in de laatste beoordeelde ronde
+    await page.getByRole("button", { name: "Ronde 2", exact: true }).click();
+    await page.getByRole("button", { name: /^Toch (niet )?overnemen$/ }).first().click();
+    await page.getByText(/Jij: toch/).first().waitFor();
     await page.getByPlaceholder(/Reken ook met een scenario/).fill("Neem ook de gevolgen voor het personeel mee.");
     await page.click("button:has-text('Toevoegen')");
     await page.getByText("Neem ook de gevolgen voor het personeel mee.").waitFor();
     await page.click("button:has-text('in een nieuwe ronde')");
-    await page.getByRole("button", { name: /Versie 3/ }).waitFor({ timeout: 60000 });
-    await page.getByText("Slotcheck van de voorzitter").waitFor({ timeout: 60000 });
+    await page.getByText("Hoe dit advies tot stand kwam").waitFor({ state: "detached", timeout: 20000 }).catch(() => {});
+    await page.getByText("Hoe dit advies tot stand kwam").waitFor({ timeout: 60000 });
     await page.getByText("(verwerkt)").first().waitFor();
     await page.getByText("Beter dan één vraag?").waitFor();
     await page.getByRole("button", { name: "A", exact: true }).click();
-    await page.getByText(/versie 1 zonder review|de eindversie na review/).first().waitFor();
+    await page.getByText(/Claude alleen, één vraag|de eindversie na review/).first().waitFor();
     await shot("12-werkblad-vergeleken");
   });
 

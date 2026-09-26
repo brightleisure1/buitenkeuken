@@ -7,6 +7,7 @@ import { body, handle } from "@/lib/route";
 import { assertBudget } from "@/lib/budget";
 import { getRun, updateRun } from "@/lib/runs";
 import { recordUsage } from "@/lib/usage-db";
+import type { Cast } from "@/lib/types";
 
 export const maxDuration = 300;
 
@@ -17,7 +18,12 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
   const run = await getRun(id);
   assertBudget(run, "het team aanpassen via de chat");
   if (run.status !== "draft") throw new AppError("Het debat is al begonnen.", "Grijp in via de knoppen in de arena, of start een nieuw debat.");
-  const { antwoord, cast, usage } = await editCast(run.cast, run.question, text.trim(), chat, await runAttachments(id));
+  const { antwoord, cast: nieuw, usage } = await editCast(run.cast, run.question, text.trim(), chat, await runAttachments(id));
+  // Instellingen die niet uit de chat komen (modus, vragen vooraf, randvoorwaarden, slimheid, kostenlimiet) blijven staan.
+  let cast: Cast = { ...run.cast, ...nieuw };
+  if (run.cast.modus === "keten") {
+    cast = { ...cast, stemmen: "uit", fun: false, cliches: false, rondes: run.cast.rondes, rollen: cast.rollen.map((r) => ({ ...r, cliche: null })) };
+  }
   await updateRun(id, { cast, title: cast.titel });
   await recordUsage(id, "aanpassen", usage);
   after(() => prepare(id));

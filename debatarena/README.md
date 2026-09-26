@@ -8,13 +8,15 @@ Maak een zakelijk besluit scherper met meerdere AI's en perspectieven. Het slims
 2. **Nog even checken.** De app stelt hooguit drie korte vragen die het advies echt beter maken, zoals budget, termijn of wat er precies besloten moet worden. Overslaan mag.
 3. **Wat staat al vast?** Randvoorwaarden waar het advies niet aan mag tornen, zoals "maximaal €100.000" of "geen ontslagen".
 4. **Wie lezen er mee?** Drie of vier rollen met elk een eigen belang, waaronder altijd een klant of gast, plus een voorzitter. Pas ze aan of zeg het gewoon: "Voeg een jurist toe".
-5. **Versie 1.** Het slimste Claude-model (Opus 5.5) schrijft het adviesdocument: besluit, opties met voor en tegen, onderbouwing, aannames om te checken en stappen met eigenaar en termijn. Dit is wat je ook zou krijgen als je het één keer aan Claude vraagt.
-6. **Reviews.** Elke rol leest het vanuit zijn eigen belang en geeft maximaal vier punten, elk met zwaarte (hoog, midden, laag) en een concreet voorstel. Een tegenlezer van een ander AI-model zoekt fouten, zwakke redeneringen, gemiste opties en cijfers zonder onderbouwing.
-7. **Beoordelen en herschrijven.** Claude beoordeelt elk punt: overnemen, deels of niet, telkens met een reden. Niet alles wordt klakkeloos overgenomen; dat zou het stuk vager maken. Daarna volgt een nieuwe versie, met een lijstje van wat er veranderde.
-8. **Rondes.** Dit herhaalt zich (standaard twee rondes, maximaal drie) tot er niets wezenlijks meer te verbeteren valt.
-9. **Slotcheck.** De voorzitter toetst of het advies klaar is om op te besluiten, denkt aan perspectieven die nog niet aan bod kwamen, noemt wat bewust niet is overgenomen en geeft aan hoeveel vertrouwen hij heeft.
+5. **Eerste versies.** Twee of drie modellen (Claude, GPT en, als je een Google-sleutel hebt, Gemini) schrijven onafhankelijk en tegelijk een eerste versie, zonder elkaars werk te zien.
+6. **Samenvoegen.** Claude maakt daar versie 1 van: de sterkste inzichten uit elke versie erin, dubbelingen eruit. Per inzicht staat vast uit welke versie het komt, en wat er is weggelaten en waarom.
+7. **Reviews.** Elke rol leest vanuit zijn eigen belang (maximaal drie punten, elk met zwaarte en voorstel). Eén rol is de **bouwende rol**: die verdedigt de ambitieuze variant, bijvoorbeeld een private-equitypartner bij een overname, en brengt elke ronde minstens één nieuwe kans in die nog niet in de tekst staat. Een tegenlezer van een ander model zoekt fouten en zwakke plekken.
+8. **Eerst beoordelen, dan herschrijven.** Claude beoordeelt eerst elk wezenlijk punt (overnemen, deels of niet, met een criterium: fout, besluit, risico of kans). Pas daarna verwerkt hij alléén de overgenomen punten, met per punt in de wijzigingenlijst wat er veranderde.
+9. **Rondes.** Standaard twee, maximaal drie, en eerder klaar als er niets wezenlijks meer te verbeteren valt.
+10. **Slotcheck.** De voorzitter toetst of het advies klaar is om op te besluiten en geeft per bevinding aan of die de conclusie verandert.
+11. **Eindredactie.** Een eindredacteur maakt het leesbaar (besluit bovenaan, kort, geen jargon), verwerkt bevindingen van de voorzitter die de conclusie raken in de besluitregel, en zet tegenstrijdige cijfers, termijnen en drempels recht. Daarna controleert een apart model elk label ("overgenomen", "deels", opgenomen inzichten) tegen de eindtekst. Wat er niet in staat, wordt teruggezet: een label claimt nooit iets wat niet in de tekst staat.
 
-In het **werkblad** zie je live waar de keten is (het flowschema bovenaan), alle versies met wat er veranderde, en per ronde alle reviewpunten met het oordeel erbij. Je kunt:
+In het **werkblad** zie je tijdens het werk live waar de keten is. Als hij klaar is, staat het advies bovenaan, met daaronder **Hoe dit advies tot stand kwam**: welke modellen de eerste versies schreven, de herkomst van de inzichten, wie er meelazen (de bouwende rol apart), hoeveel rondes en hoeveel punten er zijn overgenomen, en wat de eindcontrole vond. Het debatlog met alle versies en reviews staat ingeklapt onderaan. Je kunt:
 
 - een oordeel omdraaien: "toch overnemen" of "toch niet";
 - zelf een punt toevoegen; de schrijver verwerkt het altijd;

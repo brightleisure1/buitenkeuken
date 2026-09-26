@@ -23,8 +23,11 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
       k.status = "bezig";
       k.stap = "Nog een ronde…";
       k.fase = "review";
+      // Verder bouwen op de geredigeerde eindtekst.
+      if (k.eind) k.rondes[k.rondes.length - 1].doc = k.eind;
       k.eind = undefined;
       k.slot = undefined;
+      k.redactie = undefined;
       k.budgetOp = false;
     });
     await updateRun(id, { status: "running", result: null });

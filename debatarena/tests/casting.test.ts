@@ -1,7 +1,7 @@
 import { normalizeCast } from "../src/lib/casting";
 import { MODELS } from "../src/lib/config";
 import assert from "node:assert";
-const r = (id: string, x = {}) => ({ id, naam: id + " Jansen", functie: "Marketeer", perspectief: "p", instructie: "i", zin: "z", modelKey: "claude-sterk", stemId: "v1", webzoeken: false, isJury: false, isKritisch: false, ongezouten: false, cliche: "", uiterlijk: "u", ...x });
+const r = (id: string, x = {}) => ({ id, naam: id + " Jansen", functie: "Marketeer", perspectief: "p", instructie: "i", zin: "z", modelKey: "claude-sterk", stemId: "v1", webzoeken: false, isJury: false, isKritisch: false, isBouwer: false, ongezouten: false, cliche: "", uiterlijk: "u", ...x });
 const raw = { titel: "Prijs", rondes: 9, stemmen: "jury" as const, vergadercliches: false, bijlages: [{ bijlageId: "att1", voor: "cfo" }], rollen: [r("jury", { isJury: true }), r("cfo", { functie: "CFO" }), r("sales"), r("hr"), r("ops"), r("extra")] };
 const voices = [{ id: "v1", naam: "A", omschrijving: "", nl: true, vlaams: false, eigen: true, gender: null, preview: null }, { id: "v2", naam: "B", omschrijving: "", nl: true, vlaams: false, eigen: true, gender: null, preview: null }];
 const c = normalizeCast(raw, { models: MODELS, voices, attachments: [{ id: "att1" } as any] });
@@ -42,3 +42,10 @@ assert.equal(detectProvider("hallo"), null);
 assert.equal(keyWarning("xai", "xai-" + "d".repeat(40)), null);
 assert.match(keyWarning("xai", "sk-pil" + "x".repeat(40))!, /OpenAI/);
 assert.match(keyWarning("xai", "iets")!, /begint meestal met "xai-"/);
+
+// Precies één bouwende rol, binnen het maximum van het panel
+assert.equal(c.rollen.filter((x) => x.isBouwer).length, 1, "de AI vergat hem: de app voegt er een toe");
+assert.ok(!c.rollen.find((x) => x.isBouwer)!.isKritisch && !c.rollen.find((x) => x.isBouwer)!.isJury);
+const c5 = normalizeCast({ ...raw, rollen: [r("a", { isBouwer: true }), r("b", { isBouwer: true }), r("klant", { functie: "Klant", isKritisch: true }), r("jury", { isJury: true, isBouwer: true })] }, { models: MODELS, voices: [], attachments: [] });
+assert.equal(c5.rollen.filter((x) => x.isBouwer).length, 1, "nooit twee bouwers, en nooit de voorzitter");
+assert.equal(c5.rollen.find((x) => x.isBouwer)!.id, "a");

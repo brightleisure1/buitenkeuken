@@ -53,6 +53,8 @@ export const POST = handle(async (req: Request) => {
 
   let cast: Cast;
   let usage: Usage | undefined;
+  let earlyIntake: Awaited<ReturnType<typeof intakeVragen>> | null = null;
+  const fromTemplate = !!(templateId || fromRunId);
   if (templateId || fromRunId) {
     // Hetzelfde team: geen AI-call nodig, dus meteen klaar.
     if (templateId) {
@@ -68,7 +70,10 @@ export const POST = handle(async (req: Request) => {
     }
     cast = { ...cast, titel: titleFrom(q), bijlages: Object.fromEntries(attachments.map((a) => [a.id, "iedereen"])) };
   } else {
+    // Samenstellen en de vragen vooraf tegelijk, zodat het instellen snel blijft.
+    const intakeKlaar = modus === "keten" ? intakeVragen(q).catch(() => null) : Promise.resolve(null);
     const r = await composeCast(q, attachments);
+    earlyIntake = await intakeKlaar;
     // Stemmen staan standaard uit; alleen aan als de baas er zelf om vraagt.
     cast = WANTS_VOICES.test(q) ? r.cast : { ...r.cast, stemmen: "uit" };
     usage = r.usage;
@@ -78,7 +83,7 @@ export const POST = handle(async (req: Request) => {
   if (modus === "keten") {
     // Review-keten: geen show (stemmen, clichés, fun), twee rondes, en een paar verduidelijkende vragen vooraf.
     cast = { ...cast, modus: "keten", stemmen: "uit", fun: false, cliches: false, rondes: 2, rollen: cast.rollen.map((r) => ({ ...r, cliche: null, ongezouten: false })) };
-    const iq = await intakeVragen(q).catch(() => null);
+    const iq = earlyIntake ?? (fromTemplate ? await intakeVragen(q).catch(() => null) : null);
     if (iq) {
       cast = { ...cast, intake: iq.vragen.map((vraag) => ({ vraag, antwoord: "" })) };
       intakeUsage = iq.usage;

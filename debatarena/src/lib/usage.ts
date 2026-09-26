@@ -34,7 +34,12 @@ export type UsageKind =
   | "review"
   | "kruisreview"
   | "herschrijven"
-  | "slotcheck";
+  | "slotcheck"
+  | "concept"
+  | "samenvoegen"
+  | "beoordelen"
+  | "redactie"
+  | "controle";
 
 export const KIND_LABEL: Record<UsageKind, string> = {
   samenstellen: "Team samenstellen",
@@ -54,6 +59,11 @@ export const KIND_LABEL: Record<UsageKind, string> = {
   kruisreview: "Tegenlezer (ander model)",
   herschrijven: "Beoordelen en herschrijven",
   slotcheck: "Slotcheck voorzitter",
+  concept: "Eerste versies (verbreden)",
+  samenvoegen: "Samenvoegen tot versie 1",
+  beoordelen: "Punten beoordelen",
+  redactie: "Eindredactie",
+  controle: "Controle tekst tegen labels",
 };
 
 export function emptyUsage(provider = "", model = ""): Usage {

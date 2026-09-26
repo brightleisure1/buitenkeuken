@@ -19,6 +19,8 @@ export interface Role {
   isKritisch: boolean;
   /** Alleen Grok: false = gecensureerd (standaard), true = ongecensureerd */
   ongezouten?: boolean;
+  /** De bouwende rol: verdedigt de ambitieuze variant en zoekt gemiste kansen en upside */
+  isBouwer?: boolean;
   /** Vergadercliché dat deze rol speelt (id uit cliches.ts), of null */
   cliche?: string | null;
   /** Korte Engelse omschrijving voor het portret */
@@ -221,7 +223,8 @@ export interface Review {
   van: string;
   naam: string;
   functie: string;
-  soort: "persona" | "kruis";
+  /** persona = rol met eigen belang, bouwer = zoekt kansen en upside, kruis = tegenlezer van een ander model */
+  soort: "persona" | "bouwer" | "kruis";
   /** Welke AI dit schreef, zoals de gebruiker het kent */
   ai: string;
   punten: ReviewPunt[];
@@ -230,7 +233,11 @@ export interface Review {
 export interface Oordeel {
   id: string;
   oordeel: "over" | "deels" | "niet";
+  /** Waarom overnemen: herstelt een fout, verandert het besluit, voegt een wezenlijk risico of een kans toe */
+  criterium?: "fout" | "besluit" | "risico" | "kans" | "geen";
   reden: string;
+  /** De eindcontrole vond het niet terug in de tekst en zette het label terug */
+  gecorrigeerd?: boolean;
 }
 
 export interface KetenRonde {
@@ -241,10 +248,41 @@ export interface KetenRonde {
   oordelen: Oordeel[];
   /** Wat er daarna veranderde (leeg als er niets meer te verbeteren viel) */
   wijzigingen: string[];
+  /** Per overgenomen punt wat er in de tekst veranderde */
+  changelog?: { id: string; wijziging: string }[];
+}
+
+/** Een onafhankelijke eerste versie uit de verbreedronde */
+export interface Concept {
+  label: string;
+  ai: string;
+  model: string;
+  doc: AdviesDoc;
+  inzichten: { id: string; tekst: string }[];
+}
+
+/** Waar een inzicht in versie 1 vandaan komt */
+export interface Herkomst {
+  inzicht: string;
+  bron: string[];
+  status: "opgenomen" | "weggelaten";
+  reden: string;
+  gecorrigeerd?: boolean;
+}
+
+export interface Redactie {
+  /** Wat de eindredacteur aan de besluitregel veranderde, en waarom (leeg = niets) */
+  besluitAangepast: string;
+  consistentie: string[];
+  /** Resultaat van de controle: claims die niet in de tekst stonden en zijn teruggezet */
+  gecorrigeerd: { id: string; claim: string }[];
+  gecontroleerd: number;
 }
 
 export interface Slotcheck {
   oordeel: string;
+  /** Bevindingen met hun gevolg voor de conclusie */
+  bevindingen?: { tekst: string; impact: "conclusie" | "aanvulling" | "geen" }[];
   vertrouwen: "laag" | "midden" | "hoog";
   waaromVertrouwen: string;
   laatsteAanvullingen: string[];
@@ -257,12 +295,16 @@ export interface Keten {
   /** Wat er nu gebeurt, in gewone taal */
   stap: string;
   /** Waar in de keten we zijn (voor het flowschema) */
-  fase?: "huiswerk" | "versie1" | "review" | "herschrijven" | "slotcheck" | "klaar";
+  fase?: "huiswerk" | "versie1" | "verbreden" | "samenvoegen" | "review" | "herschrijven" | "slotcheck" | "redactie" | "klaar";
   /** Sinds wanneer de huidige stap loopt (ms) */
   sinds?: number;
   auteur: { ai: string; model: string };
   kruis: { ai: string; model: string } | null;
   rondes: KetenRonde[];
+  /** Verbreedronde: onafhankelijke eerste versies van verschillende modellen */
+  concepten?: Concept[];
+  herkomst?: Herkomst[];
+  redactie?: Redactie;
   eind?: AdviesDoc;
   slot?: Slotcheck;
   /** Kosten van versie 1 (= één keer het slimste model), voor de vergelijking */

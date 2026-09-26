@@ -85,9 +85,7 @@ export function KetenVoorstel({
       <section className="card p-5 space-y-2">
         <h2 className="font-display font-bold text-lg">Zo werkt het</h2>
         <ol className="text-sm text-ink/75 space-y-1 list-decimal pl-5">
-          <li>
-            <b>{aiNaam(auteur)}</b> schrijft versie 1 van het advies (dat is wat je krijgt als je het één keer aan het slimste model vraagt).
-          </li>
+          <li>Twee of drie modellen schrijven onafhankelijk een eerste versie. {aiNaam(auteur)} voegt ze samen tot versie 1, met de sterkste inzichten uit elke versie.</li>
           <li>
             {reviewers.length} rollen lezen het vanuit hun eigen belang{kruis ? (
               <>
@@ -96,8 +94,9 @@ export function KetenVoorstel({
             ) : null}
             .
           </li>
-          <li>{aiNaam(auteur)} beoordeelt elk punt (overnemen, deels of niet, met reden) en schrijft een betere versie.</li>
-          <li>Dat herhaalt zich tot er niets wezenlijks meer te verbeteren valt. Daarna doet de voorzitter een slotcheck.</li>
+          <li>Eén rol verdedigt de ambitieuze variant en brengt elke ronde een nieuwe kans in.</li>
+          <li>{aiNaam(auteur)} beoordeelt eerst elk punt (overnemen, deels of niet, met reden) en verwerkt daarna alleen wat is overgenomen.</li>
+          <li>Na de rondes doet de voorzitter een slotcheck, en maakt een eindredacteur het advies leesbaar. Elk label wordt gecontroleerd tegen de tekst.</li>
         </ol>
         <p className="text-xs text-ink/55">Onderweg kun je zelf punten toevoegen of een oordeel omdraaien. Aan het eind vergelijk je blind versie 1 met de eindversie.</p>
       </section>
@@ -144,6 +143,7 @@ export function KetenVoorstel({
                 <span className="text-sm text-ink/60">{r.isJury ? "Voorzitter, doet de slotcheck" : r.functie}</span>
                 <AiBadge role={r} size="xs" />
                 {r.isKritisch && <span className="text-[11px] rounded-full bg-peach px-2 py-0.5">Klant of gast</span>}
+                {r.isBouwer && <span className="text-[11px] rounded-full bg-lilac px-2 py-0.5">Bouwende rol</span>}
               </p>
               <p className="text-sm text-ink/75 mt-1">{r.perspectief}</p>
             </div>

@@ -690,8 +690,12 @@ await step("Review-keten: samenstellen met vragen vooraf, zonder portretten of s
   run.keten = c.data.run.id;
 });
 
-await step("Review-keten: versie 1, reviews van rollen én een ander model, oordelen, versie 2, slotcheck", async () => {
+await step("Review-keten: verbreden (3 modellen), samenvoegen met herkomst, bouwende rol, apart beoordelen, eindredactie", async () => {
   const id = run.keten;
+  const c0 = (await call(`/api/runs/${id}`)).data.run.cast;
+  const bouwer = c0.rollen.filter((r) => r.isBouwer);
+  assert.equal(bouwer.length, 1, "precies één bouwende rol, ook als de AI die vergat");
+  assert.ok(!bouwer[0].isJury && !bouwer[0].isKritisch);
   const s = await call(`/api/runs/${id}/keten`, { method: "POST", json: {} });
   assert.equal(s.status, 200, JSON.stringify(s.data));
   const done = await waitFor(async () => {
@@ -700,38 +704,53 @@ await step("Review-keten: versie 1, reviews van rollen én een ander model, oord
     return r.data.run.keten?.status === "klaar" && r.data;
   }, "de keten", 60000);
   const k = done.run.keten;
-  assert.equal(k.auteur.ai, "Claude");
-  assert.equal(k.kruis.ai, "ChatGPT", "een ander model leest tegen");
-  assert.equal(k.rondes.length, 2, "na ronde 2 viel er niets wezenlijks meer te verbeteren");
-  const r1 = k.rondes[0];
-  const debaters = done.run.cast.rollen.filter((r) => !r.isJury).length;
-  assert.equal(r1.reviews.filter((r) => r.soort === "persona").length, debaters, "elke rol leest mee");
-  assert.ok(r1.reviews.some((r) => r.soort === "kruis"), "de tegenlezer leest mee");
-  const ids = r1.reviews.flatMap((r) => r.punten.filter((p) => p.zwaarte !== "laag").map((p) => p.id));
-  assert.deepEqual(r1.oordelen.map((o) => o.id).sort(), [...ids].sort(), "elk wezenlijk punt krijgt een oordeel");
-  const klein = r1.reviews.flatMap((r) => r.punten.filter((p) => p.zwaarte === "laag").map((p) => p.id));
-  assert.ok(klein.length > 0 && klein.every((id) => !r1.oordelen.some((o) => o.id === id)), "kleine punten gaan niet naar de schrijver");
-  assert.ok(r1.oordelen.some((o) => o.oordeel === "niet"), "niet alles wordt klakkeloos overgenomen");
-  assert.ok(r1.wijzigingen.length > 0);
-  assert.equal(k.rondes[1].oordelen.length, 0, "alleen kleine punten over: geen nieuwe versie");
-  assert.match(k.eind.besluit, /versie 2/);
-  assert.equal(k.slot.vertrouwen, "midden");
-  assert.equal(done.run.status, "done");
-  assert.match(done.run.result.vergelijking.label, /versie 1/, "blind vergelijken: versie 1 tegen de eindversie");
-  const labels = done.usage.perKind.map((x) => x.label);
-  for (const l of ["Verduidelijkende vragen", "Eerste versie", "Reviews vanuit de rollen", "Tegenlezer (ander model)", "Beoordelen en herschrijven", "Slotcheck voorzitter"]) assert.ok(labels.includes(l), `kosten: ${l}`);
+  // 1. Verbreden
+  assert.deepEqual(k.concepten.map((c) => `${c.label}:${c.ai}`), ["A:Claude", "B:ChatGPT", "C:Gemini"], "drie onafhankelijke eerste versies");
   const log = await fakeLog();
-  const v1 = log.find((l) => l.schemaProps?.includes("besluit") && l.schemaProps.includes("analyse"));
-  assert.equal(v1.model, "claude-opus-5-5", "versie 1 door het slimste Claude-model");
-  assert.match(v1.user, /Maximaal €80.000/, "met het antwoord op de vraag vooraf");
-  assert.match(v1.user, /VASTE RANDVOORWAARDEN[^]*vaste gasten/, "met de randvoorwaarden");
-  const kruis = log.find((l) => l.schemaProps?.includes("punten") && /tegenlezer/i.test(l.system));
-  assert.equal(kruis.model, "gpt-5.5");
-  const herz = log.find((l) => l.schemaProps?.includes("oordelen"));
-  assert.match(herz.user, /Wees niet volgzaam/);
-  assert.doesNotMatch(herz.user, /\(laag\)/, "alleen hoog en midden");
-  assert.equal(herz.effort, "medium", "herschrijven op de middelste denkstand: sneller");
-  assert.equal(v1.effort, "medium");
+  const concepten = log.filter((l) => l.schemaProps?.includes("inzichten"));
+  assert.equal(concepten.length, 3);
+  assert.ok(concepten.every((l) => !/VERSIE [ABC] ===/.test(l.user)), "ze zien elkaars werk niet");
+  // 2. Samenvoegen met herkomst
+  assert.ok(k.herkomst.some((h) => h.bron.includes("B") && /buy-and-build/i.test(h.inzicht) && h.status === "opgenomen"), "sterkste inzicht uit B opgenomen");
+  assert.ok(k.herkomst.some((h) => h.status === "weggelaten"));
+  // 3. Rondes: bouwende rol, apart beoordelen, alleen overgenomen punten verwerken
+  const r1 = k.rondes[0];
+  const b1 = r1.reviews.find((r) => r.soort === "bouwer");
+  assert.ok(b1 && b1.punten.length >= 1, "de bouwer levert elke ronde minstens één inzicht");
+  assert.ok(k.rondes.filter((r) => r.reviews.length).every((r) => r.reviews.some((x) => x.soort === "bouwer" && x.punten.length)), "ook in latere rondes");
+  const wezenlijk = r1.reviews.flatMap((r) => r.punten.filter((p) => p.zwaarte !== "laag").map((p) => p.id));
+  assert.deepEqual(r1.oordelen.map((o) => o.id).sort(), [...wezenlijk].sort(), "elk wezenlijk punt krijgt een oordeel");
+  assert.ok(r1.oordelen.every((o) => o.criterium), "met criterium");
+  const beoordeel = log.find((l) => l.schemaProps?.includes("oordelen") && !l.schemaProps.includes("document"));
+  assert.match(beoordeel.user, /Je herschrijft nu nog niets/, "beoordelen is een aparte stap");
+  const herschrijf = log.find((l) => l.schemaProps?.includes("changelog"));
+  const nietIds = r1.oordelen.filter((o) => o.oordeel === "niet" && !o.gecorrigeerd).map((o) => o.id);
+  assert.ok(nietIds.every((i) => !herschrijf.user.includes(`[${i}]`)), "afgewezen punten gaan niet naar het herschrijven");
+  assert.deepEqual(r1.changelog.map((c) => c.id).sort(), r1.oordelen.filter((o) => o.oordeel !== "niet" || o.gecorrigeerd).map((o) => o.id).sort(), "changelog per overgenomen punt");
+  // 4 en 5. Slotcheck en eindredactie
+  assert.ok(k.slot.bevindingen.some((b) => b.impact === "conclusie"));
+  assert.match(k.redactie.besluitAangepast, /co-investeerder/, "een bevinding die de conclusie raakt, verandert de besluitregel");
+  assert.ok(k.redactie.gecontroleerd > 0);
+  // Geen verschil tussen labels en tekst: wat de controle niet terugvond, is teruggezet.
+  const teruggezet = new Set(k.redactie.gecorrigeerd.map((x) => x.id));
+  assert.ok(teruggezet.size >= 1, "de controle vond één claim niet terug");
+  for (const r of k.rondes) for (const o of r.oordelen) if (teruggezet.has(o.id)) assert.equal(o.oordeel, "niet", `label ${o.id} teruggezet`);
+  const claimt = k.rondes.flatMap((r) => r.oordelen.filter((o) => o.oordeel !== "niet").map((o) => o.id));
+  assert.ok(claimt.every((i) => !teruggezet.has(i)), "geen enkel label claimt iets wat niet in de tekst staat");
+  const redactieReq = log.filter((l) => l.schemaProps?.includes("controle") && l.schemaProps.includes("document"));
+  assert.equal(redactieReq.length, 2, "één herkansing voor de redacteur");
+  // Acceptatie: financieringsdiscipline én buy-and-build in de eindtekst
+  assert.match(k.eind.analyse, /financieringsdiscipline/i);
+  assert.match(k.eind.analyse, /buy-and-build|add-on/i);
+  assert.equal(done.run.status, "done");
+  assert.match(done.run.result.vergelijking.label, /Claude alleen/, "de losse vraag in de vergelijking is Claude alleen");
+  const labels = done.usage.perKind.map((x) => x.label);
+  for (const l of ["Eerste versies (verbreden)", "Samenvoegen tot versie 1", "Punten beoordelen", "Beoordelen en herschrijven", "Eindredactie", "Controle tekst tegen labels"]) assert.ok(labels.includes(l), `kosten: ${l}`);
+  const v = concepten.find((l) => l.model === "claude-opus-5-5");
+  assert.ok(v, "Claude Opus 5.5 schrijft een eerste versie");
+  assert.equal(v.effort, "medium");
+  assert.match(v.user, /Maximaal €80.000/, "met het antwoord op de vraag vooraf");
+  assert.match(v.user, /VASTE RANDVOORWAARDEN[^]*vaste gasten/, "met de randvoorwaarden");
 });
 
 await step("Review-keten: de baas grijpt in en vraagt nog een ronde", async () => {
@@ -750,14 +769,29 @@ await step("Review-keten: de baas grijpt in en vraagt nog een ronde", async () =
     return r.data.run.keten?.status === "klaar" && r.data.run.status === "done" && r.data;
   }, "de extra ronde", 60000);
   const k2 = done.run.keten;
-  assert.equal(k2.rondes.length, 3, "een nieuwe versie met jouw punten");
+  assert.equal(k2.rondes.length, k.rondes.length + 1, "een nieuwe versie met jouw punten");
   assert.ok(k2.baas.opmerkingen.every((x) => x.verwerkt), "jouw punt is verwerkt");
   assert.deepEqual(k2.baas.overrides, {});
-  const herz = (await fakeLog()).filter((l) => l.schemaProps?.includes("oordelen")).at(-1);
+  const herz = (await fakeLog()).filter((l) => l.schemaProps?.includes("changelog")).at(-1);
   assert.match(herz.user, /OPMERKINGEN VAN DE BAAS[^]*zonder subsidie/);
   assert.match(herz.user, /ALSNOG OVERNEMEN/);
+  assert.match(herz.user, /JOUW HUIDIGE VERSIE[^]*versie eind/, "verder op de geredigeerde eindtekst");
   const list = await call("/api/runs");
   assert.equal(list.data.runs.find((x) => x.id === id).modus, "keten");
+});
+
+await step("Review-keten: aanpassen via de chat behoudt de instellingen van de keten", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Nieuwe vestiging openen?" } });
+  const id = c.data.run.id;
+  await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...c.data.run.cast, randvoorwaarden: ["Max €200.000"] } } });
+  const r = await call(`/api/runs/${id}/chat`, { method: "POST", json: { text: "Maak de inkoper strenger", chat: [] } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const cast = r.data.run.cast;
+  assert.equal(cast.modus, "keten");
+  assert.deepEqual(cast.randvoorwaarden, ["Max €200.000"]);
+  assert.ok(cast.intake.length > 0);
+  assert.equal(cast.stemmen, "uit");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
 });
 
 await step("Eenmalige storing: de app probeert het vanzelf opnieuw", async () => {

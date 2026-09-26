@@ -15,6 +15,7 @@ export const CastRoleSchema = z.object({
   webzoeken: z.boolean(),
   isJury: z.boolean(),
   isKritisch: z.boolean(),
+  isBouwer: z.boolean().describe("true voor precies één rol die de ambitieuze variant verdedigt en naar kansen en upside zoekt"),
   ongezouten: z
     .boolean()
     .describe("Alleen voor rollen met een Grok-model: true = ongecensureerd. Alleen aanzetten als de baas erom vraagt."),
@@ -115,6 +116,9 @@ export const HerzieningSchema = z.object({
 
 export const SlotcheckSchema = z.object({
   oordeel: z.string().describe("2 tot 3 zinnen: is dit advies klaar om op te besluiten, en waar let de baas op"),
+  bevindingen: z
+    .array(z.object({ tekst: z.string(), impact: z.enum(["conclusie", "aanvulling", "geen"]).describe("conclusie = verandert het besluit of de voorwaarden") }))
+    .describe("Je belangrijkste bevindingen, max 5"),
   vertrouwen: z.enum(["laag", "midden", "hoog"]),
   waaromVertrouwen: z.string().describe("Eén zin"),
   laatsteAanvullingen: z.array(z.string()).describe("Max 3 dingen die nog niemand noemde, vanuit perspectieven die nog niet aan bod kwamen"),
@@ -124,4 +128,54 @@ export const SlotcheckSchema = z.object({
 
 export const IntakeSchema = z.object({
   vragen: z.array(z.string()).describe("0 tot 3 korte vragen die het advies echt beter maken"),
+});
+
+// ---------- Review-keten: verbreden, beoordelen, redactie en controle ----------
+
+export const ConceptSchema = z.object({
+  document: AdviesDocSchema,
+  inzichten: z.array(z.string()).describe("De 5 tot 8 belangrijkste inzichten in je advies, elk in één zin"),
+});
+
+export const SamenvoegSchema = z.object({
+  document: AdviesDocSchema,
+  herkomst: z
+    .array(
+      z.object({
+        inzicht: z.string().describe("Het inzicht in één zin"),
+        bron: z.array(z.string()).describe("Uit welke versie(s): 'A', 'B' en/of 'C'"),
+        status: z.enum(["opgenomen", "weggelaten"]),
+        reden: z.string().describe("Eén korte zin: waarom opgenomen of weggelaten (bijv. dubbel, zwakker, onjuist)"),
+      }),
+    )
+    .describe("Alle wezenlijke inzichten uit de versies, samengevoegd waar ze hetzelfde zeggen"),
+});
+
+export const BeoordelingSchema = z.object({
+  oordelen: z.array(
+    z.object({
+      id: z.string(),
+      oordeel: z.enum(["over", "deels", "niet"]),
+      criterium: z.enum(["fout", "besluit", "risico", "kans", "geen"]).describe("Waarom overnemen; 'geen' bij niet overnemen"),
+      reden: z.string().describe("Eén zin"),
+    }),
+  ),
+});
+
+export const HerschrijfSchema = z.object({
+  document: AdviesDocSchema,
+  changelog: z.array(z.object({ id: z.string().describe("Id van het punt"), wijziging: z.string().describe("Wat er in de tekst veranderde, één zin") })),
+});
+
+export const RedactieSchema = z.object({
+  document: AdviesDocSchema,
+  controle: z
+    .array(z.object({ id: z.string(), aanwezig: z.boolean(), actie: z.string().describe("Wat je deed: 'staat erin', 'toegevoegd aan de tekst' of 'label teruggezet'") }))
+    .describe("Per punt uit de lijst: staat het nu in de tekst?"),
+  besluitAangepast: z.string().describe("Als je de besluitregel veranderde: wat en waarom. Anders een lege string."),
+  consistentie: z.array(z.string()).describe("Tegenstrijdigheden in cijfers, termijnen of drempels die je hebt rechtgezet"),
+});
+
+export const ControleSchema = z.object({
+  resultaten: z.array(z.object({ id: z.string(), aanwezig: z.boolean(), waar: z.string().describe("Kort citaat of plek in de tekst; leeg als het ontbreekt") })),
 });
