@@ -7,14 +7,20 @@ let client: SupabaseClient | null = null;
 export function db(): SupabaseClient {
   if (client) return client;
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Voorkeur: de service role key. Alternatief: de gewone (anon) sleutel plus een eigen geheim,
+  // zie supabase/optioneel/zonder-service-key.sql.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const secret = process.env.SUPABASE_APP_SECRET;
   if (!url || !key) {
     throw new AppError(
       "De database is nog niet gekoppeld.",
       "Zet SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY in je omgevingsvariabelen en start de app opnieuw.",
     );
   }
-  client = createClient(url, key, { auth: { persistSession: false } });
+  client = createClient(url, key, {
+    auth: { persistSession: false },
+    ...(secret ? { global: { headers: { "x-debatarena-secret": secret } } } : {}),
+  });
   return client;
 }
 
