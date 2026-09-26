@@ -14,7 +14,7 @@ fs.mkdirSync(STORE, { recursive: true });
 
 /** Welke modellen elke nep-aanbieder kent (Google kent de config-namen expres niet). */
 const MODEL_LISTS = {
-  anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
+  anthropic: ["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
   openai: ["gpt-5.5", "gpt-5.4-mini", "gpt-image-1", "gpt-4o-mini-transcribe"],
   google: ["models/gemini-2.5-pro", "models/gemini-2.5-flash", "models/gemini-2.5-flash-lite", "models/gemini-3-pro-preview", "models/gemini-3-pro-image-preview", "models/text-embedding-004"],
   xai: ["grok-4.7", "grok-4.3", "grok-code-fast-1", "grok-2-image"],

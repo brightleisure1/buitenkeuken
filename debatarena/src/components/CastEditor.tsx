@@ -130,7 +130,7 @@ export function CastEditor({
               <Field
                 label="Eigen modelnaam (optioneel)"
                 value={r.customModel ?? ""}
-                placeholder="bijv. claude-opus-5"
+                placeholder="bijv. claude-opus-5-5"
                 onChange={(v) => setRole(r.id, { customModel: v })}
               />
               <label className="block text-sm">

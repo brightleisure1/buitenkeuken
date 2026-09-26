@@ -76,7 +76,7 @@ export function anthropicUsage(m: ModelConfig, u: Anthropic.Usage | null | undef
   out.costUsd =
     out.inputTokens * perIn +
     out.cacheWriteTokens * perIn * CACHE_WRITE_FACTOR +
-    out.cachedTokens * perIn * CACHE_READ_FACTOR +
+    out.cachedTokens * perIn * (m.cachedFactor ?? CACHE_READ_FACTOR) +
     out.outputTokens * perOut +
     out.webSearches * WEB_SEARCH_PRICE_USD;
   return out;

@@ -148,7 +148,7 @@ await step("Verbindingstest per aanbieder, uitslag wordt onthouden", async () =>
   const byKey = Object.fromEntries(s.data.models.map((m) => [m.key, m.model]));
   assert.equal(byKey["gemini-sterk"], "gemini-3-pro-preview", "Gemini: onbekende naam vervangen door het beste beschikbare model");
   assert.equal(byKey["gemini-snel"], "gemini-2.5-flash", "Gemini snel: geen lite of image");
-  assert.equal(byKey["claude-sterk"], "claude-opus-5", "bestaande namen blijven staan");
+  assert.equal(byKey["claude-sterk"], "claude-opus-5-5", "bestaande namen blijven staan");
   const st = await call("/api/settings/status");
   assert.equal(st.data.aiKey, true);
 });
@@ -414,7 +414,7 @@ await step("Hamvraag: blind vergelijken met één vraag aan het slimste model", 
   assert.ok(["debat", "enkel"].includes(v.data.vergelijking.aIs), "willekeurige volgorde");
   assert.ok(!v.data.vergelijking.keuze, "nog niet gekozen");
   const req = (await fakeLog()).filter((l) => l.schemaProps?.includes("uitslag") && !l.schemaProps.includes("besluitenVanDeBaas")).at(-1);
-  assert.equal(req.model, "claude-opus-5", "het slimste Claude-model");
+  assert.equal(req.model, "claude-opus-5-5", "het slimste Claude-model");
   assert.match(req.user, /We verhogen niet vóór juni/, "met dezelfde vaststaande besluiten");
   const again = await call(`/api/runs/${run.id}/vergelijk`, { method: "POST", json: {} });
   assert.equal(again.data.vergelijking.advies.uitslag, v.data.vergelijking.advies.uitslag, "maar één keer betalen");
