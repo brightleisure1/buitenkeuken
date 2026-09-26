@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fbf6ee;
+  --color-ink: #1e1b18;
+  --color-coral: #e4572e;
+  --color-peach: #ffd6c9;
+  --color-sky: #cde8ff;
+  --color-mint: #d9f2d0;
+  --color-lilac: #e8daff;
+  --color-sun: #fff1b8;
+  --color-rose: #ffd9ec;
+  --color-gold: #e8b923;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-body), ui-sans-serif, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+@utility card {
+  @apply rounded-3xl border-2 border-ink bg-white shadow-[4px_4px_0_0_var(--color-ink)];
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-ink px-5 py-2.5 font-semibold transition active:translate-y-px disabled:opacity-50 disabled:cursor-not-allowed;
+}
+@utility btn-primary {
+  @apply btn bg-coral text-white shadow-[3px_3px_0_0_var(--color-ink)] hover:brightness-105;
+}
+@utility btn-ghost {
+  @apply btn bg-white hover:bg-sun;
+}
+
+@utility field {
+  @apply w-full rounded-2xl border-2 border-ink bg-white px-4 py-3 outline-none focus:ring-4 focus:ring-coral/30;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop { animation: pop 0.35s ease-out both; }
+
+@keyframes rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.animate-rise { animation: rise 0.3s ease-out both; }
+
+@keyframes caret { 50% { opacity: 0; } }
+.caret::after {
+  content: "▍";
+  margin-left: 2px;
+  animation: caret 1s step-end infinite;
+  color: var(--color-coral);
+}
+
+@page {
+  size: A4;
+  margin: 18mm 16mm;
+}
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  .card { box-shadow: none; border-width: 1px; break-inside: avoid; }
+  details > *:not(summary) { display: block; }
+}
