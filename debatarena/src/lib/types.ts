@@ -34,6 +34,8 @@ export interface Cast {
   stemmen: VoiceMode;
   /** Vergaderclichés aan of uit */
   cliches?: boolean;
+  /** Fun-modus: karikaturen, clichés en droge humor bovenop een serieus debat */
+  fun?: boolean;
   /** Maximale kosten van deze vergadering in euro (null = geen limiet) */
   kostenlimiet?: number | null;
   /** attachmentId -> "iedereen" of role.id */

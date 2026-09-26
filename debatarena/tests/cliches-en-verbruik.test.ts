@@ -123,3 +123,17 @@ assert.match(sysA, /WAT JE INBRENGT/);
 assert.match(turnInstruction({ run, role: run.cast.rollen[1], messages: [], round: 2, meta: {} }), /Tussenronde: ga in op het sterkste argument/);
 assert.match(turnInstruction({ run, role: run.cast.rollen[1], messages: [], round: 3, meta: {} }), /laatste ronde\. Kom met je eindvoorstel/);
 assert.doesNotMatch(sysA, /minstens één keer/, "ongecensureerd zonder verplichte vloek");
+
+// Fun-modus: één schakelaar; serieus blijft serieus, fun voegt humor toe, de Jury blijft een slimme voorzitter
+import { isFun } from "../src/lib/cliches";
+import { portraitKey } from "../src/lib/prep";
+assert.equal(isFun({ cliches: true }), true, "oude debatten met clichés tellen als fun");
+assert.equal(isFun({ fun: false, cliches: true }), false);
+assert.match(sysA, /FUN-MODUS/);
+const serious = { ...run, cast: { ...run.cast, fun: false } } as Run;
+assert.doesNotMatch(roleSystem(serious, serious.cast.rollen[0], [], { withFacts: false }), /FUN-MODUS/);
+assert.match(roleSystem(serious, serious.cast.rollen[0], [], { withFacts: false }), /subtiel doorschemeren/);
+assert.doesNotMatch(roleSystem(run, run.cast.rollen[2], [], { withFacts: false }), /FUN-MODUS/, "de Jury doet niet mee aan de grappen");
+const pr = run.cast.rollen[0];
+assert.notEqual(portraitKey(pr, { fun: true }), portraitKey(pr, { fun: false }), "fun aan/uit tekent opnieuw");
+assert.equal(portraitKey(pr, { fun: false, cliches: true }), portraitKey({ ...pr, cliche: null }, {}), "serieus: cliché telt niet mee");

@@ -116,10 +116,10 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await noOverflow(page, "voorstel");
   });
 
-  await step(`[${label}] deelnemer ongecensureerd zetten en clichés aan/uit`, async () => {
+  await step(`[${label}] deelnemer ongecensureerd zetten en fun-modus uit/aan`, async () => {
     await page.getByRole("radio", { name: /Ongecensureerd/ }).first().click();
     await page.getByText("🌶️ Ongecensureerd").first().waitFor();
-    const sw = page.getByRole("switch", { name: /Vergaderclichés/ });
+    const sw = page.getByRole("switch", { name: /Fun-modus/ });
     await sw.click();
     await page.waitForFunction(() => !document.body.innerText.includes("🎭 De Parkeerder"));
     await sw.click();

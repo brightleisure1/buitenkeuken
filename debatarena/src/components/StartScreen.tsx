@@ -8,6 +8,7 @@ import type { RunPayload } from "@/lib/payload";
 import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
 import { MicButton, type MicHandle } from "./MicButton";
+import { isFun } from "@/lib/cliches";
 import { RoleCard } from "./RoleCard";
 import { CensorToggle, ErrorNote, Portrait, Segmented, Spinner, Switch, toError } from "./ui";
 import { PersonaEditor } from "./PersonaEditor";
@@ -236,8 +237,9 @@ export function StartScreen() {
             {data.attachments.length > 0 && ` · ${data.attachments.length} bijlage${data.attachments.length > 1 ? "s" : ""}`}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-            <Switch checked={!!cast.cliches} disabled={saving} onChange={(v) => void saveAdvanced({ ...cast, cliches: v })}>
-              <strong>🎭 Vergaderclichés</strong> <span className="text-ink/60">– herkenbare vergadertypes spelen mee</span>
+            <Switch checked={isFun(cast)} disabled={saving} onChange={(v) => void saveAdvanced({ ...cast, fun: v, cliches: v })}>
+              <strong>🎉 Fun-modus</strong>{" "}
+              <span className="text-ink/60">– karikaturen, vergaderclichés en droge humor. De inhoud blijft even serieus.</span>
             </Switch>
             <span className="flex items-center gap-2 text-sm">
               <strong>🔊 Stemmen</strong>

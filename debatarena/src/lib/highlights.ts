@@ -2,6 +2,7 @@ import "server-only";
 import { fastModel } from "./casting";
 import { generateJson } from "./llm";
 import { highlightsInstruction } from "./prompts";
+import { isFun } from "./cliches";
 import { getMessages, getRun, updateRun } from "./runs";
 import { recordUsage } from "./usage-db";
 import { HighlightsSchema } from "./schemas";
@@ -21,7 +22,7 @@ export async function makeHighlights(runId: string): Promise<Highlight[]> {
   const { data, usage } = await generateJson(HighlightsSchema, {
     model: await fastModel(),
     system: "Je bent een scherpe eindredacteur die de beste momenten uit een zakelijk debat kiest.",
-    instruction: highlightsInstruction(numbered),
+    instruction: highlightsInstruction(numbered, isFun(run.cast)),
     maxTokens: 800,
   });
   const seen = new Set<string>();

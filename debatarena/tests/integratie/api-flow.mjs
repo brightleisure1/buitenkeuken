@@ -273,6 +273,22 @@ await step("Geavanceerd: clichés uit/aan, ongecensureerd bij elke deelnemer", a
   run.cast = t.data.run.cast;
 });
 
+await step("Fun-modus: één schakelaar zet clichés en karikaturen aan of uit", async () => {
+  assert.equal(run.cast.fun, true, "gevraagd om clichés = fun-modus");
+  const imgs = async () => (await fakeLog()).filter((l) => l.provider === "openai-image").length;
+  const before = await imgs();
+  const off = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { cast: { ...run.cast, fun: false } } });
+  assert.equal(off.data.run.cast.fun, false);
+  assert.ok(off.data.run.cast.rollen.every((x) => !x.cliche), "serieus: geen clichés");
+  await waitFor(async () => (await imgs()) > before, "nieuwe, nette portretten");
+  const on = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { cast: { ...off.data.run.cast, fun: true } } });
+  assert.equal(on.data.run.cast.fun, true);
+  assert.ok(on.data.run.cast.rollen.filter((x) => x.cliche).length >= 2, "fun: clichés uitgedeeld");
+  const keep = on.data.run.cast.rollen.map((x) => x.id === run.cast.rollen.find((r) => r.ongezouten)?.id ? { ...x, ongezouten: true } : x);
+  const t = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { cast: { ...on.data.run.cast, rollen: keep } } });
+  run.cast = t.data.run.cast;
+});
+
 await step("Start debat en ronde 1: iedereen eens → verdacht eensgezind, extra beurt kritische rol", async () => {
   await call(`/api/runs/${run.id}/start`, { method: "POST" });
   const opening = await turn(run.id);

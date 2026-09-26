@@ -223,6 +223,11 @@ function hash(s: string) {
  * - aan: geldige, unieke clichés; de Jury nooit; minstens 2 rollen (of alle als er minder zijn)
  * Rollen zonder cliché krijgen er één (vaste keuze per rol, zodat het niet steeds verspringt).
  */
+/** Fun-modus aan? Oude debatten zonder schakelaar: clichés aan = fun. */
+export function isFun(cast: Pick<Cast, "fun" | "cliches">) {
+  return cast.fun ?? !!cast.cliches;
+}
+
 export function applyCliches(cast: Cast, autoFill = true): Cast {
   if (!cast.cliches) return { ...cast, cliches: false, rollen: cast.rollen.map((r) => ({ ...r, cliche: null })) };
   const used = new Set<string>();

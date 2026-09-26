@@ -29,7 +29,7 @@ export const CastSchema = z.object({
   rollen: z.array(CastRoleSchema),
   rondes: z.number().int(),
   stemmen: z.enum(["uit", "jury", "iedereen"]),
-  vergadercliches: z.boolean().describe("Standaard false. true als de baas vergaderclichés wil"),
+  vergadercliches: z.boolean().describe("Fun-modus. Standaard false. true als de baas het grappig wil of vergaderclichés wil"),
   bijlages: z.array(
     z.object({
       bijlageId: z.string(),

@@ -27,7 +27,11 @@ Klik op een rolkaart op **✏️ Aanpassen**. Daar pas je alles van een persona 
 
 De rollen zijn collega's uit je eigen bedrijf, en er zit altijd één klant of gast bij. Iedereen denkt vanuit Nederlandse bedrijven en praat zoals mensen aan tafel echt praten.
 
-Het doel is een debat waar je echt iets aan hebt. Elke rol is een ervaren vakmens die kennis uit zijn eigen vak inbrengt: cijfers, praktijkervaring, risico's en voorwaarden. Rollen gaan in op het sterkste argument van een ander en schuiven op als ze overtuigd worden. De eerste ronde draait om standpunten, de tussenrondes om argumenten en tegenargumenten, en in de laatste ronde komt iedereen met een eindvoorstel: wat besluit je, onder welke voorwaarde, wat is de eerste stap en hoe zie je of het werkt. De portretten zijn nette illustraties van geloofwaardige collega's, geen karikaturen.
+Het doel is een debat waar je echt iets aan hebt. Elke rol is een ervaren vakmens die kennis uit zijn eigen vak inbrengt: cijfers, praktijkervaring, risico's en voorwaarden. Rollen gaan in op het sterkste argument van een ander en schuiven op als ze overtuigd worden. De eerste ronde draait om standpunten, de tussenrondes om argumenten en tegenargumenten, en in de laatste ronde komt iedereen met een eindvoorstel: wat besluit je, onder welke voorwaarde, wat is de eerste stap en hoe zie je of het werkt. Standaard zijn de portretten nette illustraties van geloofwaardige collega's.
+
+## Fun-modus
+
+Eén schakelaar op het voorstelscherm: **🎉 Fun-modus**. Uit (standaard) is het een serieus, zakelijk debat. Aan krijg je er karikaturen, vergaderclichés en droge humor bij: elke rol stopt per beurt één rake zin in zijn verhaal, en de Jury sluit af met een zin die je wilt doorsturen. De inhoud blijft even serieus: een grap vervangt nooit een argument, en de Jury blijft een slimme, nette voorzitter. Zo heb je iets aan het besluit én iets om te delen. Zet je de fun-modus om, dan tekent de tekenaar de portretten opnieuw in de andere stijl. Je kunt het ook zeggen: "doe het in de fun-modus" of "maak het grappig".
 
 ## Vergadering stoppen
 
@@ -103,7 +107,7 @@ De Jury is nooit ongecensureerd. Dat is altijd een slimme, nuchtere voorzitter, 
 
 ## Vergaderclichés
 
-Zet op het voorstelscherm **🎭 Vergaderclichés** aan, of zeg het in je vraag ("met vergaderclichés"). Dan spelen een paar rollen, naast hun functie, een herkenbaar vergadertype: de Dominator, de Parkeerder, de Managementtaalspreker, de Rondvraagterrorist en nog 23 anderen. Sommige zijn tijdgebonden: de Late Binnenkomer komt in ronde 1 als laatste binnen ("Sorry, liep een beetje uit. Waar zijn we?"), de Stille Aanwezigheid zegt tot de laatste ronde vrijwel niets.
+De vergaderclichés gaan aan met de fun-modus, of als je het in je vraag zegt ("met vergaderclichés"). Onder *Geavanceerd* zet je ze los aan of uit. Dan spelen een paar rollen, naast hun functie, een herkenbaar vergadertype: de Dominator, de Parkeerder, de Managementtaalspreker, de Rondvraagterrorist en nog 23 anderen. Sommige zijn tijdgebonden: de Late Binnenkomer komt in ronde 1 als laatste binnen ("Sorry, liep een beetje uit. Waar zijn we?"), de Stille Aanwezigheid zegt tot de laatste ronde vrijwel niets. Staan de clichés aan in een serieus debat (zonder fun-modus), dan schemeren ze alleen subtiel door.
 
 Welke rol welk type speelt, kies je zelf onder *Geavanceerd*. De Jury laat het gedrag niet meewegen en oordeelt op de inhoud.
 

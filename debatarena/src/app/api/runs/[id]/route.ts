@@ -43,8 +43,10 @@ export const PATCH = handle(async (req: Request, { params }: Ctx) => {
   const input = await body<{ cast?: Cast; result_checks?: Record<string, boolean>; title?: string; handmatig?: boolean }>(req);
   const patch: Partial<Run> = {};
   if (input.cast) {
-    const c = input.cast;
     const before = await getRun(id);
+    // Fun-modus omgezet? Dan gaan de clichés mee aan of uit.
+    const fun = typeof input.cast.fun === "boolean" ? input.cast.fun : before.cast.fun;
+    const c = fun !== before.cast.fun ? { ...input.cast, fun, cliches: !!fun } : { ...input.cast, fun };
     // Clichés alleen automatisch uitdelen als de schakelaar net aan is gezet (niet bij handmatige keuze).
     const autoFill = !input.handmatig && !!c.cliches && !before.cast.cliches;
     patch.cast = applyCliches({

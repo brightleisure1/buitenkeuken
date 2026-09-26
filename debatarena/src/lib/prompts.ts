@@ -1,7 +1,7 @@
 import { WORDS_NORMAL, WORDS_VOICE } from "./config";
 import type { Attachment, Message, Role, Run } from "./types";
 import { attachmentText } from "./attachments";
-import { clicheOf, clicheTurnLines, orderForRound } from "./cliches";
+import { clicheOf, clicheTurnLines, isFun, orderForRound } from "./cliches";
 
 const ACTION_LABEL: Record<string, string> = {
   opmerking: "",
@@ -77,8 +77,8 @@ ${others}
 ZO PRAAT JE (dit is een echte vergadering, geen rapport):
 - Je praat hardop aan tafel, als ${role.naam}. Spreektaal, geen schrijftaal. Korte zinnen. Zoals een Nederlander in een vergadering echt praat: direct en nuchter.
 - Reageer op de vorige spreker en noem mensen bij hun voornaam ("Nee Ella, dat klopt niet helemaal…", "Kijk Markus, …").
-- Praat natuurlijk, zoals een professional aan tafel: je mag laten merken dat je twijfelt of het ergens niet mee eens bent, maar geen toneel en geen overdreven emoties.
-- Verboden schrijftaal: borgen, uitrollen, ondermijnen, faciliteren, implementeren, optimaliseren, waarborgen, synergie, derhalve, teneinde, "combineer beide", "het grootste risico blijft". Zeg het gewoon zoals je het tegen een collega zou zeggen.${clicheOf(role)?.id === "managementtaal" ? " (Uitzondering: jij speelt de Managementtaalspreker, dus bij jou mag het wél, met mate.)" : ""}
+${isFun(run.cast) ? `- Laat merken wat je vindt: verbaasd, geïrriteerd, enthousiast, twijfelend. Een stopwoordje of een half afgebroken zin mag ("nou", "kijk", "eerlijk gezegd", "ja maar").` : "- Praat natuurlijk, zoals een professional aan tafel: je mag laten merken dat je twijfelt of het ergens niet mee eens bent, maar geen toneel en geen overdreven emoties."}
+- Verboden schrijftaal: borgen, uitrollen, ondermijnen, faciliteren, implementeren, optimaliseren, waarborgen, synergie, derhalve, teneinde, "combineer beide", "het grootste risico blijft". Zeg het gewoon zoals je het tegen een collega zou zeggen.${clicheOf(role)?.id === "managementtaal" ? ` (Uitzondering: jij speelt de Managementtaalspreker, dus bij jou mag het wél${isFun(run.cast) ? ", overdreven zelfs" : ", met mate"}.)` : ""}
 - Geen opsommingen, geen "ten eerste/ten tweede", geen kopjes, geen markdown.
 - Geen scores en geen complimenten ("goed punt", "mooi voorstel"). Kom meteen ter zake.
 - Herhaal jezelf niet en vat niet samen wat anderen al zeiden.
@@ -88,9 +88,17 @@ ZO PRAAT JE (dit is een echte vergadering, geen rapport):
 ${clicheOf(role) ? `
 JE VERGADERCLICHÉ: ${clicheOf(role)!.naam}
 ${clicheOf(role)!.gedrag}
-Laat dit gedrag subtiel doorschemeren, hooguit in één zinnetje per beurt. Je inhoudelijke bijdrage als ${role.functie} gaat altijd voor. Noem jezelf nooit bij de naam van het cliché.
-` : ""}${facts.length ? `\nJOUW HUISWERK (feiten die je hebt opgezocht):\n${facts.map((f) => `- ${f.feit} (bron: ${f.bron})`).join("\n")}\n` : ""}${att ? `\nBIJLAGES DIE JIJ HEBT GELEZEN:\n${att}\n` : ""}${isUncensored(role) ? UNCENSORED : ""}`;
+${isFun(run.cast) ? `Speel dit herkenbaar en met humor, maar je inhoudelijke bijdrage als ${role.functie} blijft staan.` : `Laat dit gedrag subtiel doorschemeren, hooguit in één zinnetje per beurt. Je inhoudelijke bijdrage als ${role.functie} gaat altijd voor.`} Noem jezelf nooit bij de naam van het cliché.
+` : ""}${facts.length ? `\nJOUW HUISWERK (feiten die je hebt opgezocht):\n${facts.map((f) => `- ${f.feit} (bron: ${f.bron})`).join("\n")}\n` : ""}${att ? `\nBIJLAGES DIE JIJ HEBT GELEZEN:\n${att}\n` : ""}${isFun(run.cast) && !role.isJury ? FUN : ""}${isUncensored(role) ? UNCENSORED : ""}`;
 }
+
+// Fun-modus: grappig genoeg om te delen, zonder dat het debat er minder waardevol van wordt.
+const FUN = `
+FUN-MODUS (de baas wil een debat dat iets oplevert én leuk is om door te sturen):
+- De inhoud blijft even sterk: een grap vervangt nooit een argument.
+- Stop per beurt één rake, droge zin in je verhaal: een herkenbare kantoorobservatie of oneliner die je aan een collega zou doorsturen. Grappig door herkenning en timing, niet door flauwekul.
+- Je karakter mag duidelijk naar voren komen: je stokpaardje, een beetje ijdelheid, ongeduld of cynisme.
+`;
 
 /** Ongecensureerd kan bij elke deelnemer, nooit bij de Jury. */
 export const isUncensored = (role: Role) => !!role.ongezouten && !role.isJury;
@@ -135,7 +143,7 @@ export function turnInstruction({ run, role, messages, round, meta }: TurnContex
 
   if (meta.verdict) {
     lines.push(
-      `Het debat is klaar. Jij bent de voorzitter/Jury en sluit de vergadering hardop af, in max ${voiceAll || run.cast.stemmen === "jury" ? 90 : 120} woorden. Praat zoals een voorzitter aan tafel: begin bijvoorbeeld met "Oké, ik heb genoeg gehoord." of "Goed, mensen." Zeg in gewone woorden wat je de baas aanraadt en waarom: welk argument voor jou de doorslag gaf en welk tegenargument het sterkst was. Noem de mensen bij naam als je hun punt overneemt ("Ella heeft gelijk dat…"), noem de voorwaarde en de eerste stap, en zeg waar je nog wakker van ligt. Geen schrijftaal, geen opsomming, geen "het grootste risico blijft". Neem de besluiten van de baas over als vaststaand.`,
+      `Het debat is klaar. Jij bent de voorzitter/Jury en sluit de vergadering hardop af, in max ${voiceAll || run.cast.stemmen === "jury" ? 90 : 120} woorden. Praat zoals een voorzitter aan tafel: begin bijvoorbeeld met "Oké, ik heb genoeg gehoord." of "Goed, mensen." Zeg in gewone woorden wat je de baas aanraadt en waarom: welk argument voor jou de doorslag gaf en welk tegenargument het sterkst was. Noem de mensen bij naam als je hun punt overneemt ("Ella heeft gelijk dat…"), noem de voorwaarde en de eerste stap, en zeg waar je nog wakker van ligt. Geen schrijftaal, geen opsomming, geen "het grootste risico blijft". Neem de besluiten van de baas over als vaststaand.${isFun(run.cast) ? " Sluit af met één droge, rake zin die de vergadering samenvat, eentje die mensen willen doorsturen." : ""}`,
     );
     const fw = messages.find((m) => m.kind === "boss" && m.meta.finalWord);
     if (fw) lines.push(`De baas gaf je nog mee: "${fw.content}". Neem dat mee.`);
@@ -222,8 +230,8 @@ export function quipInstruction() {
   return `De baas tikt je aan terwijl je niet aan de beurt bent. Reageer met één kort zinnetje in karakter (max 12 woorden), bijvoorbeeld wat je denkt of hoe je je voelt over het debat. Geen tag, geen bron.`;
 }
 
-export function highlightsInstruction(numbered: string) {
-  return `Hieronder staat een debat, met een nummer per beurt. Kies de 3 of 4 scherpste momenten: botsingen, verrassende voorstellen, harde bezwaren of een besluit van de baas. Samen ongeveer een minuut om af te spelen. Geef per moment het nummer en in max 8 woorden waarom.
+export function highlightsInstruction(numbered: string, fun = false) {
+  return `Hieronder staat een debat, met een nummer per beurt. Kies de 3 of 4 scherpste momenten: botsingen, verrassende voorstellen, harde bezwaren of een besluit van de baas.${fun ? " Zit er een echt grappig moment tussen dat mensen willen delen, neem dat dan ook mee." : ""} Samen ongeveer een minuut om af te spelen. Geef per moment het nummer en in max 8 woorden waarom.
 
 ${numbered}`;
 }
