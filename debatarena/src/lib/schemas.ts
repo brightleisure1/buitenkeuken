@@ -48,7 +48,7 @@ export const HomeworkSchema = z.object({
 });
 
 export const JuryResultSchema = z.object({
-  uitslag: z.string().describe("De uitkomst in één korte, krachtige zin (max 12 woorden)"),
+  uitslag: z.string().describe("Het advies aan de baas in één korte, krachtige zin (max 12 woorden)"),
   samenvatting: z.string().describe("Max 3 zinnen"),
   besluitenVanDeBaas: z.array(z.string()),
   strategie: z.array(z.object({ stap: z.string(), waarom: z.string(), eersteActie: z.string() })),

@@ -84,21 +84,21 @@ export function ResultView({ id }: { id: string }) {
       <div className="mx-auto max-w-xl p-6 space-y-4 text-center">
         {making ? (
           <div className="card p-6 bg-sun text-left">
-            <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-2">De Jury beraadslaagt</span>
+            <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-2">De voorzitter zet alles op een rij</span>
             <FunWait lines={JURY_LINES} size="lg" />
           </div>
         ) : (
           <>
             <ErrorNote error={error} />
             <h1 className="font-display text-2xl font-extrabold">{run.title ?? run.question}</h1>
-            <p>{run.status === "stopped" ? "Deze vergadering is beëindigd zonder uitspraak." : "Er is nog geen uitslag."}</p>
+            <p>{run.status === "stopped" ? "Deze vergadering is beëindigd zonder slotadvies." : "Er is nog geen advies."}</p>
             <div className="flex gap-2 justify-center">
               <Link href={`/arena/${id}`} className="btn-ghost">
                 Naar de arena
               </Link>
               {messages.some((m) => m.kind === "turn") && (
                 <button className="btn-primary" onClick={makeResult}>
-                  {run.status === "stopped" ? "Laat de Jury alsnog oordelen" : "Laat de Jury oordelen"}
+                  {run.status === "stopped" ? "Laat de voorzitter alsnog afronden" : "Laat de voorzitter afronden"}
                 </button>
               )}
             </div>
@@ -198,7 +198,7 @@ export function ResultView({ id }: { id: string }) {
 
       <ErrorNote error={error} onClose={() => setError(null)} />
 
-      <Section title="Samenvatting" copy={t.samenvatting} tone="bg-sun">
+      <Section title="Advies van de voorzitter" copy={t.samenvatting} tone="bg-sun">
         <p className="font-display text-2xl font-extrabold leading-tight">{r.uitslag}</p>
         <p className="mt-2 text-[17px] leading-relaxed">{r.samenvatting}</p>
       </Section>

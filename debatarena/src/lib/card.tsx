@@ -6,7 +6,7 @@ import type { Run } from "./types";
 
 const COLORS = ["#FFD6C9", "#CDE8FF", "#D9F2D0", "#E8DAFF", "#FFF1B8", "#FFD9EC"];
 
-/** Oordeelkaart als PNG: 1:1 (1080×1080) of 9:16 (1080×1920). */
+/** Advieskaart als PNG: 1:1 (1080×1080) of 9:16 (1080×1920). */
 export function renderCard(run: Run, format: "square" | "story") {
   const { cast, fix } = applyShare(run.cast, [], run.share);
   const story = format === "story";

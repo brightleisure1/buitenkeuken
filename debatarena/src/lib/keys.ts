@@ -3,7 +3,7 @@ export type KeyProvider = "anthropic" | "openai" | "google" | "xai" | "elevenlab
 export const KEY_INFO: Record<KeyProvider, { naam: string; waarvoor: string; waar: string; url: string; ai: boolean; begin: string }> = {
   anthropic: {
     naam: "Anthropic (Claude)",
-    waarvoor: "Claude-rollen, het samenstellen van het team en de Jury.",
+    waarvoor: "Claude-rollen, het samenstellen van het team en de voorzitter.",
     waar: "console.anthropic.com → API Keys",
     url: "https://console.anthropic.com/settings/keys",
     ai: true,

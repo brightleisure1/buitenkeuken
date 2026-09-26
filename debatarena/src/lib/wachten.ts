@@ -84,10 +84,10 @@ export function prepLines(pending: Role[]): string[] {
 }
 
 export const JURY_LINES = [
-  "⚖️ De Jury trekt zich terug voor beraad…",
+  "🗒️ De voorzitter bladert door de aantekeningen…",
   "🔨 De hamer wordt gepoetst…",
   "📜 De notulen worden uitgetikt…",
-  "🧮 De Jury telt de argumenten…",
+  "🧮 De voorzitter weegt de argumenten…",
   "🍪 Er wordt nog één koekje gegeten…",
   "🗳️ De stemmen worden geteld…",
   "📎 Alles wordt netjes aan elkaar geniet…",

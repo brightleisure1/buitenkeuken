@@ -23,7 +23,7 @@ export const POST = handle(async (_req: Request, { params }: { params: Promise<{
   if (run.result) return Response.json({ result: run.result });
   const messages = await getMessages(id);
   if (!messages.some((m) => m.kind === "turn")) {
-    throw new AppError("Er is nog niets gezegd.", "Laat de rollen eerst debatteren voordat de Jury uitspraak doet.");
+    throw new AppError("Er is nog niets gezegd.", "Laat de rollen eerst debatteren voordat de voorzitter afrondt.");
   }
   const jury = run.cast.rollen.find((r) => r.isJury) ?? run.cast.rollen[0];
   const facts = run.cast.rollen

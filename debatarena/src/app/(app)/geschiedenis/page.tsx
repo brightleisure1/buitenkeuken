@@ -43,7 +43,7 @@ export default function HistoryPage() {
   }
 
   async function stopRun(id: string) {
-    if (!confirm("Deze vergadering beëindigen? Er komt dan geen uitspraak (die kun je later alsnog vragen).")) return;
+    if (!confirm("Deze vergadering beëindigen? Er komt dan geen slotadvies (dat kun je later alsnog vragen).")) return;
     await api(`/api/runs/${id}/stop`, { method: "POST" }).catch((e) => setError(toError(e)));
     setRuns((r) => r?.map((x) => (x.id === id ? { ...x, status: "stopped" } : x)) ?? null);
   }

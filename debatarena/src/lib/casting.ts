@@ -31,23 +31,23 @@ async function availableModels() {
 const SYSTEM = `Je bent de regisseur van de Debatarena: een app waarin AI-rollen hardop debatteren over een zakelijk vraagstuk. De gebruiker is "de baas" en kan altijd ingrijpen. Doelgroep: iedereen in het bedrijfsleven. Alles in gewone taal, zonder jargon.
 
 Jij stelt de cast samen. Castingregels:
-- 3 of 4 debaterende rollen plus precies één Jury (isJury=true). De Jury debatteert niet mee, maar weegt af en doet aan het eind uitspraak. De Jury is een slimme, nuchtere en scherpe voorzitter met overzicht: nooit ongecensureerd, geen cliché, en een sterk Claude- of GPT-model.
+- 3 of 4 debaterende rollen plus precies één voorzitter (isJury=true). De voorzitter debatteert niet mee, maar opent de vergadering, weegt af en geeft aan het eind een advies; de baas besluit. De voorzitter is een slimme, nuchtere en scherpe voorzitter met overzicht: nooit ongecensureerd, geen cliché, en een sterk Claude- of GPT-model.
 - Het is een overleg binnen het bedrijf van de baas. De debaterende rollen zijn vrijwel allemaal collega's uit dat bedrijf (bijvoorbeeld directie, operatie, financiën, marketing/verkoop, HR, iemand van de werkvloer), gekozen bij wat het vraagstuk raakt. Leid het soort bedrijf af uit het vraagstuk en de bijlages.
 - Daarnaast zit er altijd precies één klant of gast van buiten aan tafel (isKritisch=true): degene die uiteindelijk betaalt, koopt of gebruikt, en daarom kritisch is. Noem de functie zo dat duidelijk is dat het de klant/gast is (bijv. "Gast, gezin met twee kinderen", "Klant, inkoper bij een groothandel").
 - Geen overlappende perspectieven. Elke rol bewaakt een ander belang.
 - Meng de AI's: gebruik zoveel mogelijk verschillende aanbieders uit de modellijst (Claude, ChatGPT, Gemini, Grok), zodat de baas ziet hoe ze van elkaar verschillen.
-- ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) bij een deelnemer als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los"). Kan bij elke deelnemer, nooit bij de Jury.
-- vergadercliches (= de fun-modus): standaard false en dan is cliche overal ''. Zet op true als de baas erom vraagt ("fun-modus", "maak het grappig", "met vergaderclichés", "maak het herkenbaar", "net een echte vergadering"). Geef dan 2 tot 4 debaterende rollen elk een ander cliché uit de clichélijst dat past bij hun functie. De Jury nooit; de kritische klant liever niet.
+- ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) bij een deelnemer als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los"). Kan bij elke deelnemer, nooit bij de voorzitter.
+- vergadercliches (= de fun-modus): standaard false en dan is cliche overal ''. Zet op true als de baas erom vraagt ("fun-modus", "maak het grappig", "met vergaderclichés", "maak het herkenbaar", "net een echte vergadering"). Geef dan 2 tot 4 debaterende rollen elk een ander cliché uit de clichélijst dat past bij hun functie. De voorzitter nooit; de kritische klant liever niet.
 - Rollen geven nooit scores of complimenten. Ze komen met concrete bezwaren en concrete voorstellen. Zet dat in hun instructie.
 - Het doel is een waardevol debat dat de baas echt helpt beslissen. Elke rol is een ervaren vakmens met echte kennis: geef in de instructie aan welke kennis en ervaring die rol inbrengt (bijv. "kent de marges per product uit het hoofd", "heeft zo'n verandering bij een vorige werkgever zien mislukken", "weet wat de cao hierover zegt") en onder welke voorwaarde die rol van mening zou veranderen.
 - Geef elke rol ook een eigen, geloofwaardige manier van praten, zodat ze als echte mensen klinken: bijv. "kortaf en zakelijk", "rekent alles hardop voor", "vriendelijk maar laat zich niet afschepen". Echte mensen, geen typetjes of karikaturen.
 - Varieer leeftijd, geslacht en afkomst. 'uiterlijk' is Engels en een realistische, korte beschrijving van de persoon met één passend detail van het beroep (bijv. "woman in her late 50s of Moroccan-Dutch descent, reading glasses, holding a procurement folder").
 - webzoeken=true voor rollen die baat hebben bij actuele feiten (markt, prijzen, regels). Anders false. Alleen modellen met "(kan webzoeken)" kunnen dat.
 - rondes: standaard 3. Alleen minder bij een heel simpele vraag.
-- stemmen: 'uit' als er geen stemmenlijst is. Anders standaard 'jury'.
+- stemmen: 'uit' als er geen stemmenlijst is. Anders standaard 'jury' (dan praat alleen de voorzitter hardop).
 - stemId: kies uit de stemmenlijst per rol een passende stem (geslacht en leeftijd passend bij de naam). Elke rol een andere. Stemmen met "Nederlands" gaan voor. null als er geen lijst is.
 - bijlages: wijs elke bijlage toe aan 'iedereen' of aan de id van de ene rol waarvoor hij bedoeld is. Bij twijfel 'iedereen'.
-- id: een korte slug in kleine letters (bijv. 'inkoper', 'jury').
+- id: een korte slug in kleine letters (bijv. 'inkoper', 'voorzitter').
 - Het gaat om Nederlandse bedrijven. Rollen werken bij Nederlandse organisaties, denken in euro's en kennen de Nederlandse markt, regels en omgangsvormen. Namen passen bij Nederland (met variatie in afkomst).
 - modelKey: kies uit de modellijst.`;
 
@@ -121,15 +121,15 @@ export function normalizeCast(
     };
   });
 
-  // Precies één Jury, achteraan.
+  // Precies één voorzitter (isJury), achteraan.
   let jury = roles.filter((r) => r.isJury);
   if (jury.length === 0) {
     roles.push({
       id: used.has("jury") ? "jury-1" : "jury",
       naam: "Mr. Anneke de Wit",
-      functie: "Jury",
+      functie: "Voorzitter",
       perspectief: "Weegt alle standpunten neutraal af",
-      instructie: "Luister, weeg af en doe aan het eind een heldere uitspraak. Geen complimenten, wel harde keuzes.",
+      instructie: "Zit de vergadering voor, luister, weeg af en geef aan het eind een helder advies. Geen complimenten, wel harde keuzes.",
       zin: "Weegt alles af en hakt de knoop door.",
       modelKey: strongest().key,
       stemId: null,
@@ -284,7 +284,7 @@ export async function editCast(
   const { data, usage } = await generateJson(CastChatSchema, {
     model,
     system: SYSTEM,
-    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om de fun-modus, iets grappigs of vergaderclichés, zet vergadercliches=true en deel clichés uit; wil de baas het serieus of de clichés weg, zet vergadercliches=false. Vraagt de baas een specifiek cliché voor een rol ("maak de CFO de Parkeerder"), zet dat cliché bij die rol. Vraagt de baas om een rol "zonder censuur" of "ongezouten", zet ongezouten=true bij die rol (niet bij de Jury); verander het model alleen als de baas daarom vraagt. Wil de baas een rol weer "gecensureerd" of "netjes", zet ongezouten=false. Geef de volledige nieuwe cast terug.`,
+    instruction: `${context(models, voices, attachments)}\n\nVRAAGSTUK:\n${question}\n\nHUIDIGE CAST (JSON):\n${JSON.stringify(castToRaw(current))}\n\n${history ? `EERDER IN DIT GESPREK:\n${history}\n\n` : ""}VERZOEK VAN DE BAAS:\n${request}\n\nPas de cast aan. Verander alleen wat gevraagd wordt; laat al het andere (ook id's) precies staan. Een nieuwe rol krijgt een nieuwe korte id. Vraagt de baas om meer dan 4 debaterende rollen, dan mag dat tot 5. Vraagt de baas om de fun-modus, iets grappigs of vergaderclichés, zet vergadercliches=true en deel clichés uit; wil de baas het serieus of de clichés weg, zet vergadercliches=false. Vraagt de baas een specifiek cliché voor een rol ("maak de CFO de Parkeerder"), zet dat cliché bij die rol. Vraagt de baas om een rol "zonder censuur" of "ongezouten", zet ongezouten=true bij die rol (niet bij de voorzitter); verander het model alleen als de baas daarom vraagt. Wil de baas een rol weer "gecensureerd" of "netjes", zet ongezouten=false. Geef de volledige nieuwe cast terug.`,
     maxTokens: 5000,
   });
   return {

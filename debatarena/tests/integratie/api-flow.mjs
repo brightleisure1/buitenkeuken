@@ -383,7 +383,7 @@ await step("Prompts: ongecensureerd, clichés, prompt caching", async () => {
   assert.ok(gpt.every((l) => l.cacheKey), "GPT-beurten hebben een prompt_cache_key");
 });
 
-await step("Afronden → laatste woord → uitspraak Jury → resultaat", async () => {
+await step("Afronden → laatste woord → advies voorzitter → resultaat", async () => {
   await call(`/api/runs/${run.id}/boss`, { method: "POST", json: { action: "afronden" } });
   const fw = await turn(run.id);
   assert.equal(fw.json.step.type, "final_word");
@@ -408,7 +408,7 @@ await step("Tokens en kosten per debat kloppen", async () => {
   const u = r.data.usage;
   assert.ok(u.total.inputTokens > 0 && u.total.outputTokens > 0 && u.total.cachedTokens > 0);
   const kinds = u.perKind.map((k) => k.label);
-  for (const k of ["Team samenstellen", "Team aanpassen (chat)", "Portretten", "Huiswerk", "Debatbeurten", "Uitspraak van de Jury"]) {
+  for (const k of ["Team samenstellen", "Team aanpassen (chat)", "Portretten", "Huiswerk", "Debatbeurten", "Slotadvies van de voorzitter"]) {
     assert.ok(kinds.includes(k), `onderdeel ${k} ontbreekt in ${kinds}`);
   }
   for (const x of run.cast.rollen) assert.ok(u.perRole.some((p) => p.roleId === x.id), `verbruik voor ${x.naam}`);
@@ -520,7 +520,7 @@ await step("Vergadering beëindigen zonder uitspraak, en later alsnog laten oord
   await call(`/api/runs/${id}`, { method: "DELETE" });
 });
 
-await step("Jury: nooit ongecensureerd, altijd een sterk model (geen Grok)", async () => {
+await step("Voorzitter: nooit ongecensureerd, altijd een sterk model (geen Grok)", async () => {
   const c = await call("/api/compose", { method: "POST", json: { question: "Budget en jury testen" } });
   assert.equal(c.status, 200, JSON.stringify(c.data));
   const jury = c.data.run.cast.rollen.find((x) => x.isJury);
@@ -561,7 +561,7 @@ await step("Kostenlimiet: stopt nieuwe beurten, ophogen gaat door, afronden mag 
   assert.equal((await turn(id)).json.step.type, "final_word");
   await call(`/api/runs/${id}/boss`, { method: "POST", json: { action: "laatste_woord", text: "Graag een helder besluit" } });
   const verdict = await turn(id);
-  assert.equal(verdict.events?.find((e) => e.t === "start")?.step.meta.verdict, true, "de Jury mag boven de limiet nog oordelen");
+  assert.equal(verdict.events?.find((e) => e.t === "start")?.step.meta.verdict, true, "de voorzitter mag boven de limiet nog afronden");
   const r = await call(`/api/runs/${id}/result`, { method: "POST" });
   assert.equal(r.status, 200, JSON.stringify(r.data));
   await call(`/api/runs/${id}`, { method: "DELETE" });

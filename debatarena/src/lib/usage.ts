@@ -35,7 +35,7 @@ export const KIND_LABEL: Record<UsageKind, string> = {
   portret: "Portretten",
   huiswerk: "Huiswerk",
   beurt: "Debatbeurten",
-  uitspraak: "Uitspraak van de Jury",
+  uitspraak: "Slotadvies van de voorzitter",
   hoogtepunten: "Hoogtepunten kiezen",
   zinnetje: "Losse zinnetjes",
   stem: "Stemmen",

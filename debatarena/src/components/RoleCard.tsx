@@ -37,7 +37,7 @@ export function RoleCard({
         <div className="flex items-start gap-3">
         <div className="flex flex-wrap items-baseline gap-x-2 min-w-0 flex-1">
           <h3 className="font-display font-extrabold text-lg leading-tight">{role.naam}</h3>
-          <span className="text-sm text-ink/70 break-words">{role.isJury ? "Jury" : role.functie}</span>
+          <span className="text-sm text-ink/70 break-words">{role.isJury ? "Voorzitter" : role.functie}</span>
           <span className="self-center">
             <AiBadge role={role} />
           </span>

@@ -19,7 +19,7 @@ export function transcriptLines(run: Run, messages: Message[]) {
       if (m.kind === "boss") return `**De baas:** ${m.content}`;
       const r = run.cast.rollen.find((x) => x.id === m.role_id);
       const src = m.sources.length ? ` _(bron: ${m.sources.join("; ")})_` : "";
-      return `**${r?.naam ?? "?"}** (${r?.isJury ? "Jury" : r?.functie}): ${m.content}${src}`;
+      return `**${r?.naam ?? "?"}** (${r?.isJury ? "Voorzitter" : r?.functie}): ${m.content}${src}`;
     });
 }
 

@@ -8,7 +8,7 @@ const ACTION_LABEL: Record<string, string> = {
   richting: " (geeft richting)",
   hamer: " (HAMER, besluit)",
   vraag: " (vraag aan één rol)",
-  laatste_woord: " (laatste woord voor de Jury)",
+  laatste_woord: " (laatste woord voor de voorzitter)",
 };
 
 /** Nederlandse tijd, voor de vrijdagmiddag-afsluiting. */
@@ -25,7 +25,7 @@ export function historyBlocks(run: Run, messages: Message[]): string[] {
     if (m.meta.streaming) continue;
     if (m.kind === "turn") {
       const r = run.cast.rollen.find((x) => x.id === m.role_id);
-      const who = r ? `${r.naam} (${r.isJury ? "Jury" : r.functie})` : "Onbekend";
+      const who = r ? `${r.naam} (${r.isJury ? "Voorzitter" : r.functie})` : "Onbekend";
       const src = m.sources.length ? ` (bronnen: ${m.sources.join("; ")})` : "";
       const cut = m.meta.interrupted ? " — [onderbroken door de baas]" : "";
       out.push(`${who}${m.tag ? ` [${m.tag}]` : ""}: ${m.content}${src}${cut}`);
@@ -37,7 +37,7 @@ export function historyBlocks(run: Run, messages: Message[]): string[] {
         out.push(`DE BAAS${ACTION_LABEL[m.meta.action ?? "opmerking"] ?? ""}: ${m.content}`);
       }
     } else if (m.meta.wrapUp) {
-      out.push("(De baas rondt het debat af. De Jury is aan zet.)");
+      out.push("(De baas rondt het debat af. De voorzitter vat samen en geeft advies.)");
     }
   }
   return out;
@@ -46,7 +46,7 @@ export function historyBlocks(run: Run, messages: Message[]): string[] {
 export function roleSystem(run: Run, role: Role, attachments: Attachment[], opts: { withFacts: boolean }) {
   const others = run.cast.rollen
     .filter((r) => r.id !== role.id)
-    .map((r) => `- ${r.naam}, ${r.isJury ? "Jury" : r.functie}: ${r.perspectief}`)
+    .map((r) => `- ${r.naam}, ${r.isJury ? "Voorzitter" : r.functie}: ${r.perspectief}`)
     .join("\n");
   const facts = opts.withFacts ? (run.prep[role.id]?.facts ?? []) : [];
   const att = attachmentText(attachments);
@@ -59,9 +59,9 @@ CONTEXT: het gaat om Nederlandse bedrijven. Denk in euro's, de Nederlandse markt
 
 JOUW ROL:
 Naam: ${role.naam}
-Functie: ${role.isJury ? "Jury" : role.functie}
+Functie: ${role.isJury ? "Voorzitter" : role.functie}
 Perspectief: ${role.perspectief}
-Instructie: ${role.instructie}${role.isJury ? "\nJe bent de voorzitter en Jury: een slimme, nuchtere en scherpe denker met overzicht. Je luistert, weegt eerlijk af, prikt door zwakke argumenten heen en blijft altijd respectvol en beschaafd." : ""}
+Instructie: ${role.instructie}${role.isJury ? "\nJe bent de voorzitter: een slimme, nuchtere en scherpe denker met overzicht. Je luistert, weegt eerlijk af, prikt door zwakke argumenten heen en blijft altijd respectvol en beschaafd." : ""}
 
 WAT JE INBRENGT (het doel is dat de baas een beter besluit neemt):
 - Je bent een ervaren vakmens. Breng kennis in die alleen iemand met jouw functie heeft: cijfers, ervaring uit de praktijk, risico's, randvoorwaarden.
@@ -100,7 +100,7 @@ FUN-MODUS (de baas wil een debat dat iets oplevert én leuk is om door te sturen
 - Je karakter mag duidelijk naar voren komen: je stokpaardje, een beetje ijdelheid, ongeduld of cynisme.
 `;
 
-/** Ongecensureerd kan bij elke deelnemer, nooit bij de Jury. */
+/** Ongecensureerd kan bij elke deelnemer, nooit bij de voorzitter. */
 export const isUncensored = (role: Role) => !!role.ongezouten && !role.isJury;
 
 // Staat bewust als laatste in de systeemprompt: dit gaat voor op de nette regels hierboven.
@@ -143,7 +143,7 @@ export function turnInstruction({ run, role, messages, round, meta }: TurnContex
 
   if (meta.verdict) {
     lines.push(
-      `Het debat is klaar. Jij bent de voorzitter/Jury en sluit de vergadering hardop af, in max ${voiceAll || run.cast.stemmen === "jury" ? 90 : 120} woorden. Praat zoals een voorzitter aan tafel: begin bijvoorbeeld met "Oké, ik heb genoeg gehoord." of "Goed, mensen." Zeg in gewone woorden wat je de baas aanraadt en waarom: welk argument voor jou de doorslag gaf en welk tegenargument het sterkst was. Noem de mensen bij naam als je hun punt overneemt ("Ella heeft gelijk dat…"), noem de voorwaarde en de eerste stap, en zeg waar je nog wakker van ligt. Geen schrijftaal, geen opsomming, geen "het grootste risico blijft". Neem de besluiten van de baas over als vaststaand.${isFun(run.cast) ? " Sluit af met één droge, rake zin die de vergadering samenvat, eentje die mensen willen doorsturen." : ""}`,
+      `Het debat is klaar. Jij bent de voorzitter en sluit de vergadering hardop af met je advies aan de baas, in max ${voiceAll || run.cast.stemmen === "jury" ? 90 : 120} woorden. Praat zoals een voorzitter aan tafel: begin bijvoorbeeld met "Oké, ik heb genoeg gehoord." of "Goed, mensen." Zeg in gewone woorden wat je de baas aanraadt en waarom: welk argument voor jou de doorslag gaf en welk tegenargument het sterkst was. Noem de mensen bij naam als je hun punt overneemt ("Ella heeft gelijk dat…"), noem de voorwaarde en de eerste stap, en zeg waar je nog wakker van ligt. Geen schrijftaal, geen opsomming, geen "het grootste risico blijft". Neem de besluiten van de baas over als vaststaand.${isFun(run.cast) ? " Sluit af met één droge, rake zin die de vergadering samenvat, eentje die mensen willen doorsturen." : ""}`,
     );
     const fw = messages.find((m) => m.kind === "boss" && m.meta.finalWord);
     if (fw) lines.push(`De baas gaf je nog mee: "${fw.content}". Neem dat mee.`);
@@ -209,11 +209,11 @@ Antwoord ALLEEN met JSON in dit formaat:
 }
 
 export function resultInstruction(run: Run) {
-  return `Het debat is afgelopen. Jij bent de Jury en levert nu het eindresultaat voor de baas.
+  return `Het debat is afgelopen. Jij bent de voorzitter en levert nu het eindresultaat voor de baas: jouw advies, zodat de baas kan besluiten.
 
 Regels:
 - samenvatting: maximaal 3 zinnen. Rustig en zakelijk.
-- uitslag: de uitkomst in één korte, krachtige zin.
+- uitslag: jouw advies aan de baas in één korte, krachtige zin.
 - besluitenVanDeBaas: alle besluiten die de baas met de hamer nam, letterlijk of heel dicht erbij. Leeg als er geen waren.
 - strategie: 3 tot 5 stappen, elk met waarom en een eerste actie die morgen kan beginnen.
 - onenigheid: punten waar de rollen het echt oneens bleven, met per rol het standpunt (gebruik de namen).

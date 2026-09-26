@@ -166,7 +166,7 @@ export function ReplayPlayer({
   const cur = items[Math.min(index, items.length - 1)];
   const role = roles.find((r) => r.id === cur?.role_id);
   const mood: Mood = cur?.tag ? TAG_MOOD[cur.tag] : "neutraal";
-  const roundLabel = !started ? "Terugkijken" : cur?.meta.verdict ? "Uitspraak" : cur?.meta.opening ? "Opening" : onlyHighlights ? "Hoogtepunten" : `Ronde ${cur?.round ?? 1} van ${rounds}`;
+  const roundLabel = !started ? "Terugkijken" : cur?.meta.verdict ? "Afronding" : cur?.meta.opening ? "Opening" : onlyHighlights ? "Hoogtepunten" : `Ronde ${cur?.round ?? 1} van ${rounds}`;
 
   return (
     <div className={`flex flex-col ${fullHeight ? "h-[100dvh]" : "h-[calc(100dvh-58px)]"}`}>

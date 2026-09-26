@@ -79,7 +79,7 @@ export function VoicePicker() {
       <div className="rounded-2xl border-2 border-ink/15 bg-white px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         <span className="font-semibold">Uitspraak</span>
         <Segmented
-          label="Uitspraak"
+          label="Afronding"
           value={uitspraak}
           onChange={(v) => void saveUitspraak(v)}
           options={[

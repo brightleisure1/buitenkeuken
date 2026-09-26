@@ -113,12 +113,12 @@ export function Stage({
                 sunglasses={sunglasses}
                 mug={late}
                 onClick={onRoleClick ? () => onRoleClick(r.id) : undefined}
-                title={`${r.naam} — ${r.isJury ? "Jury" : r.functie}`}
+                title={`${r.naam} — ${r.isJury ? "Voorzitter" : r.functie}`}
               />
               <span className={`mt-1 text-xs sm:text-sm text-center leading-tight ${active ? "font-bold" : "font-medium"}`}>{firstName(r.naam)}</span>
               {size > 40 && (
                 <span className="text-[10px] sm:text-[11px] text-ink/60 text-center leading-tight line-clamp-2 break-words w-full" title={r.functie}>
-                  {r.isJury ? "Jury" : r.functie}
+                  {r.isJury ? "Voorzitter" : r.functie}
                 </span>
               )}
               <span className="mt-0.5">
@@ -225,7 +225,7 @@ function FeedBubble({
       >
         <p className="text-[11px] sm:text-xs font-semibold text-ink/60 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <span className="text-ink">{role?.naam ?? "Onbekend"}</span>
-          <span className="font-normal break-words">· {role?.isJury ? "Jury" : role?.functie}</span>
+          <span className="font-normal break-words">· {role?.isJury ? "Voorzitter" : role?.functie}</span>
           {role && <AiBadge role={role} size="xs" />}
           {item.note && <span className="font-normal italic">· {item.note}</span>}
         </p>

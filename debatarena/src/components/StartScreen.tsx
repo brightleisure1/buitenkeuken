@@ -223,7 +223,7 @@ export function StartScreen() {
     const { run } = data;
     const cast = run.cast;
     const modelLabel = (k: string, custom?: string | null) => custom || data.models.find((m) => m.key === k)?.label;
-    const stemTekst = { uit: "zonder stemmen", jury: "alleen de Jury praat hardop", iedereen: "iedereen praat hardop" }[cast.stemmen];
+    const stemTekst = { uit: "zonder stemmen", jury: "alleen de voorzitter praat hardop", iedereen: "iedereen praat hardop" }[cast.stemmen];
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10 space-y-6">
         <div>
@@ -250,7 +250,7 @@ export function StartScreen() {
                   onChange={(v) => void saveAdvanced({ ...cast, stemmen: v })}
                   options={[
                     { value: "uit", label: "Uit" },
-                    { value: "jury", label: "Jury" },
+                    { value: "jury", label: "Voorzitter" },
                     { value: "iedereen", label: "Iedereen" },
                   ]}
                 />
@@ -281,7 +281,7 @@ export function StartScreen() {
           <div className="mt-3 rounded-2xl border-2 border-ink bg-white px-4 py-3">
             <p className="font-display font-extrabold">🌶️ Censuur per deelnemer</p>
             <p className="text-xs text-ink/60 mb-2">
-              Ongecensureerd: brutaal, sarcastisch, vloeken mag. Grok gaat het verst; Claude, ChatGPT en Gemini worden scherper maar blijven wat netter. De Jury blijft altijd netjes.
+              Ongecensureerd: brutaal, sarcastisch, vloeken mag. Grok gaat het verst; Claude, ChatGPT en Gemini worden scherper maar blijven wat netter. De voorzitter blijft altijd netjes.
             </p>
             <div className="divide-y divide-ink/10">
               {cast.rollen

@@ -39,7 +39,7 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
 
   const step = nextStep(run, messages);
   if (step.type !== "turn") return Response.json({ step });
-  // Kostenlimiet: geen nieuwe beurten meer, alleen de uitspraak van de Jury mag nog.
+  // Kostenlimiet: geen nieuwe beurten meer, alleen het slotadvies van de voorzitter mag nog.
   if (overBudget(run) && !step.meta.verdict) {
     return Response.json({ step: { type: "budget", limit: limitOf(run), cost: run.cost_eur } });
   }

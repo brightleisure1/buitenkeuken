@@ -528,7 +528,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
     } else if (m.kind === "boss") {
       feed.push({ id: m.id, who: "baas", text: m.content, note: bossNote(m, roles) });
     } else if (m.kind === "system" && m.meta.wrapUp) {
-      feed.push({ id: m.id, who: "systeem", text: "De baas rondt af. De Jury is aan zet." });
+      feed.push({ id: m.id, who: "systeem", text: "De baas rondt af. De voorzitter vat samen." });
     }
   }
   const liveRole = live ? roles.find((r) => r.id === live.roleId) : undefined;
@@ -549,7 +549,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
     feed.push({ id: "volgende", who: next.id, text: "", streaming: true, waiting: turnWaitLines(next) });
   }
   if (phase === "laatste_woord" && jury) {
-    feed.push({ id: "laatste-woord", who: jury.id, text: "Wil je nog iets zeggen voordat ik uitspraak doe?" });
+    feed.push({ id: "laatste-woord", who: jury.id, text: "Wil je nog iets meegeven voordat ik afrond?" });
   }
 
   let activeId: string | null = null;
@@ -563,7 +563,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   const round = live?.round ?? Math.max(1, ...messages.filter((m) => m.kind === "turn").map((m) => m.round ?? 1));
   const roundLabel =
     phase === "laatste_woord" || live?.meta.verdict
-      ? "Uitspraak"
+      ? "Afronding"
       : phase === "prep"
         ? "Voorbereiding"
         : live?.meta.opening || (phase === "debat" && !messages.some((m) => m.kind === "turn"))
@@ -596,7 +596,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
       />
     ) : phase === "oordeel" ? (
       <div className="w-full max-w-2xl rounded-3xl bg-sun border-2 border-ink px-5 py-4 shadow-[3px_3px_0_0_var(--color-ink)] animate-pop">
-        <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-1">De Jury beraadslaagt</span>
+        <span className="block text-xs font-semibold uppercase tracking-wide text-ink/60 mb-1">De voorzitter zet alles op een rij</span>
         <FunWait lines={JURY_LINES} size="lg" />
       </div>
     ) : null;
@@ -622,7 +622,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
 
   const placeholder =
     phase === "laatste_woord"
-      ? "Je laatste woord voor de Jury (of sla over)"
+      ? "Je laatste woord voor de voorzitter (of sla over)"
       : mode === "hamer"
         ? "Wat besluit je? Daarna staat het vast."
         : mode === "richting"
@@ -674,7 +674,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                   onChange={(v) => void setVoices(v)}
                   options={[
                     { value: "uit", label: "Uit" },
-                    { value: "jury", label: "Jury" },
+                    { value: "jury", label: "Voorzitter" },
                     { value: "iedereen", label: "Iedereen" },
                   ]}
                 />
@@ -718,13 +718,13 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                     }
                   }}
                 >
-                  ⚖️ Afronden: Jury doet uitspraak
+                  🔔 Afronden: voorzitter geeft advies
                 </button>
                 <button className="btn-ghost !py-1.5" onClick={endMeeting}>
                   ⏹ Beëindigen
                 </button>
               </div>
-              <p className="text-xs text-ink/60">Afronden kost nog een paar cent voor de uitspraak van de Jury.</p>
+              <p className="text-xs text-ink/60">Afronden kost nog een paar cent voor het slotadvies van de voorzitter.</p>
             </div>
           )}
 
@@ -741,11 +741,11 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                     if (await post("afronden")) resume();
                   }}
                 >
-                  ⚖️ Afronden: Jury doet uitspraak
+                  🔔 Afronden: voorzitter geeft advies
                 </button>
                 {confirmEnd ? (
                   <span className="flex flex-wrap items-center gap-2">
-                    <span>Zeker weten? Er komt dan geen uitspraak.</span>
+                    <span>Zeker weten? Er komt dan geen slotadvies.</span>
                     <button className="btn-ghost !py-1.5 !border-coral text-coral" onClick={endMeeting}>
                       Ja, beëindigen
                     </button>
@@ -821,7 +821,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                   if (await post("overslaan")) resume();
                 }}
               >
-                Nee, doe maar uitspraak
+                Nee, rond maar af
               </button>
             </div>
           ) : (
@@ -860,7 +860,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             onClick={(e) => e.stopPropagation()}
           >
             <p className="px-2 pt-1 pb-2 text-sm font-semibold">
-              {menuRole.naam} <span className="font-normal text-ink/60">· {menuRole.isJury ? "Jury" : menuRole.functie}</span>
+              {menuRole.naam} <span className="font-normal text-ink/60">· {menuRole.isJury ? "Voorzitter" : menuRole.functie}</span>
             </p>
             {menuRole.id !== activeId && (
               <button

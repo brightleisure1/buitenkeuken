@@ -186,15 +186,15 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.waitForFunction(() => [...document.querySelectorAll("[role=radio][aria-checked=true]")].some((b) => b.textContent === "Gecensureerd"));
   });
 
-  await step(`[${label}] stoppen, afronden, laatste woord, uitspraak, resultaat`, async () => {
+  await step(`[${label}] stoppen, afronden, laatste woord, advies, resultaat`, async () => {
     await page.click("button:has-text('Stop')");
     await page.getByText("De vergadering staat stil. Wat wil je?").waitFor();
     await shot("4b-stop");
     await noOverflow(page, "stop");
-    await page.click("button:has-text('Afronden: Jury doet uitspraak')");
-    await page.getByText("Wil je nog iets zeggen voordat ik uitspraak doe?").waitFor({ timeout: 30000 });
+    await page.click("button:has-text('Afronden: voorzitter geeft advies')");
+    await page.getByText("Wil je nog iets meegeven voordat ik afrond?").waitFor({ timeout: 30000 });
     await shot("5-laatste-woord");
-    await page.click("button:has-text('Nee, doe maar uitspraak')");
+    await page.click("button:has-text('Nee, rond maar af')");
     await page.waitForURL("**/resultaat/**", { timeout: 60000 });
     await page.getByText("Verhoog met 6%, gefaseerd").waitFor();
     await page.getByText("We verhogen niet voor juni").first().waitFor();
@@ -218,7 +218,7 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
 
   await step(`[${label}] delen: preview, anoniem, link`, async () => {
     await page.click("button:has-text('Delen')");
-    await page.getByText("Oordeelkaart").waitFor();
+    await page.getByText("Advieskaart").waitFor();
     await page.getByLabel("Rollen anoniem maken").check();
     await page.click("button:has-text('Voorbeeld bijwerken')");
     await page.click("button:has-text('Maak link')");

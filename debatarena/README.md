@@ -1,21 +1,21 @@
 # Debatarena
 
-Laat een team van AI-rollen hardop debatteren over jouw vraagstuk. Jij bent de baas: je kunt op elk moment ingrijpen, een besluit nemen met de hamer, of iemand direct een vraag stellen. Aan het eind doet de Jury uitspraak en krijg je een overzicht dat je kunt delen.
+Laat een team van AI-rollen hardop debatteren over jouw vraagstuk. Jij bent de baas: je kunt op elk moment ingrijpen, een besluit nemen met de hamer, of iemand direct een vraag stellen. Aan het eind vat de voorzitter samen en geeft zijn advies; jij besluit. Je krijgt een overzicht dat je kunt delen.
 
 ## Hoe het werkt
 
 1. **Stel je vraag.** Typ of spreek in waar je over wilt debatteren. Sleep er desgewenst bestanden bij (pdf, Word, Excel, csv, tekst of afbeeldingen).
-2. **Klik op "Stel samen".** Binnen een paar seconden staat er een team klaar: drie of vier rollen met elk een eigen belang, plus een Jury. Er zit altijd een kritische klant of koper bij.
+2. **Klik op "Stel samen".** Binnen een paar seconden staat er een team klaar: drie of vier rollen met elk een eigen belang, plus een voorzitter. Er zit altijd een kritische klant of koper bij.
 3. **Pas aan als je wilt.** Zeg het gewoon: "Maak de inkoper strenger", "Voeg een jurist toe" of "Maar 2 rondes". Wie alles zelf wil regelen, vindt de knoppen onder *Geavanceerd*.
 4. **Start het debat.** Eerst doen de rollen hun huiswerk: ze lezen jouw bijlages, zoeken op het web en nemen maximaal vijf feiten met bron mee. Je ziet hoeveel er al klaar zijn, op wie je nog wacht en wat die aan het bekijken is. Na uiterlijk twee minuten begint het debat vanzelf, of je klikt op *Nu beginnen*.
-5. **De opening.** De Jury zit de vergadering voor. Die heet iedereen welkom (ook de gast), zegt waarom jullie er zitten en welk besluit je aan het eind wilt nemen, legt uit hoe het gaat en geeft het woord aan de eerste spreker.
+5. **De opening.** De voorzitter opent de vergadering. Die heet iedereen welkom (ook de gast), zegt waarom jullie er zitten en welk besluit je aan het eind wilt nemen, legt uit hoe het gaat en geeft het woord aan de eerste spreker.
 6. **Grijp in wanneer je wilt.**
    - **Hand opsteken**: de spreker stopt direct, jij hebt het woord.
    - **Stop**: het debat staat stil. Daarna ga je verder of rond je af.
    - **Hamer**: je neemt een besluit. Vanaf dan gaat iedereen daarvan uit.
    - **Richting geven**: stuur het gesprek een kant op.
    - **Vraag aan één rol**: die rol antwoordt als eerste.
-7. **De uitspraak.** De Jury vraagt of je nog iets wilt zeggen en doet dan uitspraak. Je krijgt een samenvatting, je besluiten, een strategie, de aannames (afvinkbaar), de punten van onenigheid, de bronnen en het hele gesprek.
+7. **Het advies.** De voorzitter vraagt of je nog iets wilt meegeven, vat samen en geeft zijn advies. Jij besluit. Je krijgt het advies, je besluiten, een strategie, de aannames (afvinkbaar), de punten van onenigheid, de bronnen en het hele gesprek.
 
 De tekst verschijnt in een rustig leestempo, woord voor woord, en de volgende spreker wacht tot je hem hebt kunnen lezen. Onderaan kies je 📖 **Rustig**, **Normaal** of **Snel**. Met stemmen aan loopt de tekst gelijk op met de stem.
 
@@ -31,11 +31,11 @@ Het doel is een debat waar je echt iets aan hebt. Elke rol is een ervaren vakmen
 
 ## Fun-modus
 
-Eén schakelaar op het voorstelscherm: **🎉 Fun-modus**. Uit (standaard) is het een serieus, zakelijk debat. Aan krijg je er karikaturen, vergaderclichés en droge humor bij: elke rol stopt per beurt één rake zin in zijn verhaal, en de Jury sluit af met een zin die je wilt doorsturen. De inhoud blijft even serieus: een grap vervangt nooit een argument, en de Jury blijft een slimme, nette voorzitter. Zo heb je iets aan het besluit én iets om te delen. Zet je de fun-modus om, dan tekent de tekenaar de portretten opnieuw in de andere stijl. Je kunt het ook zeggen: "doe het in de fun-modus" of "maak het grappig".
+Eén schakelaar op het voorstelscherm: **🎉 Fun-modus**. Uit (standaard) is het een serieus, zakelijk debat. Aan krijg je er karikaturen, vergaderclichés en droge humor bij: elke rol stopt per beurt één rake zin in zijn verhaal, en de voorzitter sluit af met een zin die je wilt doorsturen. De inhoud blijft even serieus: een grap vervangt nooit een argument, en de voorzitter blijft slim en netjes. Zo heb je iets aan het besluit én iets om te delen. Zet je de fun-modus om, dan tekent de tekenaar de portretten opnieuw in de andere stijl. Je kunt het ook zeggen: "doe het in de fun-modus" of "maak het grappig".
 
 ## Vergadering stoppen
 
-Met **⏹ Stop** staat alles direct stil, ook het geluid. Je kiest dan: verder vergaderen, afronden (de Jury doet meteen uitspraak) of de vergadering beëindigen zonder uitspraak. Een beëindigde vergadering kun je later alsnog laten beoordelen. Vanuit *Geschiedenis* kun je een lopende vergadering ook stoppen.
+Met **⏹ Stop** staat alles direct stil, ook het geluid. Je kiest dan: verder vergaderen, afronden (de voorzitter geeft meteen zijn advies) of de vergadering beëindigen zonder slotadvies. Een beëindigde vergadering kun je later alsnog laten beoordelen. Vanuit *Geschiedenis* kun je een lopende vergadering ook stoppen.
 
 ## De hele vergadering beluisteren
 
@@ -51,7 +51,7 @@ De app vraagt zelf op welke modellen jouw sleutels mogen gebruiken. Bestaat een 
 
 ## Delen
 
-- **Oordeelkaart**: een plaatje met je vraag, de uitslag, de beste quote en de gezichten van het team. Vierkant voor LinkedIn, staand voor stories.
+- **Advieskaart**: een plaatje met je vraag, het advies, de beste quote en de gezichten van het team. Vierkant voor LinkedIn, staand voor stories.
 - **Replay-link**: iedereen met de link kan het debat terugkijken (alleen lezen, met stemmen als die aan stonden). Kosten en instructies blijven verborgen.
 - **Hoogtepunten**: een korte versie van ongeveer een minuut met de scherpste momenten.
 - Voordat je deelt, kun je woorden wegpoetsen (zoals klantnamen of bedragen) en de rollen anoniem maken.
@@ -59,7 +59,7 @@ De app vraagt zelf op welke modellen jouw sleutels mogen gebruiken. Bestaat een 
 
 ## Stemmen
 
-Met een ElevenLabs-sleutel praten de rollen hardop. Kies uit: uit, alleen de Jury, of iedereen (dan zijn beurten maximaal 80 woorden). Het tempo (Rustig, Normaal, Snel) geldt ook voor de stemmen. Stop en Hand opsteken kappen het geluid direct af.
+Met een ElevenLabs-sleutel praten de rollen hardop. Kies uit: uit, alleen de voorzitter, of iedereen (dan zijn beurten maximaal 80 woorden). Het tempo (Rustig, Normaal, Snel) geldt ook voor de stemmen. Stop en Hand opsteken kappen het geluid direct af.
 
 ## Installeren
 
@@ -79,7 +79,7 @@ Je hebt nodig: een [Supabase](https://supabase.com)-project (gratis kan), Node.j
 
    | Sleutel | Waarvoor | Nodig? |
    |---|---|---|
-   | Anthropic | Claude-rollen, het samenstellen van het team, de Jury | Minstens één van deze vier |
+   | Anthropic | Claude-rollen, het samenstellen van het team, de voorzitter | Minstens één van deze vier |
    | OpenAI | ChatGPT-rollen, de portretten, inspreken in browsers zonder spraakherkenning | |
    | Google | Gemini-rollen | |
    | xAI | Grok-rollen | |
@@ -87,7 +87,7 @@ Je hebt nodig: een [Supabase](https://supabase.com)-project (gratis kan), Node.j
 
    Hoe meer AI-sleutels, hoe gemengder het team. Zonder OpenAI-sleutel krijgen de rollen hun initialen in plaats van een portret.
 
-**Online zetten** kan bijvoorbeeld op Vercel: importeer de repository, kies `debatarena` als *Root Directory* en zet dezelfde omgevingsvariabelen. Sommige stappen (portretten, huiswerk, de uitspraak) duren langer dan een halve minuut. Kies daarom een abonnement waarop functies tot 5 minuten mogen draaien.
+**Online zetten** kan bijvoorbeeld op Vercel: importeer de repository, kies `debatarena` als *Root Directory* en zet dezelfde omgevingsvariabelen. Sommige stappen (portretten, huiswerk, het slotadvies) duren langer dan een halve minuut. Kies daarom een abonnement waarop functies tot 5 minuten mogen draaien.
 
 ## Welke AI speelt wie?
 
@@ -103,21 +103,21 @@ Elke deelnemer heeft een schakelaar: **Gecensureerd** (standaard) of **🌶️ O
 
 De schakelaars staan op het voorstelscherm (*Censuur per deelnemer*), op elke rolkaart en in de arena bovenaan onder **🌶️ Censuur**, zodat je ze ook midden in het debat kunt omzetten. Je kunt het ook gewoon zeggen: "Laat de CFO zonder censuur los" of "Maak Grok weer gecensureerd". Een ongecensureerde rol herken je aan het pepertje 🌶️.
 
-De Jury is nooit ongecensureerd. Dat is altijd een slimme, nuchtere voorzitter, gespeeld door een sterk model (Claude of ChatGPT, nooit Grok).
+De voorzitter is nooit ongecensureerd. Dat is altijd een slimme, nuchtere gast, gespeeld door een sterk model (Claude of ChatGPT, nooit Grok).
 
 ## Vergaderclichés
 
 De vergaderclichés gaan aan met de fun-modus, of als je het in je vraag zegt ("met vergaderclichés"). Onder *Geavanceerd* zet je ze los aan of uit. Dan spelen een paar rollen, naast hun functie, een herkenbaar vergadertype: de Dominator, de Parkeerder, de Managementtaalspreker, de Rondvraagterrorist en nog 23 anderen. Sommige zijn tijdgebonden: de Late Binnenkomer komt in ronde 1 als laatste binnen ("Sorry, liep een beetje uit. Waar zijn we?"), de Stille Aanwezigheid zegt tot de laatste ronde vrijwel niets. Staan de clichés aan in een serieus debat (zonder fun-modus), dan schemeren ze alleen subtiel door.
 
-Welke rol welk type speelt, kies je zelf onder *Geavanceerd*. De Jury laat het gedrag niet meewegen en oordeelt op de inhoud.
+Welke rol welk type speelt, kies je zelf onder *Geavanceerd*. De voorzitter laat het gedrag niet meewegen en adviseert op de inhoud.
 
 ## Tokens en kosten per debat
 
-Onderaan in de arena zie je de kosten en het aantal tokens tot nu toe. Klik erop voor de uitsplitsing: per rol (met welke AI), per onderdeel (samenstellen, portretten, huiswerk, beurten, uitspraak, stemmen) en per model. Je ziet ook hoeveel tokens uit de cache kwamen; die kosten maar een fractie. Hetzelfde overzicht staat op de resultaatpagina, en in *Geschiedenis* zie je per debat de kosten en tokens.
+Onderaan in de arena zie je de kosten en het aantal tokens tot nu toe. Klik erop voor de uitsplitsing: per rol (met welke AI), per onderdeel (samenstellen, portretten, huiswerk, beurten, slotadvies, stemmen) en per model. Je ziet ook hoeveel tokens uit de cache kwamen; die kosten maar een fractie. Hetzelfde overzicht staat op de resultaatpagina, en in *Geschiedenis* zie je per debat de kosten en tokens.
 
 ## Kostenlimiet per vergadering
 
-Elke vergadering heeft een maximum, standaard **€ 2**. Onderaan in de arena zie je "€ 0,45 van max € 2,00"; vanaf 80% wordt dat oranje. Is het maximum bereikt, dan praat er niemand meer en kies je: **+ € 1 en verder**, **Afronden** (de Jury mag altijd nog uitspraak doen) of **Beëindigen**. Het standaardbedrag stel je in bij *Instellingen*; per vergadering pas je het aan op het voorstelscherm (💶 Max €).
+Elke vergadering heeft een maximum, standaard **€ 2**. Onderaan in de arena zie je "€ 0,45 van max € 2,00"; vanaf 80% wordt dat oranje. Is het maximum bereikt, dan praat er niemand meer en kies je: **+ € 1 en verder**, **Afronden** (de voorzitter mag altijd nog zijn advies geven) of **Beëindigen**. Het standaardbedrag stel je in bij *Instellingen*; per vergadering pas je het aan op het voorstelscherm (💶 Max €).
 
 ## Modellen en kosten
 
@@ -137,7 +137,7 @@ Overal waar je kunt typen, kun je ook inspreken. Klik op de microfoon, praat, en
 |---|---|
 | Start | Vraag stellen, team samenstellen, recente debatten |
 | Arena | Het debat live volgen en ingrijpen, of terugkijken op 1x, 2x of 4x |
-| Resultaat | De uitspraak, exporteren en delen |
+| Resultaat | Het advies, exporteren en delen |
 | Geschiedenis | Alle debatten en bewaarde teams |
 | Instellingen | Sleutels en verbindingstest |
 | Replay (publiek) | Een gedeeld debat terugkijken |

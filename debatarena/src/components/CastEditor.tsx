@@ -64,7 +64,7 @@ export function CastEditor({
             disabled={!voices.length}
           >
             <option value="uit">Uit</option>
-            <option value="jury">Alleen de Jury</option>
+            <option value="jury">Alleen de voorzitter</option>
             <option value="iedereen">Iedereen (beurten max. 80 woorden)</option>
           </select>
           {!voices.length && <span className="text-xs text-ink/60">Voeg een ElevenLabs-sleutel toe bij Instellingen om stemmen te gebruiken.</span>}

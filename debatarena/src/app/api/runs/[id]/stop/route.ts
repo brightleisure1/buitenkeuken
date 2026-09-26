@@ -1,7 +1,7 @@
 import { handle } from "@/lib/route";
 import { getMessages, getRun, insertMessage, updateMessage, updateRun } from "@/lib/runs";
 
-/** Vergadering beëindigen zonder uitspraak. Later kan de Jury alsnog oordelen. */
+/** Vergadering beëindigen zonder uitspraak. Later kan de voorzitter alsnog afronden. */
 export const POST = handle(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const run = await getRun(id);

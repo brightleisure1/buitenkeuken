@@ -101,13 +101,13 @@ export function ShareDialog({ payload, onClose, onChange }: { payload: RunPayloa
         </div>
 
         <div>
-          <p className="text-sm font-semibold mb-2">Oordeelkaart</p>
+          <p className="text-sm font-semibold mb-2">Advieskaart</p>
           <div className="flex gap-4 items-start">
             {(["square", "story"] as const).map((f) => (
               <div key={f} className={f === "square" ? "w-1/2 sm:w-[45%]" : "w-[28%] sm:w-[25%]"}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={card(f)} alt={f === "square" ? "Kaart 1:1" : "Kaart 9:16"} className="w-full rounded-xl border-2 border-ink bg-white" />
-                <a href={card(f)} download={`oordeel-${f === "square" ? "1x1" : "9x16"}.png`} className="text-sm underline mt-1 inline-block">
+                <a href={card(f)} download={`advies-${f === "square" ? "1x1" : "9x16"}.png`} className="text-sm underline mt-1 inline-block">
                   Download {f === "square" ? "1:1" : "9:16"}
                 </a>
               </div>
