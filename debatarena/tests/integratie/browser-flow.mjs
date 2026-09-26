@@ -103,7 +103,8 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
   });
 
   await step(`[${label}] vraag stellen en samenstellen`, async () => {
-    await page.click("nav >> text=Start");
+    // De vergadersimulatie staat geparkeerd achter ?modus=vergadering.
+    await page.goto(`${APP}/?modus=vergadering`);
     await page.fill("#vraag", "Moeten we de prijzen met 10% verhogen? Graag met vergaderclichés.");
     const t = Date.now();
     await page.click("button:has-text('Stel samen')");
@@ -250,7 +251,7 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
   });
 
   await step(`[${label}] alleen het advies: niet meekijken, wel het advies`, async () => {
-    await page.goto(`${APP}/`);
+    await page.goto(`${APP}/?modus=vergadering`);
     await page.fill("#vraag", "Moeten we op zondag open?");
     await page.click("button:has-text('Stel samen')");
     await page.getByRole("button", { name: /Alleen het advies/ }).click();
@@ -261,6 +262,48 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await page.waitForURL("**/resultaat/**", { timeout: 90000 });
     await page.getByText("Advies van de voorzitter").first().waitFor();
     await page.getByRole("button", { name: /het advies voorlezen/ }).waitFor();
+  });
+
+  await step(`[${label}] review-keten: vragen vooraf, meelezers, starten`, async () => {
+    await page.goto(`${APP}/`);
+    await page.getByText("Welk besluit wil je scherp krijgen?").waitFor();
+    await page.fill("#vraag", "Moeten we dynamische prijzen invoeren op onze vakantieparken?");
+    await page.click("button:has-text('Stel samen')");
+    await page.getByText("Wie lezen er mee?").waitFor({ timeout: 15000 });
+    await page.getByText("Wat is het maximale budget?").waitFor();
+    await page.getByPlaceholder("Jouw antwoord").first().fill("Maximaal €80.000");
+    await page.getByPlaceholder("Jouw antwoord").first().blur();
+    await page.getByRole("radiogroup", { name: "Rondes" }).getByRole("radio", { name: "2" }).waitFor();
+    await shot("10-keten-voorstel");
+    await noOverflow(page, "keten-voorstel");
+    await page.click("button:has-text('Start de review')");
+    await page.waitForURL("**/werkblad/**");
+  });
+
+  await step(`[${label}] review-keten: werkblad met versies, reviews, oordelen en slotcheck`, async () => {
+    await page.getByText("Slotcheck van de voorzitter").waitFor({ timeout: 60000 });
+    await page.getByText("🔍 Tegenlezer").first().waitFor();
+    await page.getByText("✗ Niet overgenomen").first().waitFor();
+    await page.getByRole("button", { name: /Versie 2/ }).waitFor();
+    await page.getByText(/Wat veranderde ten opzichte van versie 1/).waitFor();
+    await shot("11-werkblad");
+    await noOverflow(page, "werkblad");
+  });
+
+  await step(`[${label}] review-keten: ingrijpen, nog een ronde, blind vergelijken`, async () => {
+    await page.getByRole("button", { name: "Toch overnemen" }).first().click();
+    await page.getByText("Jij: toch overnemen").first().waitFor();
+    await page.getByPlaceholder(/Reken ook met een scenario/).fill("Neem ook de gevolgen voor het personeel mee.");
+    await page.click("button:has-text('Toevoegen')");
+    await page.getByText("Neem ook de gevolgen voor het personeel mee.").waitFor();
+    await page.click("button:has-text('in een nieuwe ronde')");
+    await page.getByRole("button", { name: /Versie 3/ }).waitFor({ timeout: 60000 });
+    await page.getByText("Slotcheck van de voorzitter").waitFor({ timeout: 60000 });
+    await page.getByText("(verwerkt)").first().waitFor();
+    await page.getByText("🆚 Beter dan één vraag?").waitFor();
+    await page.getByRole("button", { name: "A", exact: true }).click();
+    await page.getByText(/versie 1 zonder review|de eindversie na review/).first().waitFor();
+    await shot("12-werkblad-vergeleken");
   });
 
   await step(`[${label}] geschiedenis toont tokens en kosten`, async () => {

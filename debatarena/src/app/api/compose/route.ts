@@ -1,5 +1,7 @@
 import { after } from "next/server";
-import { composeCast } from "@/lib/casting";
+import { composeCast, fastModel } from "@/lib/casting";
+import { generateJson } from "@/lib/llm";
+import { IntakeSchema } from "@/lib/schemas";
 import { AppError } from "@/lib/errors";
 import { prepare } from "@/lib/prep";
 import { body, handle } from "@/lib/route";
@@ -21,12 +23,24 @@ function titleFrom(q: string) {
 /** Vraagt de baas zelf om stemmen? Anders staan ze uit. */
 const WANTS_VOICES = /\b(stemmen|hardop|voorlezen|met stem|met geluid)\b/i;
 
+/** Hooguit drie korte vragen die het advies echt beter maken (budget, termijn, wat er precies besloten moet worden). */
+async function intakeVragen(q: string) {
+  const { data, usage } = await generateJson(IntakeSchema, {
+    model: await fastModel(),
+    system: "Je helpt een directeur een vraagstuk scherp te krijgen voordat er advies over komt.",
+    instruction: `VRAAGSTUK:\n${q}\n\nWelke 0 tot 3 korte vragen moet je de directeur stellen om een veel beter advies te kunnen geven? Alleen vragen waarvan het antwoord het advies echt verandert en die nog niet in het vraagstuk staan (bijvoorbeeld budget, termijn, wat er precies besloten moet worden, harde grenzen). Kort en in gewone taal.`,
+    maxTokens: 600,
+  });
+  return { vragen: data.vragen.slice(0, 3), usage };
+}
+
 export const POST = handle(async (req: Request) => {
-  const { question, attachmentIds = [], templateId, fromRunId } = await body<{
+  const { question, attachmentIds = [], templateId, fromRunId, modus = "keten" } = await body<{
     question?: string;
     attachmentIds?: string[];
     templateId?: string;
     fromRunId?: string;
+    modus?: "keten" | "vergadering";
   }>(req);
   const q = question?.trim();
   if (!q) throw new AppError("Je hebt nog geen vraagstuk ingevuld.", "Typ of spreek in waar je over wilt debatteren.");
@@ -60,6 +74,16 @@ export const POST = handle(async (req: Request) => {
     usage = r.usage;
   }
 
+  let intakeUsage: Usage | undefined;
+  if (modus === "keten") {
+    // Review-keten: geen show (stemmen, clichés, fun), twee rondes, en een paar verduidelijkende vragen vooraf.
+    cast = { ...cast, modus: "keten", stemmen: "uit", fun: false, cliches: false, rondes: 2, rollen: cast.rollen.map((r) => ({ ...r, cliche: null, ongezouten: false })) };
+    const iq = await intakeVragen(q).catch(() => null);
+    if (iq) {
+      cast = { ...cast, intake: iq.vragen.map((vraag) => ({ vraag, antwoord: "" })) };
+      intakeUsage = iq.usage;
+    }
+  } else cast = { ...cast, modus: "vergadering" };
   if (cast.kostenlimiet === undefined) cast = { ...cast, kostenlimiet: await defaultLimit() };
   // Standaard: de sterkste modellen (instelbaar op het voorstelscherm).
   if (!cast.niveau) cast = applyNiveau(cast, "slim");
@@ -73,6 +97,7 @@ export const POST = handle(async (req: Request) => {
 
   if (attachments.length) await db().from("attachments").update({ run_id: run.id }).in("id", attachments.map((a) => a.id));
   await recordUsage(run.id, "samenstellen", usage);
+  await recordUsage(run.id, "intake", intakeUsage);
 
   after(() => prepare(run.id));
   return Response.json({ run: await getRun(run.id) });

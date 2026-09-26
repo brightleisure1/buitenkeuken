@@ -17,6 +17,7 @@ type Row = {
   tokens: number;
   share_token: string | null;
   keuze?: "debat" | "enkel" | "gelijk" | null;
+  modus?: "keten" | "vergadering";
   rollen: { id: string; naam: string; portrait: string | null }[];
 };
 type Template = { id: string; name: string; cast: Cast; created_at: string };
@@ -105,17 +106,21 @@ export default function HistoryPage() {
                 <Link href={`/?run=${r.id}`} className="btn-ghost !py-1.5 !px-3">
                   Verder instellen
                 </Link>
+              ) : r.modus === "keten" ? (
+                <Link href={`/werkblad/${r.id}`} className="btn-ghost !py-1.5 !px-3">
+                  {r.status === "done" ? "Advies" : "Werkblad"}
+                </Link>
               ) : (
                 <Link href={`/arena/${r.id}`} className="btn-ghost !py-1.5 !px-3">
                   {r.status === "done" || r.status === "stopped" ? "Afspelen" : "Naar de arena"}
                 </Link>
               )}
-              {(r.status === "done" || r.status === "stopped") && (
+              {r.modus !== "keten" && (r.status === "done" || r.status === "stopped") && (
                 <Link href={`/resultaat/${r.id}`} className="btn-ghost !py-1.5 !px-3">
                   Resultaat
                 </Link>
               )}
-              {r.status === "running" && (
+              {r.status === "running" && r.modus !== "keten" && (
                 <button onClick={() => stopRun(r.id)} className="btn-ghost !py-1.5 !px-3">
                   ⏹ Stoppen
                 </button>

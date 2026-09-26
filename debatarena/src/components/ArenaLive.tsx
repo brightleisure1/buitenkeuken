@@ -320,6 +320,10 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
           router.replace(`/?run=${id}`);
           return;
         }
+        if (d.run.cast.modus === "keten") {
+          router.replace(`/werkblad/${id}`);
+          return;
+        }
         if (d.run.status === "done") return;
         // 'Alleen het advies' loopt (of liep vast): niet zelf afspelen, maar de voortgang tonen.
         const auto = autorunState(d.messages);

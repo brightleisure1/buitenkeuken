@@ -22,6 +22,7 @@ export const GET = handle(async (req: Request) => {
     share_token: r.share_token,
     /** Blinde vergelijking: welk advies vond de baas beter? */
     keuze: (r as { keuze?: string | null }).keuze ?? null,
+    modus: r.cast?.modus === "keten" ? "keten" : "vergadering",
     rollen: (r.cast?.rollen ?? []).map((x: { id: string; naam: string }) => ({
       id: x.id,
       naam: stripTitles(x.naam),

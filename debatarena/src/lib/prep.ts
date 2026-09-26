@@ -212,7 +212,8 @@ export async function prepare(runId: string) {
     const p = run.prep[role.id] ?? {};
     const pk = portraitKey(role, run.cast);
     const portraitBusy = p.portraitStatus === "bezig" && now - (p.portraitStarted ?? 0) < STALE_MS;
-    if (keys.openai && (p.portraitKey !== pk || p.portraitStatus === "mislukt" || (!p.portraitStatus)) && !(p.portraitKey === pk && portraitBusy)) {
+    // In de review-keten geen portretten: die kosten geld en voegen niets toe aan het advies.
+    if (run.cast.modus !== "keten" && keys.openai && (p.portraitKey !== pk || p.portraitStatus === "mislukt" || (!p.portraitStatus)) && !(p.portraitKey === pk && portraitBusy)) {
       jobs.push(makePortraits(run, role));
     }
     if (role.isJury) continue;

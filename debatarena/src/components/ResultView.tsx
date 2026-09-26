@@ -31,6 +31,8 @@ export function ResultView({ id }: { id: string }) {
 
   const load = useCallback(async () => {
     const d = await api<RunPayload>(`/api/runs/${id}`);
+    // Een review-keten heeft zijn eigen werkblad.
+    if (d.run.cast.modus === "keten") window.location.replace(`/werkblad/${id}`);
     setData(d);
     return d;
   }, [id]);
@@ -413,7 +415,20 @@ function Section({ title, copy, children, tone = "bg-white" }: { title: string; 
  * De hamvraag: is het debat beter dan één vraag aan het slimste model?
  * Beide adviezen staan blind naast elkaar (A en B, willekeurig); pas na je keuze zie je welke welke is.
  */
-function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: JuryResult; totalCost: number; onChange: () => void }) {
+export function Vergelijk({
+  id,
+  result,
+  totalCost,
+  onChange,
+  keten = false,
+}: {
+  id: string;
+  result: JuryResult;
+  totalCost: number;
+  onChange: () => void;
+  /** Review-keten: versie 1 (één keer het slimste model) tegen de eindversie na review */
+  keten?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Err>(null);
   const [wijzig, setWijzig] = useState(false);
@@ -447,8 +462,9 @@ function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: Ju
       <div>
         <h2 className="font-display font-bold text-lg">🆚 Beter dan één vraag?</h2>
         <p className="text-sm text-ink/65 mt-1">
-          Levert dit debat een beter advies op dan één keer het slimste model vragen? Stel dezelfde vraag, met dezelfde bijlages, aan één model dat er diep over
-          nadenkt. Je ziet beide adviezen blind naast elkaar en kiest zelf. Pas daarna zie je welke welke is.
+          {keten
+            ? "Versie 1 is wat je krijgt als je het één keer aan het slimste model vraagt. Is de eindversie na alle reviews echt beter? Je ziet ze blind naast elkaar en kiest zelf. Pas daarna zie je welke welke is."
+            : "Levert dit debat een beter advies op dan één keer het slimste model vragen? Stel dezelfde vraag, met dezelfde bijlages, aan één model dat er diep over nadenkt. Je ziet beide adviezen blind naast elkaar en kiest zelf. Pas daarna zie je welke welke is."}
         </p>
       </div>
       <ErrorNote error={error} onClose={() => setError(null)} />
@@ -467,7 +483,14 @@ function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: Ju
                 <div key={letter} className={`rounded-2xl border p-4 space-y-2 ${gekozen ? "border-ink bg-sun/60" : "border-ink/15 bg-white"}`}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-ink/55">
                     Advies {letter}
-                    {v.keuze && ` · ${wie === "debat" ? `het debat (${euro(kostenDebat)})` : `één vraag aan ${v.label} (${euro(v.kosten_eur)})`}`}
+                    {v.keuze &&
+                      ` · ${
+                        wie === "debat"
+                          ? keten
+                            ? `de eindversie na review (${euro(totalCost)} totaal)`
+                            : `het debat (${euro(kostenDebat)})`
+                          : `${keten ? v.label : `één vraag aan ${v.label}`} (${euro(v.kosten_eur)})`
+                      }`}
                   </p>
                   <p className="font-display font-bold text-lg leading-snug">{advies.uitslag}</p>
                   <p className="text-sm leading-relaxed">{advies.samenvatting}</p>
@@ -502,7 +525,9 @@ function Vergelijk({ id, result, totalCost, onChange }: { id: string; result: Ju
               {v.keuze === "gelijk"
                 ? "Je vond ze even goed."
                 : v.keuze === "debat"
-                  ? "Je koos het advies van het debat."
+                  ? keten
+                    ? "Je koos de eindversie na review."
+                    : "Je koos het advies van het debat."
                   : `Je koos het advies van één vraag aan ${v.label}.`}{" "}
               <button className="underline text-ink/60" onClick={() => setWijzig(true)}>
                 Toch anders?

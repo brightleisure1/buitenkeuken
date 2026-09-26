@@ -38,6 +38,12 @@ export interface Cast {
   fun?: boolean;
   /** Hoe slim de deelnemers zijn (vlot, slim, slimst) */
   niveau?: "vlot" | "slim" | "slimst";
+  /** "keten" (review-keten, standaard) of "vergadering" (de oude simulatie) */
+  modus?: "keten" | "vergadering";
+  /** Keten: vaste randvoorwaarden van de baas */
+  randvoorwaarden?: string[];
+  /** Keten: verduidelijkende vragen vooraf, met het antwoord van de baas */
+  intake?: { vraag: string; antwoord: string }[];
   /** Maximale kosten van deze vergadering in euro (null = geen limiet) */
   kostenlimiet?: number | null;
   /** attachmentId -> "iedereen" of role.id */
@@ -159,6 +165,7 @@ export interface Run {
   cast: Cast;
   prep: Prep;
   result: JuryResult | null;
+  keten?: Keten | null;
   result_checks: Record<string, boolean>;
   highlights: Highlight[] | null;
   share_token: string | null;
@@ -186,3 +193,83 @@ export type Step =
   | { type: "result" }
   | { type: "budget"; limit: number; cost: number }
   | { type: "done" };
+
+// ---------- Review-keten ----------
+
+export interface AdviesDoc {
+  /** Het besluit dat we adviseren, in één zin */
+  besluit: string;
+  samenvatting: string;
+  opties: { optie: string; voor: string; tegen: string }[];
+  /** De onderbouwing, in gewone alinea's */
+  analyse: string;
+  aannames: { aanname: string; risico: string; hoeTesten: string }[];
+  stappen: { stap: string; waarom: string; eersteActie: string; eigenaar: string; termijn: string }[];
+}
+
+export type Zwaarte = "hoog" | "midden" | "laag";
+
+export interface ReviewPunt {
+  id: string;
+  zwaarte: Zwaarte;
+  punt: string;
+  voorstel: string;
+}
+
+export interface Review {
+  /** role.id, of "kruis" voor de tegenlezer van een ander model */
+  van: string;
+  naam: string;
+  functie: string;
+  soort: "persona" | "kruis";
+  /** Welke AI dit schreef, zoals de gebruiker het kent */
+  ai: string;
+  punten: ReviewPunt[];
+}
+
+export interface Oordeel {
+  id: string;
+  oordeel: "over" | "deels" | "niet";
+  reden: string;
+}
+
+export interface KetenRonde {
+  nr: number;
+  /** De versie die in deze ronde beoordeeld werd (ronde 1 = versie 1) */
+  doc: AdviesDoc;
+  reviews: Review[];
+  oordelen: Oordeel[];
+  /** Wat er daarna veranderde (leeg als er niets meer te verbeteren viel) */
+  wijzigingen: string[];
+}
+
+export interface Slotcheck {
+  oordeel: string;
+  vertrouwen: "laag" | "midden" | "hoog";
+  waaromVertrouwen: string;
+  laatsteAanvullingen: string[];
+  nietOvergenomen: { punt: string; van: string; reden: string }[];
+  besteInzicht: { tekst: string; van: string };
+}
+
+export interface Keten {
+  status: "bezig" | "klaar" | "fout";
+  /** Wat er nu gebeurt, in gewone taal */
+  stap: string;
+  /** Waar in de keten we zijn (voor het flowschema) */
+  fase?: "huiswerk" | "versie1" | "review" | "herschrijven" | "slotcheck" | "klaar";
+  auteur: { ai: string; model: string };
+  kruis: { ai: string; model: string } | null;
+  rondes: KetenRonde[];
+  eind?: AdviesDoc;
+  slot?: Slotcheck;
+  /** Kosten van versie 1 (= één keer het slimste model), voor de vergelijking */
+  kostenVersie1?: number;
+  fout?: { error: string; oplossing?: string };
+  /** Ingrepen van de baas die nog in een ronde verwerkt moeten worden */
+  baas: { opmerkingen: { id: string; tekst: string; verwerkt: boolean }[]; overrides: Record<string, "over" | "niet"> };
+  /** Budget op: gestopt voordat alle rondes klaar waren */
+  budgetOp?: boolean;
+  /** Hoeveel review-rondes (met herziening) er mogen zijn; 'nog een ronde' hoogt dit op */
+  maxRondes?: number;
+}

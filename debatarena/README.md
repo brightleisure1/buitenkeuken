@@ -1,6 +1,38 @@
 # Debatarena
 
-Laat een team van AI-rollen hardop debatteren over jouw vraagstuk. Jij bent de baas: je kunt op elk moment ingrijpen, een besluit nemen met de hamer, of iemand direct een vraag stellen. Aan het eind vat de voorzitter samen en geeft zijn advies; jij besluit. Je krijgt een overzicht dat je kunt delen.
+Maak een zakelijk besluit scherper met meerdere AI's en perspectieven. Het slimste Claude-model schrijft een advies. Collega's uit je eigen bedrijf, een klant of gast en een tegenlezer van een ánder AI-model (bijvoorbeeld ChatGPT) lezen het vanuit hun eigen belang en geven feedback. Claude beoordeelt elk punt, neemt het beste over en schrijft een betere versie. Dat gaat een paar rondes zo door, en daarna toetst een voorzitter of het advies klaar is om op te besluiten. Jij kunt onderweg altijd ingrijpen.
+
+## De review-keten
+
+1. **Stel je vraag.** Typ of spreek in welk besluit je scherp wilt krijgen, en voeg eventueel bijlages toe.
+2. **Nog even checken.** De app stelt hooguit drie korte vragen die het advies echt beter maken, zoals budget, termijn of wat er precies besloten moet worden. Overslaan mag.
+3. **Wat staat al vast?** Randvoorwaarden waar het advies niet aan mag tornen, zoals "maximaal €100.000" of "geen ontslagen".
+4. **Wie lezen er mee?** Drie of vier rollen met elk een eigen belang, waaronder altijd een klant of gast, plus een voorzitter. Pas ze aan of zeg het gewoon: "Voeg een jurist toe".
+5. **Versie 1.** Het slimste Claude-model (Opus 5.5) schrijft het adviesdocument: besluit, opties met voor en tegen, onderbouwing, aannames om te checken en stappen met eigenaar en termijn. Dit is wat je ook zou krijgen als je het één keer aan Claude vraagt.
+6. **Reviews.** Elke rol leest het vanuit zijn eigen belang en geeft maximaal vier punten, elk met zwaarte (hoog, midden, laag) en een concreet voorstel. Een tegenlezer van een ander AI-model zoekt fouten, zwakke redeneringen, gemiste opties en cijfers zonder onderbouwing.
+7. **Beoordelen en herschrijven.** Claude beoordeelt elk punt: overnemen, deels of niet, telkens met een reden. Niet alles wordt klakkeloos overgenomen; dat zou het stuk vager maken. Daarna volgt een nieuwe versie, met een lijstje van wat er veranderde.
+8. **Rondes.** Dit herhaalt zich (standaard twee rondes, maximaal drie) tot er niets wezenlijks meer te verbeteren valt.
+9. **Slotcheck.** De voorzitter toetst of het advies klaar is om op te besluiten, denkt aan perspectieven die nog niet aan bod kwamen, noemt wat bewust niet is overgenomen en geeft aan hoeveel vertrouwen hij heeft.
+
+In het **werkblad** zie je live waar de keten is (het flowschema bovenaan), alle versies met wat er veranderde, en per ronde alle reviewpunten met het oordeel erbij. Je kunt:
+
+- een oordeel omdraaien: "toch overnemen" of "toch niet";
+- zelf een punt toevoegen; de schrijver verwerkt het altijd;
+- daarna **nog een ronde** laten doen met jouw punten.
+
+Je kunt het advies downloaden als Markdown of opslaan als PDF.
+
+### Werkt het echt beter dan één vraag?
+
+Onderaan het werkblad vergelijk je **blind** versie 1 (wat één vraag aan het slimste model oplevert) met de eindversie na alle reviews. Ze staan als A en B naast elkaar, in willekeurige volgorde. Pas na je keuze zie je welke welke is. Bij *Geschiedenis* houdt de app bij hoe vaak de eindversie won. Zo toets je met je eigen besluiten of de keten iets oplevert.
+
+### Kosten
+
+Een keten met twee rondes kost naar schatting € 0,40 tot € 0,80, afhankelijk van hoeveel rollen er meelezen en hoe slim ze zijn (Vlot, Slim of Slimst geldt voor de meelezers; de schrijver en de tegenlezer zijn altijd de slimste modellen). Er worden geen portretten of stemmen gemaakt. De kostenlimiet per keten stel je in op het voorstelscherm; is die bereikt, dan stopt de keten met de beste versie tot dan toe.
+
+## Geparkeerd: de vergadersimulatie
+
+De oude vergadersimulatie (AI-rollen die hardop debatteren, met portretten, stemmen en de fun-modus) staat geparkeerd. Oude vergaderingen blijven gewoon te openen via *Geschiedenis*. Een nieuwe vergadering start je via `/?modus=vergadering`. De rest van deze pagina beschrijft die simulatie.
 
 ## Hoe het werkt
 

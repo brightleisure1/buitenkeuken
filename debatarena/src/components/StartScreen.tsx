@@ -8,6 +8,7 @@ import type { RunPayload } from "@/lib/payload";
 import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
 import { MicButton, type MicHandle } from "./MicButton";
+import { KetenVoorstel } from "./KetenVoorstel";
 import { isFun } from "@/lib/cliches";
 import { NIVEAUS, estimateCost, niveauOf, type Niveau } from "@/lib/niveau";
 import { RoleCard } from "./RoleCard";
@@ -19,7 +20,7 @@ import { providerOf } from "@/lib/config";
 
 type Err = { message: string; oplossing?: string } | null;
 type FileItem = { key: string; name: string; status: "bezig" | "ok" | "fout"; id?: string; error?: string };
-type Recent = { id: string; title: string | null; question: string; status: string; created_at: string; cost_eur: number; rollen: { id: string; naam: string; portrait: string | null }[] };
+type Recent = { id: string; title: string | null; question: string; status: string; created_at: string; cost_eur: number; modus?: string; rollen: { id: string; naam: string; portrait: string | null }[] };
 type Template = { id: string; name: string; cast: Cast };
 
 const VOORBEELDEN = [
@@ -33,6 +34,8 @@ const ACCEPT = ".pdf,.docx,.xlsx,.csv,.txt,.md,.png,.jpg,.jpeg,.webp,.gif";
 export function StartScreen() {
   const router = useRouter();
   const params = useSearchParams();
+  // De review-keten is de standaard; de oude vergadersimulatie staat geparkeerd achter ?modus=vergadering.
+  const modus = params.get("modus") === "vergadering" ? "vergadering" : "keten";
   const [question, setQuestion] = useState("");
   const [interim, setInterim] = useState("");
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -79,7 +82,7 @@ export function StartScreen() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- data ophalen; state wordt pas na de fetch gezet
       load(runId)
         .then((d) => {
-          if (d.run.status !== "draft") router.replace(`/arena/${runId}`);
+          if (d.run.status !== "draft") router.replace(d.run.cast.modus === "keten" ? `/werkblad/${runId}` : `/arena/${runId}`);
           else {
             setQuestion(d.run.question);
             setPhase("proposal");
@@ -138,6 +141,7 @@ export function StartScreen() {
         method: "POST",
         json: {
           question: q,
+          modus,
           attachmentIds: files.filter((f) => f.status === "ok").map((f) => f.id),
           ...(team?.kind === "template" ? { templateId: team.id } : team?.kind === "run" ? { fromRunId: team.id } : {}),
         },
@@ -187,6 +191,16 @@ export function StartScreen() {
   async function start(alleenAdvies = false) {
     if (!data) return;
     setStarting(true);
+    if (data.run.cast.modus === "keten") {
+      try {
+        await api(`/api/runs/${data.run.id}/keten`, { method: "POST" });
+        router.push(`/werkblad/${data.run.id}`);
+      } catch (e) {
+        setError(toError(e));
+        setStarting(false);
+      }
+      return;
+    }
     try {
       await api(`/api/runs/${data.run.id}/start`, { method: "POST" });
       if (alleenAdvies) await api(`/api/runs/${data.run.id}/autorun`, { method: "POST" });
@@ -221,6 +235,19 @@ export function StartScreen() {
   const shown = interim || question;
 
   // ---------- voorstel ----------
+  if (phase === "proposal" && data && data.run.cast.modus === "keten") {
+    return (
+      <>
+        <KetenVoorstel data={data} reload={() => load(data.run.id)} onStart={() => void start()} onReset={reset} starting={starting} />
+        {error && (
+          <div className="mx-auto max-w-3xl px-4 pb-8">
+            <ErrorNote error={error} onClose={() => setError(null)} />
+          </div>
+        )}
+      </>
+    );
+  }
+
   if (phase === "proposal" && data) {
     const { run } = data;
     const cast = run.cast;
@@ -437,7 +464,7 @@ export function StartScreen() {
         }}
       >
         <label htmlFor="vraag" className="font-display text-3xl sm:text-5xl font-extrabold leading-tight block">
-          Waar wil je over debatteren?
+          {modus === "keten" ? "Welk besluit wil je scherp krijgen?" : "Waar wil je over debatteren?"}
         </label>
         {team && (
           <p className="mt-3 text-sm inline-flex items-center gap-2 rounded-full bg-mint border border-ink/15 px-3 py-1">
@@ -603,7 +630,15 @@ export function StartScreen() {
             {recent.map((r) => (
               <li key={r.id}>
                 <Link
-                  href={r.status === "draft" ? `/?run=${r.id}` : r.status === "done" || r.status === "stopped" ? `/resultaat/${r.id}` : `/arena/${r.id}`}
+                  href={
+                    r.status === "draft"
+                      ? `/?run=${r.id}`
+                      : r.modus === "keten"
+                        ? `/werkblad/${r.id}`
+                        : r.status === "done" || r.status === "stopped"
+                          ? `/resultaat/${r.id}`
+                          : `/arena/${r.id}`
+                  }
                   className="card p-4 flex items-center gap-3 hover:bg-ink/5 transition"
                 >
                   <span className="flex -space-x-3">

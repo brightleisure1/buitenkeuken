@@ -19,7 +19,10 @@ export function PersonaEditor({
   models,
   onClose,
   onSaved,
+  compact = false,
 }: {
+  /** Review-keten: geen stem, cliché, censuur of portret */
+  compact?: boolean;
   runId: string;
   cast: Cast;
   role: Role;
@@ -96,14 +99,16 @@ export function PersonaEditor({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-4">
-          <Portrait name={r.naam} portraits={prep?.portraits} index={index} size={72} />
+          {!compact && <Portrait name={r.naam} portraits={prep?.portraits} index={index} size={72} />}
           <div className="min-w-0 flex-1">
             <h2 className="font-display font-bold text-2xl leading-tight break-words">{r.naam || "Naamloos"}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
               <AiBadge role={r} />
-              <button onClick={newPortrait} disabled={redraw} className="underline text-ink/70">
-                {redraw || prep?.portraitStatus === "bezig" ? "✏️ De tekenaar is bezig…" : "🎨 Nieuw portret"}
-              </button>
+              {!compact && (
+                <button onClick={newPortrait} disabled={redraw} className="underline text-ink/70">
+                  {redraw || prep?.portraitStatus === "bezig" ? "✏️ De tekenaar is bezig…" : "🎨 Nieuw portret"}
+                </button>
+              )}
             </div>
           </div>
           <button onClick={onClose} aria-label="Sluiten" className="text-2xl leading-none self-start">
@@ -140,7 +145,7 @@ export function PersonaEditor({
           <Field label="Eigen modelnaam (optioneel)" value={r.customModel ?? ""} placeholder="bijv. gemini-2.5-pro" onChange={(v) => set({ customModel: v || null })} />
         </div>
 
-        {canUncensor && (
+        {canUncensor && !compact && (
           <div className="rounded-2xl border border-ink/15 bg-white p-3 flex flex-wrap items-center gap-3">
             <span className="font-semibold">Censuur</span>
             <CensorToggle value={!!r.ongezouten} onChange={(v) => set({ ongezouten: v })} />
@@ -151,6 +156,8 @@ export function PersonaEditor({
           </div>
         )}
 
+        {!compact && (
+          <>
         <label className="block text-sm">
           <span className="font-semibold">Stem</span>
           <div className="mt-1 flex gap-2">
@@ -184,6 +191,9 @@ export function PersonaEditor({
           </select>
         </label>
 
+          </>
+        )}
+
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <label className={`flex items-center gap-2 ${canSearch ? "" : "opacity-50"}`}>
             <input type="checkbox" checked={r.webzoeken && canSearch} disabled={!canSearch} onChange={(e) => set({ webzoeken: e.target.checked })} />
@@ -197,7 +207,7 @@ export function PersonaEditor({
           )}
         </div>
 
-        <Field label="Uiterlijk voor het portret (Engels)" value={r.uiterlijk} onChange={(v) => set({ uiterlijk: v })} multiline />
+        {!compact && <Field label="Uiterlijk voor het portret (Engels)" value={r.uiterlijk} onChange={(v) => set({ uiterlijk: v })} multiline />}
 
         <ErrorNote error={error} onClose={() => setError(null)} />
         <div className="flex justify-end gap-2 sticky bottom-0 bg-cream pt-2">

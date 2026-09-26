@@ -28,7 +28,13 @@ export type UsageKind =
   | "zinnetje"
   | "stem"
   | "spraak"
-  | "vergelijking";
+  | "vergelijking"
+  | "intake"
+  | "versie"
+  | "review"
+  | "kruisreview"
+  | "herschrijven"
+  | "slotcheck";
 
 export const KIND_LABEL: Record<UsageKind, string> = {
   samenstellen: "Team samenstellen",
@@ -42,6 +48,12 @@ export const KIND_LABEL: Record<UsageKind, string> = {
   stem: "Stemmen",
   spraak: "Inspreken",
   vergelijking: "Vergelijking (één vraag)",
+  intake: "Verduidelijkende vragen",
+  versie: "Eerste versie",
+  review: "Reviews vanuit de rollen",
+  kruisreview: "Tegenlezer (ander model)",
+  herschrijven: "Beoordelen en herschrijven",
+  slotcheck: "Slotcheck voorzitter",
 };
 
 export function emptyUsage(provider = "", model = ""): Usage {

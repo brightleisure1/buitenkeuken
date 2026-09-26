@@ -104,7 +104,7 @@ await step("Inloggen met het juiste wachtwoord", async () => {
 await step("Zonder sleutels: lampje in de navigatie en duidelijke fout bij samenstellen", async () => {
   const s = await call("/api/settings/status");
   assert.equal(s.data.aiKey, false);
-  const c = await call("/api/compose", { method: "POST", json: { question: "Test?" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Test?" } });
   assert.equal(c.status, 400);
   assert.match(c.data.error, /geen AI-sleutel/);
 });
@@ -174,7 +174,7 @@ await step("Stel samen: gemengde AI's, clichés, stemmen en bijlages", async () 
   const t = Date.now();
   const r = await call("/api/compose", {
     method: "POST",
-    json: { question: "Moeten we de prijzen met 10% verhogen? Graag met vergaderclichés.", attachmentIds: run.attachments },
+    json: { modus: "vergadering", question: "Moeten we de prijzen met 10% verhogen? Graag met vergaderclichés.", attachmentIds: run.attachments },
   });
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.ok(Date.now() - t < 5000, "voorstel binnen 5 seconden");
@@ -428,7 +428,7 @@ await step("Hamvraag: blind vergelijken met één vraag aan het slimste model", 
 });
 
 await step("Slimheid: vlot, slim en slimst kiezen andere modellen; de voorzitter blijft de sterkste", async () => {
-  const c = await call("/api/compose", { method: "POST", json: { question: "Nieuwe leverancier kiezen?" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Nieuwe leverancier kiezen?" } });
   const id = c.data.run.id;
   assert.equal(c.data.run.cast.niveau, "slim");
   const tierOf = (key) => (key.endsWith("-snel") ? "snel" : "sterk");
@@ -543,7 +543,7 @@ await step("Team bewaren en hergebruiken: direct klaar, portretten hergebruikt",
   const t = await call("/api/templates", { method: "POST", json: { runId: run.id } });
   assert.equal(t.status, 200);
   await fetch(`${FAKE}/__reset`);
-  const r = await call("/api/compose", { method: "POST", json: { question: "Nieuwe vraag", templateId: t.data.template.id } });
+  const r = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Nieuwe vraag", templateId: t.data.template.id } });
   assert.equal(r.status, 200);
   await sleep(1500);
   const log = await fakeLog();
@@ -553,7 +553,7 @@ await step("Team bewaren en hergebruiken: direct klaar, portretten hergebruikt",
 });
 
 await step("Vergadering beëindigen zonder uitspraak, en later alsnog laten oordelen", async () => {
-  const c = await call("/api/compose", { method: "POST", json: { question: "Snel een tweede vergadering" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Snel een tweede vergadering" } });
   const id = c.data.run.id;
   await call(`/api/runs/${id}/start`, { method: "POST" });
   await turn(id);
@@ -570,7 +570,7 @@ await step("Vergadering beëindigen zonder uitspraak, en later alsnog laten oord
 });
 
 await step("Voorzitter: nooit ongecensureerd, altijd een sterk model (geen Grok)", async () => {
-  const c = await call("/api/compose", { method: "POST", json: { question: "Budget en jury testen" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Budget en jury testen" } });
   assert.equal(c.status, 200, JSON.stringify(c.data));
   const jury = c.data.run.cast.rollen.find((x) => x.isJury);
   assert.ok(!jury.modelKey.startsWith("grok"), "Jury is geen Grok");
@@ -617,7 +617,7 @@ await step("Kostenlimiet: stopt nieuwe beurten, ophogen gaat door, afronden mag 
 });
 
 await step("Alleen het advies: de server speelt de hele vergadering af", async () => {
-  const c = await call("/api/compose", { method: "POST", json: { question: "Moeten we op zondag open?" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Moeten we op zondag open?" } });
   const id = c.data.run.id;
   await call(`/api/runs/${id}/start`, { method: "POST" });
   const a = await call(`/api/runs/${id}/autorun`, { method: "POST" });
@@ -638,7 +638,7 @@ await step("Alleen het advies: de server speelt de hele vergadering af", async (
 });
 
 await step("Alleen het advies: bij de kostenlimiet rondt de voorzitter vanzelf af", async () => {
-  const c = await call("/api/compose", { method: "POST", json: { question: "Nieuwe koffieautomaat?" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Nieuwe koffieautomaat?" } });
   const id = c.data.run.id;
   const cur = await waitFor(async () => {
     const r = await call(`/api/runs/${id}`);
@@ -657,7 +657,7 @@ await step("Alleen het advies: bij de kostenlimiet rondt de voorzitter vanzelf a
 });
 
 await step("Alleen het advies: toch meekijken stopt de server, de arena neemt het over", async () => {
-  const c = await call("/api/compose", { method: "POST", json: { question: "Vierdaagse werkweek?" } });
+  const c = await call("/api/compose", { method: "POST", json: { modus: "vergadering", question: "Vierdaagse werkweek?" } });
   const id = c.data.run.id;
   await call(`/api/runs/${id}/start`, { method: "POST" });
   await call(`/api/runs/${id}/autorun`, { method: "POST" });
@@ -671,6 +671,89 @@ await step("Alleen het advies: toch meekijken stopt de server, de arena neemt he
   }, "een beurt vanuit de arena");
   assert.ok(t.events.find((e) => e.t === "end"), "de arena speelt weer zelf");
   await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
+await step("Review-keten: samenstellen met vragen vooraf, zonder portretten of stemmen", async () => {
+  await fetch(`${FAKE}/__reset`);
+  const c = await call("/api/compose", { method: "POST", json: { question: "Moeten we dynamische prijzen invoeren op onze parken?" } });
+  assert.equal(c.status, 200, JSON.stringify(c.data));
+  const cast = c.data.run.cast;
+  assert.equal(cast.modus, "keten", "de review-keten is de standaard");
+  assert.equal(cast.stemmen, "uit");
+  assert.equal(cast.rondes, 2);
+  assert.deepEqual(cast.intake.map((x) => x.vraag), ["Wat is het maximale budget?", "Wanneer moet het besluit vallen?"]);
+  const intake = cast.intake.map((x, i) => ({ ...x, antwoord: i === 0 ? "Maximaal €80.000" : "" }));
+  const p = await call(`/api/runs/${c.data.run.id}`, { method: "PATCH", json: { cast: { ...cast, intake, randvoorwaarden: ["Geen prijsverhoging voor vaste gasten dit jaar"] } } });
+  assert.equal(p.data.run.cast.randvoorwaarden[0], "Geen prijsverhoging voor vaste gasten dit jaar");
+  await sleep(1500);
+  assert.equal((await fakeLog()).filter((l) => l.provider === "openai-image").length, 0, "geen portretten in de keten");
+  run.keten = c.data.run.id;
+});
+
+await step("Review-keten: versie 1, reviews van rollen én een ander model, oordelen, versie 2, slotcheck", async () => {
+  const id = run.keten;
+  const s = await call(`/api/runs/${id}/keten`, { method: "POST", json: {} });
+  assert.equal(s.status, 200, JSON.stringify(s.data));
+  const done = await waitFor(async () => {
+    const r = await call(`/api/runs/${id}`);
+    if (r.data.run.keten?.status === "fout") throw new Error(JSON.stringify(r.data.run.keten.fout));
+    return r.data.run.keten?.status === "klaar" && r.data;
+  }, "de keten", 60000);
+  const k = done.run.keten;
+  assert.equal(k.auteur.ai, "Claude");
+  assert.equal(k.kruis.ai, "ChatGPT", "een ander model leest tegen");
+  assert.equal(k.rondes.length, 2, "na ronde 2 viel er niets wezenlijks meer te verbeteren");
+  const r1 = k.rondes[0];
+  const debaters = done.run.cast.rollen.filter((r) => !r.isJury).length;
+  assert.equal(r1.reviews.filter((r) => r.soort === "persona").length, debaters, "elke rol leest mee");
+  assert.ok(r1.reviews.some((r) => r.soort === "kruis"), "de tegenlezer leest mee");
+  const ids = r1.reviews.flatMap((r) => r.punten.map((p) => p.id));
+  assert.deepEqual(r1.oordelen.map((o) => o.id).sort(), [...ids].sort(), "elk punt krijgt een oordeel");
+  assert.ok(r1.oordelen.some((o) => o.oordeel === "niet"), "niet alles wordt klakkeloos overgenomen");
+  assert.ok(r1.wijzigingen.length > 0);
+  assert.equal(k.rondes[1].oordelen.length, 0, "alleen kleine punten over: geen nieuwe versie");
+  assert.match(k.eind.besluit, /versie 2/);
+  assert.equal(k.slot.vertrouwen, "midden");
+  assert.equal(done.run.status, "done");
+  assert.match(done.run.result.vergelijking.label, /versie 1/, "blind vergelijken: versie 1 tegen de eindversie");
+  const labels = done.usage.perKind.map((x) => x.label);
+  for (const l of ["Verduidelijkende vragen", "Eerste versie", "Reviews vanuit de rollen", "Tegenlezer (ander model)", "Beoordelen en herschrijven", "Slotcheck voorzitter"]) assert.ok(labels.includes(l), `kosten: ${l}`);
+  const log = await fakeLog();
+  const v1 = log.find((l) => l.schemaProps?.includes("besluit") && l.schemaProps.includes("analyse"));
+  assert.equal(v1.model, "claude-opus-5-5", "versie 1 door het slimste Claude-model");
+  assert.equal(v1.effort, "high", "diep nagedacht");
+  assert.match(v1.user, /Maximaal €80.000/, "met het antwoord op de vraag vooraf");
+  assert.match(v1.user, /VASTE RANDVOORWAARDEN[^]*vaste gasten/, "met de randvoorwaarden");
+  const kruis = log.find((l) => l.schemaProps?.includes("punten") && /tegenlezer/i.test(l.system));
+  assert.equal(kruis.model, "gpt-5.5");
+  const herz = log.find((l) => l.schemaProps?.includes("oordelen"));
+  assert.match(herz.user, /Wees niet volgzaam/);
+});
+
+await step("Review-keten: de baas grijpt in en vraagt nog een ronde", async () => {
+  const id = run.keten;
+  const k = (await call(`/api/runs/${id}`)).data.run.keten;
+  const afgewezen = k.rondes[0].oordelen.find((o) => o.oordeel === "niet");
+  const o = await call(`/api/runs/${id}/keten/baas`, { method: "POST", json: { punt: afgewezen.id, override: "over" } });
+  assert.equal(o.data.keten.baas.overrides[afgewezen.id], "over");
+  await call(`/api/runs/${id}/keten/baas`, { method: "POST", json: { opmerking: "Reken ook een scenario zonder subsidie door." } });
+  const leeg = await call(`/api/runs/${id}/keten/baas`, { method: "POST", json: {} });
+  assert.equal(leeg.status, 400);
+  const e = await call(`/api/runs/${id}/keten`, { method: "POST", json: { extra: true } });
+  assert.equal(e.status, 200, JSON.stringify(e.data));
+  const done = await waitFor(async () => {
+    const r = await call(`/api/runs/${id}`);
+    return r.data.run.keten?.status === "klaar" && r.data.run.status === "done" && r.data;
+  }, "de extra ronde", 60000);
+  const k2 = done.run.keten;
+  assert.equal(k2.rondes.length, 3, "een nieuwe versie met jouw punten");
+  assert.ok(k2.baas.opmerkingen.every((x) => x.verwerkt), "jouw punt is verwerkt");
+  assert.deepEqual(k2.baas.overrides, {});
+  const herz = (await fakeLog()).filter((l) => l.schemaProps?.includes("oordelen")).at(-1);
+  assert.match(herz.user, /OPMERKINGEN VAN DE BAAS[^]*zonder subsidie/);
+  assert.match(herz.user, /ALSNOG OVERNEMEN/);
+  const list = await call("/api/runs");
+  assert.equal(list.data.runs.find((x) => x.id === id).modus, "keten");
 });
 
 await step("Eenmalige storing: de app probeert het vanzelf opnieuw", async () => {

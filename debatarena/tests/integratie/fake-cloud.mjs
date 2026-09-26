@@ -52,6 +52,20 @@ function textOf(x) {
   return "";
 }
 
+function adviesDoc(versie) {
+  return {
+    besluit: `Verhoog de prijzen gefaseerd met 6% (versie ${versie})`,
+    samenvatting: "Verhoog in twee stappen. Ontzie vaste klanten het eerste jaar. Meet het effect per klantgroep.",
+    opties: [
+      { optie: "Gefaseerd 6%", voor: "Marge herstelt", tegen: "Risico op verloop" },
+      { optie: "Niets doen", voor: "Geen onrust", tegen: "Marge daalt verder" },
+    ],
+    analyse: "De marge staat onder druk (bron: CBS).\n\nEen gefaseerde verhoging beperkt het verloop.",
+    aannames: [{ aanname: "Klanten accepteren 6%", risico: "Verloop", hoeTesten: "Proef op twee parken" }],
+    stappen: [{ stap: "Prijslijst herzien", waarom: "Nodig voor de verhoging", eersteActie: "Doorrekenen", eigenaar: "CFO", termijn: "2 weken" }],
+  };
+}
+
 function field(text, label) {
   const m = text.match(new RegExp(`${label}: (.+)`));
   return m ? m[1].trim() : "";
@@ -63,6 +77,50 @@ let turnCounter = 0;
 function answer({ system, user, schemaProps }) {
   const all = `${system}\n${user}`;
   if (schemaProps) {
+    // ---------- review-keten ----------
+    if (schemaProps.includes("vragen")) return { json: { vragen: ["Wat is het maximale budget?", "Wanneer moet het besluit vallen?"] } };
+    if (schemaProps.includes("oordelen") && schemaProps.includes("document")) {
+      const ids = [...user.matchAll(/\[(r\d+-[pk][\d-]*)\]/g)].map((m) => m[1]);
+      const versie = Number((user.match(/JOUW HUIDIGE VERSIE \(versie (\d+)\)/) ?? [])[1] ?? 1) + 1;
+      return {
+        json: {
+          oordelen: ids.map((id, i) => ({ id, oordeel: i % 3 === 2 ? "niet" : i % 3 === 1 ? "deels" : "over", reden: i % 3 === 2 ? "Al gedekt in stap 2." : "Maakt het besluit sterker." })),
+          document: adviesDoc(versie),
+          wijzigingen: [`Versie ${versie}: risico voor vaste gasten uitgewerkt`, "Proef eerst op twee parken"],
+        },
+      };
+    }
+    if (schemaProps.includes("besluit") && schemaProps.includes("analyse")) return { json: adviesDoc(1) };
+    if (schemaProps.includes("punten")) {
+      const v = Number((user.match(/ADVIESDOCUMENT \(versie (\d+)\)/) ?? [])[1] ?? 1);
+      const tegenlezer = /tegenlezer/i.test(system);
+      if (v >= 2) return { json: { punten: [{ zwaarte: "laag", punt: "Kleine verduidelijking bij stap 3.", voorstel: "Noem de eigenaar." }] } };
+      return {
+        json: {
+          punten: tegenlezer
+            ? [
+                { zwaarte: "hoog", punt: "De 6% is niet onderbouwd.", voorstel: "Reken met 3, 6 en 9% en de prijselasticiteit." },
+                { zwaarte: "midden", punt: "Optie 'niets doen' ontbreekt.", voorstel: "Voeg die toe met de gevolgen voor de marge." },
+              ]
+            : [
+                { zwaarte: "hoog", punt: `Vanuit mijn rol mis ik het effect op vaste klanten.`, voorstel: "Voeg een uitzondering voor vaste klanten toe." },
+                { zwaarte: "laag", punt: "De termijn is krap.", voorstel: "Neem een maand extra." },
+              ],
+        },
+      };
+    }
+    if (schemaProps.includes("vertrouwen")) {
+      return {
+        json: {
+          oordeel: "Klaar om op te besluiten, mits de proef op twee parken slaagt.",
+          vertrouwen: "midden",
+          waaromVertrouwen: "De prijselasticiteit is nog een schatting.",
+          laatsteAanvullingen: ["Informeer de ondernemingsraad vooraf."],
+          nietOvergenomen: [{ punt: "Een maand extra", van: "CFO", reden: "Te veel vertraging." }],
+          besteInzicht: { tekst: "Reken met drie scenario's in plaats van één percentage.", van: "Tegenlezer" },
+        },
+      };
+    }
     if (schemaProps.includes("antwoord") && schemaProps.includes("cast")) return { json: castEdit(user) };
     if (schemaProps.includes("rollen") && schemaProps.includes("titel")) return { json: castFrom(user) };
     if (schemaProps.includes("uitslag") && !schemaProps.includes("besluitenVanDeBaas")) {
