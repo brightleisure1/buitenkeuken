@@ -45,7 +45,7 @@ Jij stelt de cast samen. Castingregels:
 - Varieer leeftijd, geslacht en afkomst. 'uiterlijk' is Engels en een realistische, korte beschrijving van de persoon met één passend detail van het beroep (bijv. "woman in her late 50s of Moroccan-Dutch descent, reading glasses, holding a procurement folder").
 - webzoeken=true voor rollen die baat hebben bij actuele feiten (markt, prijzen, regels). Anders false. Alleen modellen met "(kan webzoeken)" kunnen dat.
 - rondes: standaard 3. Alleen minder bij een heel simpele vraag.
-- stemmen: 'uit' als er geen stemmenlijst is. Anders standaard 'jury' (dan praat alleen de voorzitter hardop).
+- stemmen: standaard 'uit'. Alleen 'jury' (alleen de voorzitter praat hardop) of 'iedereen' als de baas er uitdrukkelijk om vraagt ("met stemmen", "laat ze hardop praten"). Kies wel altijd een stemId per rol als er een stemmenlijst is, zodat de stemmen later aan kunnen.
 - stemId: kies uit de stemmenlijst per rol een passende stem (geslacht en leeftijd passend bij de naam). Elke rol een andere. Stemmen met "Nederlands" gaan voor. null als er geen lijst is.
 - bijlages: wijs elke bijlage toe aan 'iedereen' of aan de id van de ene rol waarvoor hij bedoeld is. Bij twijfel 'iedereen'.
 - id: een korte slug in kleine letters (bijv. 'inkoper', 'voorzitter').

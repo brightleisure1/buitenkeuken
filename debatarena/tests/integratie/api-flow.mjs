@@ -180,6 +180,8 @@ await step("Stel samen: gemengde AI's, clichés, stemmen en bijlages", async () 
   assert.ok(Date.now() - t < 5000, "voorstel binnen 5 seconden");
   const cast = r.data.run.cast;
   assert.ok(cast.rollen.every((x) => !/\b(dr|mr|prof|ir|drs)\./i.test(x.naam)), "geen titels in namen");
+  assert.equal(cast.stemmen, "uit", "stemmen staan standaard uit");
+  assert.ok(cast.rollen.every((x) => x.stemId), "maar iedereen heeft wel een stem klaarstaan");
   run.id = r.data.run.id;
   run.cast = cast;
   const debaters = cast.rollen.filter((x) => !x.isJury);

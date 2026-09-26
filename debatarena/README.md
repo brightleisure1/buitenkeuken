@@ -85,7 +85,7 @@ De app vraagt zelf op welke modellen jouw sleutels mogen gebruiken. Bestaat een 
 
 ## Stemmen
 
-Met een ElevenLabs-sleutel praten de rollen hardop. Kies uit: uit, alleen de voorzitter, of iedereen (dan zijn beurten maximaal 80 woorden). Het tempo (Rustig, Normaal, Snel) geldt ook voor de stemmen. Stop en Hand opsteken kappen het geluid direct af.
+Met een ElevenLabs-sleutel kunnen de rollen hardop praten. Standaard staan de stemmen uit; zet ze aan op het voorstelscherm of in de arena (🔊), of vraag er zelf om ("met stemmen"). Kies uit: uit, alleen de voorzitter, of iedereen (dan zijn beurten maximaal 80 woorden). Het tempo (Rustig, Normaal, Snel) geldt ook voor de stemmen. Stop en Hand opsteken kappen het geluid direct af.
 
 ## Installeren
 

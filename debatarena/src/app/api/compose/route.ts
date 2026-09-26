@@ -18,6 +18,9 @@ function titleFrom(q: string) {
   return words.slice(0, 7).join(" ") + (words.length > 7 ? "…" : "");
 }
 
+/** Vraagt de baas zelf om stemmen? Anders staan ze uit. */
+const WANTS_VOICES = /\b(stemmen|hardop|voorlezen|met stem|met geluid)\b/i;
+
 export const POST = handle(async (req: Request) => {
   const { question, attachmentIds = [], templateId, fromRunId } = await body<{
     question?: string;
@@ -52,7 +55,8 @@ export const POST = handle(async (req: Request) => {
     cast = { ...cast, titel: titleFrom(q), bijlages: Object.fromEntries(attachments.map((a) => [a.id, "iedereen"])) };
   } else {
     const r = await composeCast(q, attachments);
-    cast = r.cast;
+    // Stemmen staan standaard uit; alleen aan als de baas er zelf om vraagt.
+    cast = WANTS_VOICES.test(q) ? r.cast : { ...r.cast, stemmen: "uit" };
     usage = r.usage;
   }
 
