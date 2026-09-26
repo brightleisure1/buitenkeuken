@@ -28,12 +28,21 @@ function LoginForm() {
   return (
     <form onSubmit={submit} className="card w-full max-w-sm p-8 space-y-5">
       <div>
-        <h1 className="font-display text-3xl font-extrabold">Debatarena</h1>
-        <p className="text-ink/70 mt-1">Laat AI-rollen debatteren. Jij bent de baas.</p>
+        <h1 className="font-display text-3xl font-bold">Debatarena</h1>
+        <p className="text-ink/70 mt-1">Maak je besluit scherper met meerdere AI&apos;s.</p>
       </div>
       <label className="block">
-        <span className="text-sm font-semibold">Wachtwoord</span>
-        <input type="password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} className="field mt-1" />
+        <span className="text-sm font-semibold">Pincode</span>
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="current-password"
+          autoFocus
+          value={pw}
+          onChange={(e) => setPw(e.target.value.replace(/\s/g, ""))}
+          className="field mt-1 text-center text-2xl tracking-[0.5em]"
+          aria-label="Pincode"
+        />
       </label>
       <ErrorNote error={error} />
       <button className="btn-primary w-full" disabled={busy || !pw}>

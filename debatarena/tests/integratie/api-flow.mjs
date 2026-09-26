@@ -83,10 +83,10 @@ async function turn(runId, { abortAfter } = {}) {
 
 const run = {};
 
-await step("Inloggen: fout wachtwoord geeft een nette melding", async () => {
+await step("Inloggen: foute pincode geeft een nette melding", async () => {
   const r = await call("/api/login", { method: "POST", json: { password: "nee" }, noAuth: true });
   assert.equal(r.status, 401);
-  assert.match(r.data.error, /wachtwoord klopt niet/);
+  assert.match(r.data.error, /pincode klopt niet/);
   assert.ok(r.data.oplossing);
 });
 
@@ -95,7 +95,7 @@ await step("Zonder inloggen geen toegang tot de API", async () => {
   assert.equal(r.status, 401);
 });
 
-await step("Inloggen met het juiste wachtwoord", async () => {
+await step("Inloggen met de juiste pincode", async () => {
   const r = await call("/api/login", { method: "POST", json: { password: "test123" }, noAuth: true, raw: true });
   assert.equal(r.status, 200);
   cookie = r.headers.get("set-cookie").split(";")[0];
@@ -797,6 +797,15 @@ await step("Debat verwijderen ruimt alles op", async () => {
   await call(`/api/runs/${run.second}`, { method: "DELETE" });
   const r = await call(`/api/runs/${run.second}`);
   assert.equal(r.status, 404);
+});
+
+await step("Pincode raden wordt geblokkeerd na 5 foute pogingen", async () => {
+  const probeer = (password) => call("/api/login", { method: "POST", json: { password }, noAuth: true });
+  for (let i = 0; i < 5; i++) assert.equal((await probeer(`000${i}`)).status, 401);
+  const zesde = await probeer("0009");
+  assert.equal(zesde.status, 429);
+  assert.match(zesde.data.error, /Te vaak/);
+  assert.equal((await probeer("test123")).status, 429, "ook de goede pincode wacht even");
 });
 
 console.log(`\nAlle ${passed} stappen geslaagd. Debat om in de browser te bekijken: ${run.id}`);
