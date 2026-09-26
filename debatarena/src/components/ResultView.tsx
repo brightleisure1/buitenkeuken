@@ -10,6 +10,8 @@ import { ShareDialog } from "./ShareDialog";
 import { tokens } from "@/lib/usage";
 import { CopyButton, ErrorNote, Portrait, toError } from "./ui";
 import { FunWait } from "./FunWait";
+import { SpeechQueue } from "@/lib/speech";
+import { extractSources } from "@/lib/text";
 import { AUDIO_LINES, JURY_LINES, LOADING_LINES } from "@/lib/wachten";
 
 type Err = { message: string; oplossing?: string } | null;
@@ -22,6 +24,9 @@ export function ResultView({ id }: { id: string }) {
   const [saved, setSaved] = useState(false);
   const [audioBusy, setAudioBusy] = useState(false);
   const started = useRef(false);
+  const speechRef = useRef<SpeechQueue | null>(null);
+  const [readingAdvice, setReadingAdvice] = useState(false);
+  useEffect(() => () => speechRef.current?.stop(), []);
 
   const load = useCallback(async () => {
     const d = await api<RunPayload>(`/api/runs/${id}`);
@@ -78,6 +83,30 @@ export function ResultView({ id }: { id: string }) {
 
   const { run, messages } = data;
   const r = run.result;
+  // Het slotwoord van de voorzitter, om voor te laten lezen.
+  const advice = messages.find((m) => m.kind === "turn" && m.meta.verdict && m.content);
+  const voorzitter = run.cast.rollen.find((x) => x.isJury);
+  const adviceVoice = voorzitter ? (data.stemmen?.[voorzitter.id] ?? voorzitter.stemId) : null;
+
+  async function readAdvice() {
+    if (readingAdvice) {
+      speechRef.current?.stop();
+      setReadingAdvice(false);
+      return;
+    }
+    if (!advice || !adviceVoice) return;
+    speechRef.current ??= new SpeechQueue();
+    const q = speechRef.current;
+    q.stop();
+    setReadingAdvice(true);
+    if (advice.audio?.length) [...advice.audio].sort((a, b) => a.idx - b.idx).forEach((a) => q.playUrl(a.url));
+    else {
+      const text = extractSources(advice.content).clean.replace(/\*[^*]+\*/g, "").replace(/\s+/g, " ").trim();
+      q.say({ runId: id, messageId: advice.id, idx: 1000, text, voiceId: adviceVoice });
+    }
+    await q.idle();
+    setReadingAdvice(false);
+  }
 
   if (!r) {
     return (
@@ -201,6 +230,11 @@ export function ResultView({ id }: { id: string }) {
       <Section title="Advies van de voorzitter" copy={t.samenvatting} tone="bg-sun">
         <p className="font-display text-2xl font-extrabold leading-tight">{r.uitslag}</p>
         <p className="mt-2 text-[17px] leading-relaxed">{r.samenvatting}</p>
+        {data.keys.elevenlabs && advice && adviceVoice && (
+          <button className="btn-ghost !py-1.5 text-sm mt-3" onClick={() => void readAdvice()}>
+            {readingAdvice ? "⏹ Stop met voorlezen" : "🔊 Laat de voorzitter het advies voorlezen"}
+          </button>
+        )}
       </Section>
 
       <Section title="Besluiten van de baas" copy={t.besluiten}>

@@ -17,7 +17,19 @@ Laat een team van AI-rollen hardop debatteren over jouw vraagstuk. Jij bent de b
    - **Vraag aan één rol**: die rol antwoordt als eerste.
 7. **Het advies.** De voorzitter vraagt of je nog iets wilt meegeven, vat samen en geeft zijn advies. Jij besluit. Je krijgt het advies, je besluiten, een strategie, de aannames (afvinkbaar), de punten van onenigheid, de bronnen en het hele gesprek.
 
-De tekst verschijnt in een rustig leestempo, woord voor woord, en de volgende spreker wacht tot je hem hebt kunnen lezen. Onderaan kies je 📖 **Rustig**, **Normaal** of **Snel**. Met stemmen aan loopt de tekst gelijk op met de stem.
+Iedereen leest anders, dus het tempo bepaal je zelf. Onderaan kies je 📖:
+
+- **👆 Zelf**: de tekst staat er meteen, en de volgende spreker begint pas als jij op **Volgende spreker ▸** klikt (of op → drukt).
+- **Rustig**, **Normaal** of **Snel**: de tekst verschijnt woord voor woord, en na elke spreker is er een korte pauze.
+- **⚡ Direct**: zo snel als de AI schrijft, bijna zonder pauze.
+
+In elk tempo kun je met **⏭ Volgende** (of →) een spreker overslaan. Met stemmen aan loopt de tekst gelijk op met de stem. Je keuze wordt onthouden.
+
+## Alleen het advies
+
+Geen tijd om de vergadering bij te wonen? Klik op het voorstelscherm op **⚡ Alleen het advies**, of in de arena halverwege op dezelfde knop. De vergadering wordt dan op de server afgespeeld, helemaal: opening, alle rondes en het slotadvies. Je ziet hoe ver hij is en wie er aan het woord is, maar je kunt het scherm ook gewoon sluiten; het advies komt bij *Geschiedenis* te staan. Wil je toch meekijken, klik dan op **👀 Toch meekijken**. Bereikt de vergadering de kostenlimiet, dan rondt de voorzitter vanzelf af.
+
+Op de resultaatpagina kan de voorzitter het advies ook **voorlezen** (🔊, als je een ElevenLabs-sleutel hebt).
 
 Een uitspraak zonder bron noemen we *onbewezen*. Die komt vanzelf bij de aannames terecht, zodat je weet wat je nog moet checken.
 

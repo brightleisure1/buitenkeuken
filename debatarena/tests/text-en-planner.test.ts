@@ -48,3 +48,13 @@ assert.deepEqual(nextStep(run, msgs), { type: "done" });
 const sh = applyShare(run.cast, [{ ...msgs[0], content: "Ik ben a en Acme BV betaalt 5000" }], { anonymous: false, redactions: ["Acme BV", "5000"] });
 assert.equal(sh.messages[0].content, "Ik ben a en ███████ betaalt ████");
 console.log("alles ok");
+
+// 'Alleen het advies': de laatste aan/uit/fout-melding telt
+import { autorunState } from "../src/lib/planner";
+const sys = (meta: object) => ({ kind: "system", meta, content: "" }) as any;
+assert.equal(autorunState([]), "uit");
+assert.equal(autorunState([sys({ autorun: true })]), "aan");
+assert.equal(autorunState([sys({ autorun: true }), sys({ wrapUp: true })]), "aan", "andere systeemberichten tellen niet");
+assert.equal(autorunState([sys({ autorun: true }), sys({ autorunOff: true })]), "uit");
+assert.equal(autorunState([sys({ autorun: true }), sys({ autorunError: { error: "x" } })]), "fout");
+assert.equal(autorunState([sys({ autorunError: { error: "x" } }), sys({ autorun: true })]), "aan", "opnieuw proberen");

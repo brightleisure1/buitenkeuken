@@ -204,6 +204,14 @@ export function ReplayPlayer({
           <button onClick={() => restart()} className="btn-ghost !py-1.5 !px-3 shrink-0" title="Opnieuw beginnen">
             ⏮
           </button>
+          <button
+            onClick={() => void play(Math.min(index + 1, items.length - 1))}
+            className="btn-ghost !py-1.5 !px-3 shrink-0"
+            title="Naar de volgende spreker"
+            disabled={!started || index >= items.length - 1}
+          >
+            ⏭
+          </button>
           <span className="flex items-center gap-1 shrink-0">
             {SPEEDS.map((s) => (
               <button key={s} onClick={() => setSpeed(s)} className={`rounded-full px-2.5 py-1 border-2 ${speed === s ? "bg-ink text-cream border-ink" : "border-ink/30 bg-white"}`}>

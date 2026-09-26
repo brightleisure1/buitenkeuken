@@ -70,3 +70,10 @@ export function currentRound(run: Run, messages: Message[]) {
   const turns = messages.filter((m) => m.kind === "turn" && m.round);
   return Math.max(1, ...turns.map((t) => t.round ?? 1));
 }
+
+/** Staat 'alleen het advies' aan? De laatste aan/uit/fout-melding telt. */
+export function autorunState(messages: Message[]): "aan" | "uit" | "fout" {
+  const last = [...messages].reverse().find((m) => m.kind === "system" && (m.meta.autorun || m.meta.autorunOff || m.meta.autorunError));
+  if (!last || last.meta.autorunOff) return "uit";
+  return last.meta.autorunError ? "fout" : "aan";
+}

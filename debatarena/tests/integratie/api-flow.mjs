@@ -567,6 +567,63 @@ await step("Kostenlimiet: stopt nieuwe beurten, ophogen gaat door, afronden mag 
   await call(`/api/runs/${id}`, { method: "DELETE" });
 });
 
+await step("Alleen het advies: de server speelt de hele vergadering af", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Moeten we op zondag open?" } });
+  const id = c.data.run.id;
+  await call(`/api/runs/${id}/start`, { method: "POST" });
+  const a = await call(`/api/runs/${id}/autorun`, { method: "POST" });
+  assert.equal(a.status, 200, JSON.stringify(a.data));
+  const t = await turn(id);
+  assert.ok(t.json?.busy || t.json?.step, "de browser speelt niet mee zolang de server bezig is");
+  const done = await waitFor(async () => {
+    const r = await call(`/api/runs/${id}`);
+    return r.data.run.status === "done" && r.data;
+  }, "het advies", 60000);
+  assert.ok(done.run.result?.uitslag, "er is een advies");
+  const turns = done.messages.filter((m) => m.kind === "turn");
+  assert.ok(turns[0].meta.opening, "begint met de opening");
+  assert.ok(turns.at(-1).meta.verdict, "eindigt met het slotadvies");
+  assert.equal(turns.filter((m) => !m.meta.opening && !m.meta.verdict && !m.meta.extra).length, done.run.cast.rollen.filter((r) => !r.isJury).length * done.run.cast.rondes, "alle rondes gespeeld");
+  assert.ok(!turns.some((m) => m.meta.streaming || m.meta.interrupted), "geen halve beurten");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
+await step("Alleen het advies: bij de kostenlimiet rondt de voorzitter vanzelf af", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Nieuwe koffieautomaat?" } });
+  const id = c.data.run.id;
+  const cur = await waitFor(async () => {
+    const r = await call(`/api/runs/${id}`);
+    return r.data.run.cost_eur >= 0.01 && r.data.run;
+  }, "kosten van de voorbereiding");
+  await call(`/api/runs/${id}`, { method: "PATCH", json: { cast: { ...cur.cast, kostenlimiet: 0.01 } } });
+  await call(`/api/runs/${id}/start`, { method: "POST" });
+  await call(`/api/runs/${id}/autorun`, { method: "POST" });
+  const done = await waitFor(async () => {
+    const r = await call(`/api/runs/${id}`);
+    return r.data.run.status === "done" && r.data;
+  }, "het advies", 60000);
+  assert.ok(done.messages.some((m) => m.kind === "system" && m.meta.wrapUp && m.meta.budget), "afgerond vanwege het budget");
+  assert.ok(done.run.result, "toch een advies");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
+await step("Alleen het advies: toch meekijken stopt de server, de arena neemt het over", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Vierdaagse werkweek?" } });
+  const id = c.data.run.id;
+  await call(`/api/runs/${id}/start`, { method: "POST" });
+  await call(`/api/runs/${id}/autorun`, { method: "POST" });
+  await call(`/api/runs/${id}/autorun`, { method: "DELETE" });
+  await sleep(1500);
+  const before = (await call(`/api/runs/${id}`)).data;
+  assert.notEqual(before.run.status, "done", "de server is gestopt");
+  const t = await waitFor(async () => {
+    const x = await turn(id);
+    return x.events ? x : null;
+  }, "een beurt vanuit de arena");
+  assert.ok(t.events.find((e) => e.t === "end"), "de arena speelt weer zelf");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
 await step("Eenmalige storing: de app probeert het vanzelf opnieuw", async () => {
   await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "anthropic", status: 529, times: 1 }) });
   const r = await call(`/api/runs/${run.id}/quip`, { method: "POST", json: { roleId: "cfo" } });

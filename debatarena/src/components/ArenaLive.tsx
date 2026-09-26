@@ -15,7 +15,8 @@ import { FunWait } from "./FunWait";
 import { PersonaEditor } from "./PersonaEditor";
 import { JURY_LINES, LOADING_LINES, prepLines, turnWaitLines } from "@/lib/wachten";
 import { CostPanel } from "./CostPanel";
-import { CensorToggle, ErrorNote, Segmented, Spinner, toError } from "./ui";
+import { CensorToggle, ErrorNote, Portrait, Segmented, Spinner, toError } from "./ui";
+import { autorunState } from "@/lib/planner";
 import { tokens } from "@/lib/usage";
 
 type Err = { message: string; oplossing?: string } | null;
@@ -26,9 +27,13 @@ const PREP_TIMEOUT_MS = 120_000;
 
 /** Leestempo: tekens per seconde als je leest, snelheid van de stem, en pauze tussen sprekers. */
 const TEMPO = {
+  /** Tekst meteen, en pas door naar de volgende als jij klikt */
+  zelf: { cps: Infinity, speech: 1.1, pause: Infinity },
   rustig: { cps: 13, speech: 0.95, pause: 2200 },
   normaal: { cps: 19, speech: 1.1, pause: 1400 },
   snel: { cps: 32, speech: 1.3, pause: 600 },
+  /** Zo snel als de AI schrijft, bijna geen pauze */
+  direct: { cps: Infinity, speech: 1.3, pause: 300 },
 } as const;
 type Tempo = keyof typeof TEMPO;
 /** Ongeveer het spreektempo van een stem, in tekens per seconde. */
@@ -46,7 +51,9 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   const router = useRouter();
   const [data, setData] = useState<RunPayload | null>(null);
   const [live, setLive] = useState<Live | null>(null);
-  const [phase, setPhase] = useState<"laden" | "prep" | "debat" | "laatste_woord" | "oordeel">("laden");
+  const [phase, setPhase] = useState<"laden" | "auto" | "prep" | "debat" | "laatste_woord" | "oordeel">("laden");
+  /** 'Alleen het advies' is klaar: we gaan naar het resultaat */
+  const [toResult, setToResult] = useState(false);
   const [paused, setPaused] = useState(false);
   const [stopPanel, setStopPanel] = useState(false);
   const [mode, setMode] = useState<Mode>("opmerking");
@@ -91,6 +98,10 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   const inputRef = useRef<HTMLInputElement>(null);
   const micRef = useRef<MicHandle>(null);
   const [listening, setListening] = useState(false);
+  /** Klik op 'Volgende': tekst meteen tonen of de volgende spreker laten beginnen */
+  const skipRef = useRef<(() => void) | null>(null);
+  /** Leest de baas nu een beurt, of wacht de vergadering op 'Volgende'? */
+  const [reading, setReading] = useState<null | "lezen" | "wachten">(null);
   const [censorOpen, setCensorOpen] = useState(false);
   const hammerClicks = useRef<number[]>([]);
   const dataRef = useRef<RunPayload | null>(null);
@@ -129,6 +140,8 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   // ---------- de debatlus ----------
   const loop = useCallback(async () => {
     if (loopingRef.current) return;
+    // Speelt de server de vergadering af ('alleen het advies')? Dan niet zelf ook nog.
+    if (dataRef.current && autorunState(dataRef.current.messages) !== "uit") return;
     loopingRef.current = true;
     setError(null);
     try {
@@ -153,6 +166,10 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         }
         if (res.headers.get("content-type")?.includes("application/json")) {
           const d = await res.json();
+          if (d.auto) {
+            await reload();
+            break;
+          }
           if (d.busy) {
             await sleep(1500);
             continue;
@@ -198,7 +215,21 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         // De tekst komt in vlagen binnen; we tonen hem in een rustig, vast leestempo.
         let full = "";
         let shown = 0;
-        const cps = () => (voice ? VOICE_CPS * TEMPO[tempoRef.current].speech : TEMPO[tempoRef.current].cps);
+        // Klik op 'Volgende': alles meteen tonen (en in de tempo's met pauze ook de pauze overslaan).
+        let instant = false;
+        let skipPause = false;
+        const cps = () => {
+          const t = TEMPO[tempoRef.current];
+          if (instant || t.cps === Infinity) return Infinity;
+          return voice ? VOICE_CPS * t.speech : t.cps;
+        };
+        skipRef.current = () => {
+          instant = true;
+          if (tempoRef.current !== "zelf") skipPause = true;
+          voice = null;
+          speech().stop();
+        };
+        setReading("lezen");
         const tick = setInterval(() => {
           if (!cur || shown >= full.length) return;
           shown = Math.min(full.length, shown + cps() * 0.05);
@@ -250,8 +281,24 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
         if (!pausedRef.current) await speech().idle();
         await reload();
         setLive(null);
-        if (pausedRef.current) break;
-        await sleep(TEMPO[tempoRef.current].pause);
+        if (pausedRef.current) {
+          skipRef.current = null;
+          setReading(null);
+          break;
+        }
+        // Even laten landen, of wachten tot jij op 'Volgende' klikt.
+        if (!skipPause) {
+          setReading("wachten");
+          // Kijkt telkens naar het huidige tempo: wie van 'Zelf' naar 'Normaal' wisselt, gaat vanzelf verder.
+          let woken = false;
+          skipRef.current = () => {
+            woken = true;
+          };
+          const t0 = Date.now();
+          while (!woken && !pausedRef.current && Date.now() - t0 < TEMPO[tempoRef.current].pause) await sleep(100);
+        }
+        skipRef.current = null;
+        setReading(null);
       }
     } catch (e) {
       setError(toError(e));
@@ -274,6 +321,14 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
           return;
         }
         if (d.run.status === "done") return;
+        // 'Alleen het advies' loopt (of liep vast): niet zelf afspelen, maar de voortgang tonen.
+        const auto = autorunState(d.messages);
+        if (auto !== "uit") {
+          setPhase("auto");
+          // Na een herstart van de server pakt dit de draad weer op (dubbel starten kan niet).
+          if (auto === "aan") void api(`/api/runs/${id}/autorun`, { method: "POST" }).catch(() => {});
+          return;
+        }
         const turns = d.messages.filter((m) => m.kind === "turn");
         if (d.step?.type === "final_word") {
           setPhase("laatste_woord");
@@ -329,6 +384,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   // ---------- de baas grijpt in ----------
   function interrupt() {
     setPausedBoth(true);
+    skipRef.current?.();
     abortRef.current?.abort();
     speechRef.current?.stop();
   }
@@ -342,6 +398,89 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   function stop() {
     interrupt();
     setStopPanel(true);
+  }
+
+  // Pijltje naar rechts = 'Volgende' (niet als je aan het typen bent).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.key !== "ArrowRight" || el?.closest("input, textarea, select, [contenteditable]")) return;
+      if (skipRef.current) {
+        e.preventDefault();
+        skipRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const auto = data ? autorunState(data.messages) : "uit";
+  const runStatus = data?.run.status;
+  // Voortgang van 'alleen het advies' ophalen; klaar = door naar het resultaat.
+  useEffect(() => {
+    if (auto !== "aan" || runStatus === "done" || runStatus === "stopped") return;
+    const t = setInterval(async () => {
+      try {
+        const d = await reload();
+        if (d.run.status === "done") {
+          setToResult(true);
+          router.push(`/resultaat/${id}`);
+        }
+      } catch {
+        /* volgende keer beter */
+      }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [auto, runStatus, reload, router, id]);
+
+  /** Toch meekijken: de server stopt na de beurt die nu bezig is, en de arena neemt het over. */
+  async function watchAnyway() {
+    try {
+      await api(`/api/runs/${id}/autorun`, { method: "DELETE" });
+      const d = await reload();
+      const turns = d.messages.filter((m) => m.kind === "turn");
+      if (d.step?.type === "final_word") {
+        setPhase("laatste_woord");
+        setPausedBoth(true);
+      } else if (turns.length === 0) {
+        setPausedBoth(false);
+        setPhase("prep");
+      } else {
+        setStopPanel(false);
+        setPausedBoth(false);
+        setPhase("debat");
+        void loop();
+      }
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
+  async function retryAuto() {
+    setError(null);
+    try {
+      await api(`/api/runs/${id}/autorun`, { method: "POST" });
+      await reload();
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
+  /** Niet meer meekijken: de server maakt de vergadering af en jij krijgt alleen het advies. */
+  async function onlyAdvice() {
+    // De beurt die nu bezig is mag uitpraten; daarna neemt de server het over.
+    pausedRef.current = true;
+    setPaused(true);
+    setPhase("auto");
+    skipRef.current?.();
+    speechRef.current?.stop();
+    setStopPanel(false);
+    try {
+      await api(`/api/runs/${id}/autorun`, { method: "POST" });
+      await reload();
+    } catch (e) {
+      setError(toError(e));
+    }
   }
 
   function resume() {
@@ -484,6 +623,16 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
   }
 
   const { run, messages } = data;
+  if (toResult) {
+    return (
+      <div className="flex-1 grid place-items-center p-6 text-center">
+        <FunWait lines={["📬 Het advies ligt klaar…"]} size="lg" />
+      </div>
+    );
+  }
+  if (auto !== "uit" && run.status !== "done" && run.status !== "stopped") {
+    return <AutoView data={data} onWatch={() => void watchAnyway()} onRetry={() => void retryAuto()} error={error} />;
+  }
   if (run.status === "done" || run.status === "stopped") {
     return (
       <ReplayPlayer
@@ -528,7 +677,7 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
     } else if (m.kind === "boss") {
       feed.push({ id: m.id, who: "baas", text: m.content, note: bossNote(m, roles) });
     } else if (m.kind === "system" && m.meta.wrapUp) {
-      feed.push({ id: m.id, who: "systeem", text: "De baas rondt af. De voorzitter vat samen." });
+      feed.push({ id: m.id, who: "systeem", text: m.meta.budget ? "Het budget is op. De voorzitter rondt af." : "De baas rondt af. De voorzitter vat samen." });
     }
   }
   const liveRole = live ? roles.find((r) => r.id === live.roleId) : undefined;
@@ -688,9 +837,11 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                 value={tempo}
                 onChange={(v) => setTempo(v as Tempo)}
                 options={[
+                  { value: "zelf", label: "👆 Zelf" },
                   { value: "rustig", label: "Rustig" },
                   { value: "normaal", label: "Normaal" },
                   { value: "snel", label: "Snel" },
+                  { value: "direct", label: "⚡ Direct" },
                 ]}
               />
             </span>
@@ -826,6 +977,21 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
             </div>
           ) : (
             phase !== "oordeel" && (
+              <>
+              {reading && !paused && phase === "debat" && (
+                <div className="flex items-center gap-2">
+                  {reading === "wachten" && tempo === "zelf" ? (
+                    <button onClick={() => skipRef.current?.()} className="btn-primary !py-2 !px-5 animate-pop">
+                      Volgende spreker ▸
+                    </button>
+                  ) : (
+                    <button onClick={() => skipRef.current?.()} className="btn-ghost !py-1.5 !px-4 text-sm" title="Toon alles meteen en ga door (of druk op →)">
+                      ⏭ Volgende
+                    </button>
+                  )}
+                  <span className="text-xs text-ink/55 hidden sm:inline">of druk op →</span>
+                </div>
+              )}
               <div className="flex gap-1.5 text-sm overflow-x-auto pb-0.5 -mx-1 px-1 sm:flex-wrap sm:overflow-visible">
                 <Ctrl onClick={raiseHand} active={paused && !stopPanel && mode === "opmerking"}>
                   ✋ Hand opsteken
@@ -842,12 +1008,16 @@ export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean
                 <Ctrl onClick={() => setMode(mode === "vraag" ? "opmerking" : "vraag")} active={mode === "vraag"}>
                   ❓ Vraag aan één rol
                 </Ctrl>
+                <Ctrl onClick={() => void onlyAdvice()} active={false}>
+                  ⚡ Alleen het advies
+                </Ctrl>
                 {paused && !stopPanel && phase === "debat" && (
                   <button onClick={resume} className="shrink-0 ml-auto underline text-sm whitespace-nowrap">
                     ▶ Laat ze verder praten
                   </button>
                 )}
               </div>
+              </>
             )
           )}
         </div>
@@ -1000,6 +1170,117 @@ function PrepBanner({ roles, prep, started, onStart }: { roles: Role[]; prep: Pr
             Nu beginnen, zonder {namen.length > 1 ? "hun" : "dat"} huiswerk
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** 'Alleen het advies': de vergadering loopt op de server; hier zie je alleen hoe ver hij is. */
+function AutoView({ data, onWatch, onRetry, error }: { data: RunPayload; onWatch: () => void; onRetry: () => void; error: Err }) {
+  const { run, messages, step } = data;
+  const roles = run.cast.rollen;
+  const debaters = roles.filter((r) => !r.isJury);
+  const turns = messages.filter((m) => m.kind === "turn" && m.content && !m.meta.streaming);
+  const expected = debaters.length * run.cast.rondes + 2; // opening + beurten + advies
+  const pct = Math.min(96, Math.round((turns.length / expected) * 100));
+  const failed = [...messages].reverse().find((m) => m.kind === "system" && m.meta.autorunError)?.meta.autorunError;
+  const stuck = autorunState(messages) === "fout";
+  const next = step?.type === "turn" ? roles.find((r) => r.id === step.roleId) : undefined;
+  const pendingPrep = debaters.filter((r) => {
+    const s = run.prep[r.id]?.homeworkStatus;
+    return s !== "klaar" && s !== "mislukt";
+  });
+  const last = turns.at(-1);
+  const lastRole = last ? roles.find((r) => r.id === last.role_id) : undefined;
+  const limit = run.cast.kostenlimiet ?? null;
+
+  let title: string;
+  let lines: string[];
+  if (!turns.length && pendingPrep.length) {
+    title = "De rollen doen hun huiswerk";
+    lines = prepLines(pendingPrep);
+  } else if (next && !next.isJury) {
+    title = `Nu aan het woord: ${firstName(next.naam)} (${next.functie})`;
+    lines = turnWaitLines(next);
+  } else if (next && step?.type === "turn" && step.meta.opening) {
+    title = "De voorzitter opent de vergadering";
+    lines = turnWaitLines(next);
+  } else {
+    title = "De voorzitter zet alles op een rij";
+    lines = JURY_LINES;
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:py-10 space-y-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink/60">⚡ Alleen het advies</p>
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl leading-tight mt-1">{run.title ?? run.question}</h1>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {roles.map((r, i) => (
+            <div key={r.id} className={`flex flex-col items-center w-16 ${next?.id === r.id ? "" : "opacity-60"}`}>
+              <Portrait name={r.naam} portraits={run.prep[r.id]?.portraits} index={i} size={48} active={next?.id === r.id} />
+              <span className="mt-1 text-[11px] text-center leading-tight">{firstName(r.naam)}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-3xl bg-sky border-2 border-ink px-5 py-4 shadow-[3px_3px_0_0_var(--color-ink)] space-y-3">
+          {stuck ? (
+            <>
+              <p className="font-display font-extrabold text-lg">De vergadering liep vast</p>
+              <ErrorNote error={failed ? { message: failed.error, oplossing: failed.oplossing } : { message: "Er ging iets mis." }} />
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-primary !py-2" onClick={onRetry}>
+                  Opnieuw proberen
+                </button>
+                <button className="btn-ghost !py-2" onClick={onWatch}>
+                  👀 Zelf verder kijken
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="font-display font-extrabold text-base sm:text-lg">{title}</span>
+                <span className="text-sm text-ink/70">
+                  {turns.length} van ongeveer {expected} beurten
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-white border border-ink/30 overflow-hidden" aria-hidden>
+                <div className="h-full bg-ink transition-all duration-700" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="min-h-[4.5rem] flex items-center">
+                <FunWait lines={lines} size="lg" />
+              </div>
+              {last && lastRole && (
+                <p className="text-sm text-ink/75 line-clamp-2">
+                  <b>{firstName(lastRole.naam)}</b> zei net: &ldquo;{extractSources(last.content).clean.slice(0, 160)}
+                  {last.content.length > 160 ? "…" : ""}&rdquo;
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <ErrorNote error={error} />
+
+        <div className="flex flex-wrap items-center gap-3">
+          {!stuck && (
+            <button className="btn-ghost !py-2" onClick={onWatch}>
+              👀 Toch meekijken
+            </button>
+          )}
+          <span className="text-sm text-ink/60">
+            Je kunt dit scherm gerust sluiten. Het advies komt bij <Link href="/geschiedenis" className="underline">Geschiedenis</Link> te staan.
+          </span>
+        </div>
+        <p className="text-xs text-ink/55">
+          Kosten tot nu toe: {euro(run.cost_eur)}
+          {limit ? ` van max ${euro(limit)}` : ""}. Is het maximum bereikt, dan rondt de voorzitter vanzelf af.
+        </p>
       </div>
     </div>
   );

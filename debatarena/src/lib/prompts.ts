@@ -37,7 +37,7 @@ export function historyBlocks(run: Run, messages: Message[]): string[] {
         out.push(`DE BAAS${ACTION_LABEL[m.meta.action ?? "opmerking"] ?? ""}: ${m.content}`);
       }
     } else if (m.meta.wrapUp) {
-      out.push("(De baas rondt het debat af. De voorzitter vat samen en geeft advies.)");
+      out.push(m.meta.budget ? "(Het budget van deze vergadering is op. De voorzitter vat samen en geeft advies.)" : "(De baas rondt het debat af. De voorzitter vat samen en geeft advies.)");
     }
   }
   return out;

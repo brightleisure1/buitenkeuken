@@ -72,6 +72,14 @@ export interface MessageMeta {
   finalWord?: boolean;
   finalWordSkipped?: boolean;
   wrapUp?: boolean;
+  /** Afgerond omdat de kostenlimiet bereikt was */
+  budget?: boolean;
+  /** 'Alleen het advies': de server speelt de vergadering zelf af */
+  autorun?: boolean;
+  /** 'Alleen het advies' weer uitgezet (de baas kijkt toch mee) */
+  autorunOff?: boolean;
+  /** 'Alleen het advies' liep vast op deze fout */
+  autorunError?: { error: string; oplossing?: string };
   stopped?: boolean;
   streaming?: boolean;
   interrupted?: boolean;

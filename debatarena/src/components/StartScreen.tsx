@@ -183,11 +183,12 @@ export function StartScreen() {
     }
   }
 
-  async function start() {
+  async function start(alleenAdvies = false) {
     if (!data) return;
     setStarting(true);
     try {
       await api(`/api/runs/${data.run.id}/start`, { method: "POST" });
+      if (alleenAdvies) await api(`/api/runs/${data.run.id}/autorun`, { method: "POST" });
       router.push(`/arena/${data.run.id}`);
     } catch (e) {
       setError(toError(e));
@@ -360,8 +361,16 @@ export function StartScreen() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <button onClick={start} disabled={starting || chatBusy} className="btn-primary text-lg px-8 py-4">
+          <button onClick={() => void start()} disabled={starting || chatBusy} className="btn-primary text-lg px-8 py-4">
             {starting ? <Spinner /> : "Start debat →"}
+          </button>
+          <button
+            onClick={() => void start(true)}
+            disabled={starting || chatBusy}
+            className="btn-ghost px-5 py-3.5"
+            title="De vergadering loopt zonder dat je hoeft te kijken. Je krijgt alleen het advies."
+          >
+            ⚡ Alleen het advies
           </button>
           <div className="flex gap-4 text-sm sm:ml-auto">
             <button onClick={() => setAdvanced((a) => !a)} className="underline">

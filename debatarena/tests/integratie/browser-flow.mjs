@@ -151,7 +151,20 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     assert.ok(!(await page.getByText("🎭").count()), "clichés niet zichtbaar in de arena");
     assert.ok(await page.getByText("Anneke", { exact: true }).count(), "'Dr.' niet als voornaam");
     assert.ok(await page.getByText(/opent de vergadering/).count(), "de voorzitter opent de vergadering");
-    assert.ok(await page.getByRole("radiogroup", { name: "Tempo" }).count(), "leestempo instelbaar");
+    // Zelf doorklikken: de vergadering wacht op jou
+    const tempo = page.getByRole("radiogroup", { name: "Tempo" });
+    await tempo.getByRole("radio", { name: "👆 Zelf" }).click();
+    const volgende = page.getByRole("button", { name: "Volgende spreker ▸" });
+    await volgende.waitFor({ timeout: 30000 });
+    await shot("3b-zelf");
+    await page.waitForTimeout(2500);
+    assert.ok(await volgende.isVisible(), "wacht tot jij klikt");
+    await volgende.click();
+    await volgende.waitFor({ state: "detached" });
+    await volgende.waitFor({ timeout: 30000 });
+    await page.keyboard.press("ArrowRight");
+    await volgende.waitFor({ state: "detached" });
+    await tempo.getByRole("radio", { name: "Normaal" }).click();
     await page.getByRole("button", { name: /tokens/ }).click();
     await page.getByText("Tokens en kosten van dit debat").waitFor();
     await page.getByText("Per rol").waitFor();
@@ -233,6 +246,20 @@ for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes
     await pub.waitForTimeout(1500);
     await pub.screenshot({ path: `${SHOTS}/${label}-8-replay.png` });
     await pub.close();
+  });
+
+  await step(`[${label}] alleen het advies: niet meekijken, wel het advies`, async () => {
+    await page.goto(`${APP}/`);
+    await page.fill("#vraag", "Moeten we op zondag open?");
+    await page.click("button:has-text('Stel samen')");
+    await page.getByRole("button", { name: /Alleen het advies/ }).click();
+    await page.waitForURL("**/arena/**");
+    await page.getByText("Je kunt dit scherm gerust sluiten").waitFor({ timeout: 20000 });
+    await shot("9-alleen-advies");
+    await noOverflow(page, "alleen advies");
+    await page.waitForURL("**/resultaat/**", { timeout: 90000 });
+    await page.getByText("Advies van de voorzitter").first().waitFor();
+    await page.getByRole("button", { name: /het advies voorlezen/ }).waitFor();
   });
 
   await step(`[${label}] geschiedenis toont tokens en kosten`, async () => {
