@@ -117,3 +117,9 @@ assert.equal(fixJury({ ...juryBase, modelKey: "gpt-snel" }).modelKey, "gpt-sterk
 assert.equal(fixJury({ ...juryBase, modelKey: "claude-sterk" }).modelKey, "claude-sterk");
 const notJury = { ...juryBase, isJury: false, modelKey: "grok-sterk", ongezouten: true };
 assert.equal(fixJury(notJury).ongezouten, true, "andere rollen blijven zoals ze zijn");
+
+// Inhoud voorop: elke rol brengt vakkennis in en de rondes bouwen op naar een besluit
+assert.match(sysA, /WAT JE INBRENGT/);
+assert.match(turnInstruction({ run, role: run.cast.rollen[1], messages: [], round: 2, meta: {} }), /Tussenronde: ga in op het sterkste argument/);
+assert.match(turnInstruction({ run, role: run.cast.rollen[1], messages: [], round: 3, meta: {} }), /laatste ronde\. Kom met je eindvoorstel/);
+assert.doesNotMatch(sysA, /minstens één keer/, "ongecensureerd zonder verplichte vloek");

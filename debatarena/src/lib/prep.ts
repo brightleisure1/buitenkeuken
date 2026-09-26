@@ -20,51 +20,21 @@ function hash(s: string) {
   return (h >>> 0).toString(36);
 }
 
-export const portraitKey = (r: Role) => hash(`v2|${r.naam}|${r.functie}|${r.uiterlijk}|${r.cliche ?? ""}`);
+// Het cliché hoort niet meer bij het portret; het lege laatste veld houdt bestaande sleutels gelijk.
+export const portraitKey = (r: Role) => hash(`v2|${r.naam}|${r.functie}|${r.uiterlijk}|`);
 
-/** Een grappig attribuut per vergadertype, voor op het portret. */
-const CLICHE_PROP: Record<string, string> = {
-  dominator: "holding a megaphone, chest puffed out",
-  "stille-aanwezigheid": "hiding half behind a coffee cup, tiny speech bubble with three dots",
-  vergaderverlenger: "holding up one finger with a sheepish grin, clock showing 5 to the hour",
-  parkeerder: "carrying a blue parking sign with a big P under the arm",
-  actiepuntenontwijker: "pointing at someone else while sweating",
-  "vorige-keer": "holding a dusty old binder labeled 2021",
-  "advocaat-duivel": "wearing tiny devil horns and a mischievous grin",
-  samenvatter: "holding a notepad, speaking very slowly with half-closed eyes",
-  managementtaal: "surrounded by buzzword speech bubbles, pointing at a flipchart",
-  bilaatjesman: "holding a calendar full of one-on-one meetings",
-  "cc-manager": "with an overflowing email inbox icon floating above the head",
-  multitasker: "juggling three phones and a laptop at once",
-  "late-binnenkomer": "out of breath, coat half on, holding a to-go coffee",
-  voorzitter: "holding a gavel limply, nervous smile",
-  agenda: "clutching a printed agenda with a highlighter",
-  procesbewaker: "holding a huge flowchart",
-  consultant: "presenting a whiteboard with three boxes and two arrows",
-  enthousiasteling: "double thumbs up, confetti around",
-  realist: "arms crossed, one eyebrow sky high",
-  cynicus: "eye roll, holding a mug that says 'sinds 2019'",
-  besluituitsteller: "wearing a sleep mask on the forehead, holding a pillow",
-  alignment: "holding a spirit level",
-  stuurgroepman: "surrounded by tiny org charts",
-  rondvraagterrorist: "hand raised with a thick stack of papers",
-  laptopdichtklapper: "slamming a laptop shut while looking at a wristwatch",
-  "even-een-ding": "holding up one finger, with a very long list trailing to the floor",
-  koffieautomaat: "whispering next to a coffee machine",
-};
 export const homeworkKey = (r: Role, run: Run) =>
   hash(`${r.perspectief}|${r.instructie}|${r.webzoeken}|${r.modelKey}|${r.customModel ?? ""}|${JSON.stringify(run.cast.bijlages)}`);
 
 function portraitPrompt(r: Role) {
-  const prop = r.cliche ? CLICHE_PROP[r.cliche] : null;
-  return `${IMAGE.style}. A funny, affectionate caricature of ${r.uiterlijk}. Profession: ${r.functie}, with an exaggerated, recognizable attribute of that job${prop ? `, ${prop}` : ""}. Personality: ${r.perspectief}. Big expressive face, playful and humorous, like a Dutch office cartoon. Single person, centered, facing the viewer. No text, no letters, no logos.`;
+  return `${IMAGE.style}. Portrait of ${r.uiterlijk}. Profession: ${r.functie}, with one subtle, recognizable detail of that job. Personality: ${r.perspectief}. Believable, like a real colleague in a Dutch company. Single person, centered, facing the viewer. No text, no letters, no logos.`;
 }
 
 const MOOD_EDIT: Record<Exclude<Mood, "neutraal">, string> = {
   sceptisch:
-    "Same person, same face, same outfit, same cartoon style and background. Change only the expression to comically skeptical: one eyebrow raised sky-high, lips pressed sideways, squinting eyes, arms crossed if visible.",
+    "Same person, same face, same outfit, same illustration style and background. Change only the expression to mildly skeptical: one eyebrow slightly raised, lips pressed together, thoughtful look.",
   enthousiast:
-    "Same person, same face, same outfit, same cartoon style and background. Change only the expression to over-the-top enthusiastic: huge grin, sparkling wide eyes, eyebrows way up.",
+    "Same person, same face, same outfit, same illustration style and background. Change only the expression to positive and engaged: a warm, genuine smile, bright eyes.",
 };
 
 async function makePortraits(run: Run, role: Role) {

@@ -27,6 +27,8 @@ Klik op een rolkaart op **✏️ Aanpassen**. Daar pas je alles van een persona 
 
 De rollen zijn collega's uit je eigen bedrijf, en er zit altijd één klant of gast bij. Iedereen denkt vanuit Nederlandse bedrijven en praat zoals mensen aan tafel echt praten.
 
+Het doel is een debat waar je echt iets aan hebt. Elke rol is een ervaren vakmens die kennis uit zijn eigen vak inbrengt: cijfers, praktijkervaring, risico's en voorwaarden. Rollen gaan in op het sterkste argument van een ander en schuiven op als ze overtuigd worden. De eerste ronde draait om standpunten, de tussenrondes om argumenten en tegenargumenten, en in de laatste ronde komt iedereen met een eindvoorstel: wat besluit je, onder welke voorwaarde, wat is de eerste stap en hoe zie je of het werkt. De portretten zijn nette illustraties van geloofwaardige collega's, geen karikaturen.
+
 ## Vergadering stoppen
 
 Met **⏹ Stop** staat alles direct stil, ook het geluid. Je kiest dan: verder vergaderen, afronden (de Jury doet meteen uitspraak) of de vergadering beëindigen zonder uitspraak. Een beëindigde vergadering kun je later alsnog laten beoordelen. Vanuit *Geschiedenis* kun je een lopende vergadering ook stoppen.

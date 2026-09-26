@@ -160,7 +160,7 @@ export const IMAGE = {
   /** USD per portret (lage kwaliteit, vierkant) */
   priceUsd: 0.011,
   style:
-    "flat illustration, bold outlines, pastel background, head and shoulders, expressive face. Funny exaggerated caricature in the style of a newspaper cartoon: oversized head on a small body, comically exaggerated signature features",
+    "warm editorial illustration, clean lines, soft pastel background, head and shoulders, natural proportions, friendly and professional, subtle character, not a caricature",
 };
 
 export const TTS = {
