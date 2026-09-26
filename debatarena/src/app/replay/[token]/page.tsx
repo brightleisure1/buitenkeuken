@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ReplayPlayer } from "@/components/ReplayPlayer";
 import { getMessages, getRunByToken } from "@/lib/runs";
@@ -13,11 +14,19 @@ export async function generateMetadata({ params }: PageProps<"/replay/[token]">)
   const { fix } = applyShare(run.cast, [], run.share);
   const title = fix(run.title ?? run.question);
   const description = run.result ? fix(run.result.uitslag) : "Bekijk het debat terug.";
+  // Volledig adres op basis van het domein waarop de link bezocht wordt (eigen domein of Railway),
+  // zodat LinkedIn, WhatsApp en co. het voorbeeldplaatje kunnen ophalen.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+  const base = new URL(`${proto}://${host}`);
+  const image = { url: new URL(`/api/public/card/${token}?format=square`, base).toString(), width: 1080, height: 1080 };
   return {
+    metadataBase: base,
     title: `${title} · Debatarena`,
     description,
-    openGraph: { title, description, images: [`/api/public/card/${token}?format=square`] },
-    twitter: { card: "summary_large_image", images: [`/api/public/card/${token}?format=square`] },
+    openGraph: { title, description, url: new URL(`/replay/${token}`, base).toString(), images: [image], type: "website" },
+    twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
 }
 

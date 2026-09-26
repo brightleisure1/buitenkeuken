@@ -372,6 +372,8 @@ await step("Delen: anoniem, weggepoetst, publieke replay en kaart", async () => 
   assert.ok(run.token);
   const page = await call(`/replay/${run.token}`, { noAuth: true });
   assert.equal(page.status, 200);
+  const og = page.data.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
+  assert.ok(og?.startsWith("http://127.0.0.1:3200/api/public/card/"), `volledig og:image-adres, kreeg ${og}`);
   assert.ok(!page.data.includes("Pieter de Groot"), "namen anoniem");
   assert.ok(!page.data.includes("zes procent"), "woorden weggepoetst");
   assert.ok(!page.data.includes("instructie\":\"Geen complimenten"), "instructies niet publiek");
