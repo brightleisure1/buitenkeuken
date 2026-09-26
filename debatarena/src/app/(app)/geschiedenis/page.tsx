@@ -20,7 +20,7 @@ type Row = {
 };
 type Template = { id: string; name: string; cast: Cast; created_at: string };
 
-const STATUS: Record<string, string> = { draft: "Voorstel", running: "Loopt", done: "Afgerond" };
+const STATUS: Record<string, string> = { draft: "Voorstel", running: "Loopt", done: "Afgerond", stopped: "Gestopt" };
 
 export default function HistoryPage() {
   const [runs, setRuns] = useState<Row[] | null>(null);
@@ -40,6 +40,12 @@ export default function HistoryPage() {
     if (!confirm("Dit debat verwijderen? Dat kan niet ongedaan worden.")) return;
     await api(`/api/runs/${id}`, { method: "DELETE" }).catch((e) => setError(toError(e)));
     setRuns((r) => r?.filter((x) => x.id !== id) ?? null);
+  }
+
+  async function stopRun(id: string) {
+    if (!confirm("Deze vergadering beëindigen? Er komt dan geen uitspraak (die kun je later alsnog vragen).")) return;
+    await api(`/api/runs/${id}/stop`, { method: "POST" }).catch((e) => setError(toError(e)));
+    setRuns((r) => r?.map((x) => (x.id === id ? { ...x, status: "stopped" } : x)) ?? null);
   }
 
   async function removeTemplate(id: string) {
@@ -89,13 +95,18 @@ export default function HistoryPage() {
                 </Link>
               ) : (
                 <Link href={`/arena/${r.id}`} className="btn-ghost !py-1.5 !px-3">
-                  {r.status === "done" ? "Afspelen" : "Naar de arena"}
+                  {r.status === "done" || r.status === "stopped" ? "Afspelen" : "Naar de arena"}
                 </Link>
               )}
-              {r.status === "done" && (
+              {(r.status === "done" || r.status === "stopped") && (
                 <Link href={`/resultaat/${r.id}`} className="btn-ghost !py-1.5 !px-3">
                   Resultaat
                 </Link>
+              )}
+              {r.status === "running" && (
+                <button onClick={() => stopRun(r.id)} className="btn-ghost !py-1.5 !px-3">
+                  ⏹ Stoppen
+                </button>
               )}
               <button onClick={() => remove(r.id)} className="text-coral underline px-1">
                 Verwijder

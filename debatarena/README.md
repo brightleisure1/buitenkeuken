@@ -18,6 +18,26 @@ Laat een team van AI-rollen hardop debatteren over jouw vraagstuk. Jij bent de b
 
 Een uitspraak zonder bron noemen we *onbewezen*. Die komt vanzelf bij de aannames terecht, zodat je weet wat je nog moet checken.
 
+## Persona's aanpassen
+
+Klik op een rolkaart op **✏️ Aanpassen**. Daar pas je alles van een persona aan: naam, functie, waar hij op let, zijn instructie en manier van praten, welke AI hem speelt, zijn stem (met luisterknop), webzoeken, zijn vergadercliché en bij Grok de censuur. Met *Nieuw portret* tekent de tekenaar hem opnieuw. Tijdens de vergadering kan het ook: tik op een portret en kies *Persona aanpassen*.
+
+De rollen zijn collega's uit je eigen bedrijf, en er zit altijd één klant of gast bij. Iedereen denkt vanuit Nederlandse bedrijven en praat zoals mensen aan tafel echt praten.
+
+## Vergadering stoppen
+
+Met **⏹ Stop** staat alles direct stil, ook het geluid. Je kiest dan: verder vergaderen, afronden (de Jury doet meteen uitspraak) of de vergadering beëindigen zonder uitspraak. Een beëindigde vergadering kun je later alsnog laten beoordelen. Vanuit *Geschiedenis* kun je een lopende vergadering ook stoppen.
+
+## De hele vergadering beluisteren
+
+Op de resultaatpagina staat **🎧 Beluister de vergadering**: de vergadering wordt afgespeeld met een stem voor elke rol en ook voor jou als baas. Wat nog niet was ingesproken, wordt dan ingesproken en bewaard. Met **⬇ Download als mp3** krijg je de hele vergadering als één audiobestand.
+
+Bij *Instellingen → Stemmen* zie je al je ElevenLabs-stemmen. De app herkent je Nederlandse stemmen en gebruikt die automatisch. Je kunt ook zelf aanvinken welke stemmen meedoen.
+
+## Als een AI het niet doet
+
+De app vraagt zelf op welke modellen jouw sleutels mogen gebruiken. Bestaat een modelnaam uit de configuratie niet (meer), dan wordt automatisch het beste passende model gekozen. Werkt een model toch niet, dan neemt een ander het over: eerst een andere AI van hetzelfde niveau. In het gesprek zie je dan bijvoorbeeld "Gemini deed het niet, Claude sprak namens deze rol".
+
 ## Delen
 
 - **Oordeelkaart**: een plaatje met je vraag, de uitslag, de beste quote en de gezichten van het team. Vierkant voor LinkedIn, staand voor stories.

@@ -4,6 +4,7 @@ import { testAnthropic, testCompat, testOpenAI } from "@/lib/llm";
 import { body, handle } from "@/lib/route";
 import { getKey, getSetting, PROVIDER_LABEL, setSetting, type KeyName } from "@/lib/settings";
 import { fetchVoices } from "@/lib/voices";
+import { refreshModels } from "@/lib/model-discovery";
 
 async function remember(provider: KeyName, s: KeyStatus) {
   const all = (await getSetting<Partial<Record<KeyName, KeyStatus>>>("key_status")) ?? {};
@@ -25,6 +26,10 @@ export const POST = handle(async (req: Request) => {
     else if (provider === "openai") await testOpenAI(key);
     else if (provider === "google" || provider === "xai") await testCompat(provider, key);
     else melding = `Verbonden. ${(await fetchVoices(key)).length} stemmen gevonden.`;
+    if (provider !== "elevenlabs") {
+      const ids = await refreshModels(provider, key).catch(() => null);
+      if (ids) melding = `${melding} ${ids.length} modellen beschikbaar.`;
+    }
     if (!typed || typed.trim() === stored) await remember(provider, { ok: true, at, melding });
     return Response.json({ ok: true, melding, at });
   } catch (e) {

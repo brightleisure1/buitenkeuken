@@ -66,8 +66,11 @@ export interface MessageMeta {
   finalWord?: boolean;
   finalWordSkipped?: boolean;
   wrapUp?: boolean;
+  stopped?: boolean;
   streaming?: boolean;
   interrupted?: boolean;
+  /** Het gevraagde model werkte niet; dit model sprak namens de rol */
+  fallback?: { van: string; naar: string; model: string };
 }
 
 export type BossAction = "opmerking" | "richting" | "hamer" | "vraag" | "laatste_woord" | "overslaan" | "afronden";
@@ -114,7 +117,7 @@ export interface Run {
   id: string;
   question: string;
   title: string | null;
-  status: "draft" | "running" | "done";
+  status: "draft" | "running" | "done" | "stopped";
   cast: Cast;
   prep: Prep;
   result: JuryResult | null;

@@ -4,21 +4,23 @@ import { MODELS } from "@/lib/config";
 import { body, handle } from "@/lib/route";
 import { getSetting, maskedKeys, saveKeys, setSetting, type KeyName } from "@/lib/settings";
 import { usagePerProvider } from "@/lib/usage-db";
+import { modelMapping } from "@/lib/model-discovery";
 import type { KeyStatus } from "@/lib/keys";
 
 const NAMES: KeyName[] = ["anthropic", "openai", "google", "xai", "elevenlabs"];
 
 async function state() {
-  const [keys, status, usage] = await Promise.all([
+  const [keys, status, usage, mapping] = await Promise.all([
     maskedKeys(),
     getSetting<Partial<Record<KeyName, KeyStatus>>>("key_status"),
     usagePerProvider(30).catch(() => ({})),
+    modelMapping().catch(() => ({}) as Record<string, string>),
   ]);
   return {
     keys,
     status: status ?? {},
     usage,
-    models: MODELS.map((m) => ({ key: m.key, label: m.label, provider: m.provider, model: m.model })),
+    models: MODELS.map((m) => ({ key: m.key, label: m.label, provider: m.provider, model: mapping[m.key] ?? m.model, gevraagd: m.model })),
   };
 }
 

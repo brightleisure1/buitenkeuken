@@ -10,4 +10,6 @@ export interface RunPayload {
   keys: { anthropic: boolean; openai: boolean; google: boolean; xai: boolean; elevenlabs: boolean };
   models: { key: string; label: string }[];
   readers: Record<string, string[]>;
+  /** Stem per rol-id, plus 'baas' */
+  stemmen?: Record<string, string>;
 }

@@ -9,7 +9,11 @@ import type { Cast } from "@/lib/types";
 import { CastEditor } from "./CastEditor";
 import { MicButton } from "./MicButton";
 import { RoleCard } from "./RoleCard";
-import { ErrorNote, Portrait, Spinner, Switch, toError } from "./ui";
+import { CensorToggle, ErrorNote, Portrait, Spinner, Switch, toError } from "./ui";
+import { PersonaEditor } from "./PersonaEditor";
+import { FunWait } from "./FunWait";
+import { CASTING_LINES } from "@/lib/wachten";
+import { providerOf } from "@/lib/config";
 
 type Err = { message: string; oplossing?: string } | null;
 type FileItem = { key: string; name: string; status: "bezig" | "ok" | "fout"; id?: string; error?: string };
@@ -45,6 +49,7 @@ export function StartScreen() {
   const [starting, setStarting] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (id: string) => {
@@ -230,6 +235,20 @@ export function StartScreen() {
             </Switch>
             <span className="text-xs text-ink/50">Kosten tot nu toe: {euro(run.cost_eur)}</span>
           </div>
+          {cast.rollen
+            .filter((r) => providerOf(r).naam === "Grok")
+            .map((r) => (
+              <div key={r.id} className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-ink bg-white px-4 py-3">
+                <span className="font-display font-extrabold">🌶️ Grok-censuur</span>
+                <span className="text-sm text-ink/70">voor {r.naam}</span>
+                <span className="sm:ml-auto">
+                  <CensorToggle
+                    value={!!r.ongezouten}
+                    onChange={(v) => void saveAdvanced({ ...cast, rollen: cast.rollen.map((x) => (x.id === r.id ? { ...x, ongezouten: v } : x)) })}
+                  />
+                </span>
+              </div>
+            ))}
         </div>
 
         <div className="grid gap-3">
@@ -242,9 +261,7 @@ export function StartScreen() {
               modelLabel={modelLabel(r.modelKey, r.customModel)}
               readers={data.readers[r.id]?.length && data.readers[r.id].length < data.attachments.length ? data.readers[r.id] : undefined}
               voiceOn={cast.stemmen === "iedereen" || (cast.stemmen === "jury" && r.isJury)}
-              onToggleOngezouten={() =>
-                void saveAdvanced({ ...cast, rollen: cast.rollen.map((x) => (x.id === r.id ? { ...x, ongezouten: !x.ongezouten } : x)) })
-              }
+              onEdit={() => setEditing(r.id)}
             />
           ))}
         </div>
@@ -296,6 +313,21 @@ export function StartScreen() {
             </button>
           </div>
         </div>
+
+        {editing && cast.rollen.some((r) => r.id === editing) && (
+          <PersonaEditor
+            runId={run.id}
+            cast={cast}
+            role={cast.rollen.find((r) => r.id === editing)!}
+            prep={run.prep[editing]}
+            index={cast.rollen.findIndex((r) => r.id === editing)}
+            models={data.models}
+            onClose={() => setEditing(null)}
+            onSaved={async () => {
+              await load(run.id);
+            }}
+          />
+        )}
 
         {advanced && (
           <CastEditor key={run.updated_at} cast={cast} models={data.models} attachments={data.attachments} onSave={saveAdvanced} saving={saving} />
@@ -398,7 +430,7 @@ export function StartScreen() {
           <button onClick={compose} disabled={!question.trim() || uploading || phase === "composing"} className="btn-primary text-lg px-8 py-3.5 sm:ml-auto">
             {phase === "composing" ? (
               <>
-                <Spinner /> Team wordt samengesteld…
+                <Spinner /> Bezig…
               </>
             ) : (
               "Stel samen"
@@ -410,10 +442,13 @@ export function StartScreen() {
       <ErrorNote error={error} onClose={() => setError(null)} />
 
       {phase === "composing" && (
-        <div className="grid gap-3" aria-hidden>
+        <div className="grid gap-3">
+          <p className="text-lg font-semibold text-center">
+            <FunWait lines={CASTING_LINES} />
+          </p>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="card p-4 flex gap-4 items-center opacity-60 animate-pulse">
-              <div className="h-[72px] w-[72px] rounded-full bg-peach border-[3px] border-ink" />
+            <div key={i} className="card p-4 flex gap-4 items-center opacity-60 animate-pulse" aria-hidden>
+              <div className="h-[72px] w-[72px] rounded-full bg-peach border-[3px] border-ink grid place-items-center text-3xl">?</div>
               <div className="flex-1 space-y-2">
                 <div className="h-4 w-40 rounded bg-ink/15" />
                 <div className="h-3 w-64 rounded bg-ink/10" />
@@ -467,7 +502,7 @@ export function StartScreen() {
             {recent.map((r) => (
               <li key={r.id}>
                 <Link
-                  href={r.status === "draft" ? `/?run=${r.id}` : r.status === "done" ? `/resultaat/${r.id}` : `/arena/${r.id}`}
+                  href={r.status === "draft" ? `/?run=${r.id}` : r.status === "done" || r.status === "stopped" ? `/resultaat/${r.id}` : `/arena/${r.id}`}
                   className="card p-4 flex items-center gap-3 hover:bg-sun transition"
                 >
                   <span className="flex -space-x-3">
@@ -478,7 +513,7 @@ export function StartScreen() {
                   <span className="min-w-0">
                     <span className="block font-semibold truncate">{r.title || r.question}</span>
                     <span className="text-xs text-ink/60">
-                      {datum(r.created_at)} · {r.status === "done" ? "Afgerond" : r.status === "draft" ? "Voorstel" : "Loopt"} · {euro(r.cost_eur)}
+                      {datum(r.created_at)} · {r.status === "done" ? "Afgerond" : r.status === "stopped" ? "Gestopt" : r.status === "draft" ? "Voorstel" : "Loopt"} · {euro(r.cost_eur)}
                     </span>
                   </span>
                 </Link>

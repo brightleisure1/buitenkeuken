@@ -25,7 +25,9 @@ export const POST = handle(async (req: Request) => {
   const cached = (msg.audio as { idx: number; url: string }[]).find((a) => a.idx === idx);
   if (cached) return Response.redirect(cached.url, 302);
 
-  const res = await ttsStream(voiceId, text.trim());
+  const spoken = text.replace(/\*[^*]+\*/g, "").replace(/\s+/g, " ").trim();
+  if (!spoken) return new Response(null, { status: 204 });
+  const res = await ttsStream(voiceId, spoken);
   const [toClient, toStore] = res.body!.tee();
   after(async () => {
     const chunks: Uint8Array[] = [];

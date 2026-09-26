@@ -5,6 +5,8 @@ import OpenAI from "openai";
 import { zodResponseFormat, zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 import {
+  MODELS,
+  PROVIDERS,
   COMPAT_BASE_URL,
   CACHE_READ_FACTOR,
   CACHE_WRITE_FACTOR,
@@ -14,7 +16,8 @@ import {
   type Provider,
 } from "./config";
 import { AppError, friendly, type Who } from "./errors";
-import { requireKey } from "./settings";
+import { availableKeys, requireKey } from "./settings";
+import { forgetModels, liveModel } from "./model-discovery";
 import { addUsage, emptyUsage, type Usage } from "./usage";
 
 export interface ImageInput {
@@ -39,7 +42,6 @@ export interface Prompt {
 }
 
 const WHO: Record<Provider, Who> = { anthropic: "Anthropic", openai: "OpenAI", google: "Google", xai: "xAI" };
-const who = (m: ModelConfig) => WHO[m.provider];
 
 /** Gemini en Grok: OpenAI-compatibele Chat Completions. */
 const isCompat = (m: ModelConfig) => m.provider === "google" || m.provider === "xai";
@@ -190,9 +192,72 @@ export interface StreamResult {
   text: string;
   usage: Usage;
   aborted: boolean;
+  /** Het model dat het echt gedaan heeft (kan een vervanger zijn) */
+  usedModel?: ModelConfig;
+  /** Gevraagd model werkte niet; een ander nam het over */
+  fellBack?: boolean;
+}
+
+// ---------- terugvallen op een ander model ----------
+
+const who = (m: ModelConfig) => WHO[m.provider];
+
+/**
+ * Volgorde waarin we modellen proberen: eerst het gevraagde (met de juiste naam voor deze sleutel),
+ * dan hetzelfde niveau bij een andere aanbieder, dan andere varianten.
+ */
+async function fallbackChain(m: ModelConfig): Promise<ModelConfig[]> {
+  const keys = await availableKeys();
+  const out: ModelConfig[] = [];
+  if (keys[m.provider]) out.push(await liveModel(m).catch(() => m));
+  const tierRank = (x: ModelConfig) => (x.tier === m.tier ? 0 : 1);
+  const others = MODELS.filter((x) => keys[x.provider] && x.key !== m.key).sort(
+    (a, b) => tierRank(a) - tierRank(b) || Number(a.provider === m.provider) - Number(b.provider === m.provider),
+  );
+  for (const x of others) {
+    const live = await liveModel(x).catch(() => x);
+    if (!out.some((o) => o.provider === live.provider && o.model === live.model)) out.push(live);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+async function withFallback<T>(p: Prompt, run: (m: ModelConfig) => Promise<T>, canRetry: () => boolean = () => true): Promise<T & { usedModel: ModelConfig; fellBack: boolean }> {
+  const chain = await fallbackChain(p.model);
+  if (!chain.length) await requireKey(p.model.provider as "anthropic");
+  let lastError: unknown;
+  for (const m of chain) {
+    try {
+      const r = await run(m);
+      return { ...r, usedModel: m, fellBack: m.provider !== p.model.provider || (m.key !== p.model.key && !p.model.key.startsWith("custom:")) };
+    } catch (e) {
+      lastError = e;
+      if (p.signal?.aborted || !canRetry()) break;
+      const status = (e as { status?: number }).status;
+      if (status === 404) forgetModels(m.provider);
+      console.error(`model ${m.provider}/${m.model} faalde (${status ?? "?"}), volgende proberen`);
+    }
+  }
+  const err = friendly(lastError, who(chain[0] ?? p.model));
+  if (chain.length > 1) err.oplossing = `${err.oplossing} (We probeerden ook ${chain.slice(1).map((m) => PROVIDERS[m.provider].naam).join(" en ")}, maar die lukten ook niet.)`;
+  throw err;
 }
 
 export async function streamText(p: Prompt, onDelta: (t: string) => void): Promise<StreamResult> {
+  let emitted = false;
+  return withFallback(
+    p,
+    (m) =>
+      streamOnce({ ...p, model: m }, (d) => {
+        emitted = true;
+        onDelta(d);
+      }),
+    // Zodra er tekst is uitgesproken, kunnen we niet halverwege van model wisselen.
+    () => !emitted,
+  );
+}
+
+async function streamOnce(p: Prompt, onDelta: (t: string) => void): Promise<StreamResult> {
   let text = "";
   const maxTokens = p.maxTokens ?? 1200;
   try {
@@ -277,15 +342,15 @@ export async function streamText(p: Prompt, onDelta: (t: string) => void): Promi
         aborted: true,
       };
     }
-    throw friendly(e, who(p.model));
+    throw e;
   }
 }
 
 // ---------- gewone tekst (kort) ----------
 
-export async function generateText(p: Prompt): Promise<{ text: string; usage: Usage }> {
+export async function generateText(p: Prompt): Promise<{ text: string; usage: Usage; usedModel?: ModelConfig }> {
   const r = await streamText(p, () => {});
-  return { text: r.text.trim(), usage: r.usage };
+  return { text: r.text.trim(), usage: r.usage, usedModel: r.usedModel };
 }
 
 // ---------- JSON met zod ----------
@@ -300,10 +365,10 @@ export function extractJson(text: string): unknown {
 }
 
 async function jsonViaText<S extends z.ZodType>(schema: S, p: Prompt): Promise<{ data: z.infer<S>; usage: Usage }> {
-  const r = await generateText({
-    ...p,
-    instruction: `${p.instruction}\n\nAntwoord ALLEEN met geldige JSON volgens het gevraagde formaat. Geen uitleg eromheen.`,
-  });
+  const r = await streamOnce(
+    { ...p, instruction: `${p.instruction}\n\nAntwoord ALLEEN met geldige JSON volgens het gevraagde formaat. Geen uitleg eromheen.` },
+    () => {},
+  );
   const parsed = schema.safeParse(extractJson(r.text));
   if (!parsed.success) throw Object.assign(new Error(`JSON klopt niet: ${parsed.error.message.slice(0, 300)}`), { usage: r.usage });
   return { data: parsed.data, usage: r.usage };
@@ -314,7 +379,11 @@ async function jsonViaText<S extends z.ZodType>(schema: S, p: Prompt): Promise<{
  * Eerst via structured outputs; lukt dat niet (bijv. eigen modelnaam), dan via tekst.
  * `retries` bepaalt hoe vaak we het na een ongeldig antwoord opnieuw proberen.
  */
-export async function generateJson<S extends z.ZodType>(
+export async function generateJson<S extends z.ZodType>(schema: S, p: Prompt, retries = 1) {
+  return withFallback(p, (m) => jsonOnce(schema, { ...p, model: m }, retries));
+}
+
+async function jsonOnce<S extends z.ZodType>(
   schema: S,
   p: Prompt,
   retries = 1,
@@ -385,7 +454,7 @@ export async function generateJson<S extends z.ZodType>(
           lastError = e2;
         }
       } else if (status) {
-        throw friendly(e, who(p.model));
+        throw e;
       }
     }
   }
@@ -402,18 +471,29 @@ export async function generateJson<S extends z.ZodType>(
 
 // ---------- onderzoek met webzoeken (huiswerk) ----------
 
-export async function research(
+export async function research(p: Prompt & { webSearch: boolean }, onLooking: (label: string) => void) {
+  return withFallback(p, (m) => researchOnce({ ...p, model: m }, onLooking));
+}
+
+async function researchOnce(
   p: Prompt & { webSearch: boolean },
   onLooking: (label: string) => void,
 ): Promise<{ text: string; usage: Usage }> {
   // Gemini en Grok zoeken hier niet zelf op het web; ze werken met de bijlages.
-  if (isCompat(p.model)) return generateText(p);
+  if (isCompat(p.model)) return streamOnce(p, () => {});
   try {
     if (p.model.provider === "anthropic") {
       const client = await anthropic();
       const tools: Anthropic.ToolUnion[] =
         p.webSearch && p.model.webSearchTool
-          ? [{ type: p.model.webSearchTool, name: "web_search", max_uses: 4 } as Anthropic.ToolUnion]
+          ? [
+              {
+                type: p.model.webSearchTool,
+                name: "web_search",
+                max_uses: 4,
+                user_location: { type: "approximate", country: "NL", city: "Amsterdam", timezone: "Europe/Amsterdam" },
+              } as Anthropic.ToolUnion,
+            ]
           : [];
       const messages: Anthropic.MessageParam[] = [{ role: "user", content: anthropicContent(p) }];
       let usage = emptyUsage(p.model.provider, p.model.model);
@@ -450,7 +530,7 @@ export async function research(
       input: openaiInput(p),
       stream: true,
       max_output_tokens: (p.maxTokens ?? 6000) + 4000,
-      ...(p.webSearch ? { tools: [{ type: "web_search" as const }] } : {}),
+      ...(p.webSearch ? { tools: [{ type: "web_search" as const, user_location: { type: "approximate" as const, country: "NL", city: "Amsterdam" } }] } : {}),
       ...openaiReasoning(p),
     });
     let text = "";
@@ -466,7 +546,7 @@ export async function research(
     }
     return { text, usage: openaiUsage(p.model, usage) };
   } catch (e) {
-    throw friendly(e, who(p.model));
+    throw e;
   }
 }
 

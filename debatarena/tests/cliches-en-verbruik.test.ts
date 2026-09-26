@@ -85,3 +85,21 @@ assert.equal(s.perKind.find((k) => k.label === "Debatbeurten")!.outputTokens, 40
 assert.equal(tokens(950), "950");
 assert.equal(tokens(12_345), "12k");
 assert.equal(tokens(1_500), "1,5k");
+
+// Modellen kiezen uit wat de sleutel mag gebruiken
+import { pickModel } from "../src/lib/model-pick";
+import { MODELS } from "../src/lib/config";
+const m = (k: string) => MODELS.find((x) => x.key === k)!;
+const gemini = ["models/gemini-2.5-pro", "models/gemini-2.5-flash", "models/gemini-2.5-flash-lite", "models/gemini-3-pro-preview", "models/gemini-3-pro-image-preview"];
+assert.equal(pickModel(gemini, m("gemini-sterk")), "gemini-3-pro-preview");
+assert.equal(pickModel(gemini, m("gemini-snel")), "gemini-2.5-flash");
+assert.equal(pickModel(["gemini-3.1-pro", "gemini-2.5-pro"], m("gemini-sterk")), "gemini-3.1-pro", "bestaande naam blijft");
+assert.equal(pickModel(["grok-4.7", "grok-4-fast", "grok-code-fast-1"], m("grok-snel")), "grok-4-fast");
+assert.equal(pickModel(["grok-4", "grok-3-mini", "grok-2-image-1212"], m("grok-sterk")), "grok-4");
+assert.equal(pickModel(["gpt-5", "gpt-5-mini", "gpt-4o"], m("gpt-sterk")), "gpt-5");
+assert.equal(pickModel(["gemini-2.5-pro"], m("gemini-snel")), "gemini-2.5-pro", "geen snelle variant: neem de sterke");
+assert.equal(pickModel([], m("gemini-sterk")), "gemini-3.1-pro", "lege lijst: config-naam");
+
+// Spreektaal en Nederlandse context in elke rol
+assert.match(sysA, /ZO PRAAT JE/);
+assert.match(sysA, /Nederlandse bedrijven/);

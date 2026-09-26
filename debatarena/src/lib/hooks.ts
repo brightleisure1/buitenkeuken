@@ -39,7 +39,8 @@ export function useLateNight() {
 export function usePortraitSize() {
   const [size, setSize] = useState(96);
   useEffect(() => {
-    const f = () => setSize(window.innerWidth < 480 ? 60 : window.innerWidth < 900 ? 84 : 108);
+    const f = () =>
+      setSize(window.innerHeight < 700 ? 40 : window.innerWidth < 480 ? 50 : window.innerHeight < 820 || window.innerWidth < 900 ? 64 : 84);
     f();
     window.addEventListener("resize", f);
     return () => window.removeEventListener("resize", f);

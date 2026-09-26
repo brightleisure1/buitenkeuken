@@ -8,7 +8,9 @@ import type { RunPayload } from "@/lib/payload";
 import { CostPanel } from "./CostPanel";
 import { ShareDialog } from "./ShareDialog";
 import { tokens } from "@/lib/usage";
-import { CopyButton, ErrorNote, Portrait, Spinner, toError } from "./ui";
+import { CopyButton, ErrorNote, Portrait, toError } from "./ui";
+import { FunWait } from "./FunWait";
+import { AUDIO_LINES, JURY_LINES, LOADING_LINES } from "@/lib/wachten";
 
 type Err = { message: string; oplossing?: string } | null;
 
@@ -18,6 +20,7 @@ export function ResultView({ id }: { id: string }) {
   const [making, setMaking] = useState(false);
   const [share, setShare] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [audioBusy, setAudioBusy] = useState(false);
   const started = useRef(false);
 
   const load = useCallback(async () => {
@@ -43,7 +46,7 @@ export function ResultView({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data ophalen; state wordt pas na de fetch gezet
     load()
       .then((d) => {
-        if (!d.run.result && !started.current && d.messages.some((m) => m.kind === "turn")) {
+        if (!d.run.result && d.run.status !== "stopped" && !started.current && d.messages.some((m) => m.kind === "turn")) {
           started.current = true;
           void makeResult();
         }
@@ -70,7 +73,7 @@ export function ResultView({ id }: { id: string }) {
   }, []);
 
   if (!data) {
-    return <div className="flex-1 grid place-items-center p-6">{error ? <ErrorNote error={error} /> : <Spinner className="h-8 w-8" />}</div>;
+    return <div className="flex-1 grid place-items-center p-6 text-center">{error ? <ErrorNote error={error} /> : <FunWait lines={LOADING_LINES} className="text-lg" />}</div>;
   }
 
   const { run, messages } = data;
@@ -80,20 +83,21 @@ export function ResultView({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-xl p-6 space-y-4 text-center">
         {making ? (
-          <p className="text-lg flex items-center justify-center gap-3">
-            <Spinner /> De Jury schrijft het oordeel…
+          <p className="text-lg">
+            <FunWait lines={JURY_LINES} />
           </p>
         ) : (
           <>
             <ErrorNote error={error} />
-            <p>Er is nog geen uitslag.</p>
+            <h1 className="font-display text-2xl font-extrabold">{run.title ?? run.question}</h1>
+            <p>{run.status === "stopped" ? "Deze vergadering is beëindigd zonder uitspraak." : "Er is nog geen uitslag."}</p>
             <div className="flex gap-2 justify-center">
               <Link href={`/arena/${id}`} className="btn-ghost">
                 Naar de arena
               </Link>
               {messages.some((m) => m.kind === "turn") && (
                 <button className="btn-primary" onClick={makeResult}>
-                  Laat de Jury oordelen
+                  {run.status === "stopped" ? "Laat de Jury alsnog oordelen" : "Laat de Jury oordelen"}
                 </button>
               )}
             </div>
@@ -119,6 +123,28 @@ export function ResultView({ id }: { id: string }) {
     a.download = `${(run.title ?? "debat").replace(/[^\w\- ]+/g, "").trim() || "debat"}.md`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  async function downloadAudio() {
+    setAudioBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/runs/${id}/audio`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw Object.assign(new Error(d.error ?? "De opname lukte niet."), { oplossing: d.oplossing });
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(run.title ?? "vergadering").replace(/[^\w\- ]+/g, "").trim() || "vergadering"}.mp3`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (e) {
+      setError(toError(e));
+    } finally {
+      setAudioBusy(false);
+    }
   }
 
   async function saveTeam() {
@@ -156,6 +182,16 @@ export function ResultView({ id }: { id: string }) {
           <Link href={`/arena/${id}`} className="btn-ghost !py-2">
             Terugkijken
           </Link>
+          {data.keys.elevenlabs && (
+            <>
+              <Link href={`/arena/${id}?luister=1`} className="btn-ghost !py-2">
+                🎧 Beluister de vergadering
+              </Link>
+              <button className="btn-ghost !py-2" onClick={downloadAudio} disabled={audioBusy}>
+                {audioBusy ? <FunWait lines={AUDIO_LINES} /> : "⬇ Download als mp3"}
+              </button>
+            </>
+          )}
         </div>
       </header>
 

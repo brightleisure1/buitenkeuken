@@ -5,12 +5,13 @@ import { api, datum, euro } from "@/lib/client";
 import { KEY_INFO, detectProvider, keyWarning, type KeyProvider, type KeyStatus } from "@/lib/keys";
 import { tokens } from "@/lib/usage";
 import { ErrorNote, Spinner, toError } from "@/components/ui";
+import { VoicePicker } from "@/components/VoicePicker";
 
 type Info = {
   keys: Record<KeyProvider, string | null>;
   status: Partial<Record<KeyProvider, KeyStatus>>;
   usage: Record<string, { tokens: number; costEur: number; calls: number }>;
-  models: { key: string; label: string; provider: string; model: string }[];
+  models: { key: string; label: string; provider: string; model: string; gevraagd: string }[];
 };
 type Err = { message: string; oplossing?: string } | null;
 
@@ -111,16 +112,26 @@ export default function SettingsPage() {
             </ul>
           </section>
 
+          {info.keys.elevenlabs && (
+            <section className="card p-5 space-y-2">
+              <h2 className="font-display font-extrabold text-lg">Stemmen</h2>
+              <VoicePicker />
+            </section>
+          )}
+
           <section className="card p-5">
             <h2 className="font-display font-extrabold text-lg">Modellen</h2>
             <p className="text-sm text-ink/70 mt-1">
-              Modellen en prijzen staan in één bestand: <code>src/lib/config.ts</code>. Een eigen modelnaam kies je per rol onder Geavanceerd.
+              Werkt een model niet, dan neemt automatisch een ander het over. Welke modellen je sleutel mag gebruiken, halen we zelf op. Prijzen staan in <code>src/lib/config.ts</code>; een eigen modelnaam kies je per rol onder Geavanceerd.
             </p>
             <ul className="mt-3 text-sm grid sm:grid-cols-2 gap-x-6 gap-y-1">
               {info.models.map((m) => (
                 <li key={m.key} className={`flex gap-2 ${info.keys[m.provider as KeyProvider] ? "" : "opacity-45"}`}>
                   <span className="font-semibold">{m.label}</span>
-                  <span className="text-ink/50">{m.model}</span>
+                  <span className="text-ink/50 break-all">
+                    {m.model}
+                    {m.model !== m.gevraagd && <span title={`${m.gevraagd} bestaat niet bij jouw sleutel`}> (automatisch gekozen)</span>}
+                  </span>
                 </li>
               ))}
             </ul>

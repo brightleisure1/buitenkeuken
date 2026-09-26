@@ -3,6 +3,7 @@ import type { Message, Run, Step } from "./types";
 
 /** Bepaalt wat er nu moet gebeuren, puur op basis van de opgeslagen berichten. */
 export function nextStep(run: Run, messages: Message[]): Step {
+  if (run.status === "stopped") return { type: "done" };
   const roles = run.cast.rollen;
   const debaters = roles.filter((r) => !r.isJury);
   const jury = roles.find((r) => r.isJury);

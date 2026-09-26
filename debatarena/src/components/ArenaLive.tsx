@@ -10,7 +10,10 @@ import { TAG_MOOD, extractSources, splitSentences } from "@/lib/text";
 import type { BossAction, Message, MessageMeta, Mood, Role, Tag } from "@/lib/types";
 import { MicButton } from "./MicButton";
 import { ReplayPlayer } from "./ReplayPlayer";
-import { Stage, type Bubble } from "./Stage";
+import { Stage, firstName, type FeedItem } from "./Stage";
+import { FunWait } from "./FunWait";
+import { PersonaEditor } from "./PersonaEditor";
+import { JURY_LINES, LOADING_LINES, prepLines, turnWaitLines } from "@/lib/wachten";
 import { CostPanel } from "./CostPanel";
 import { CensorToggle, ErrorNote, Spinner, toError } from "./ui";
 import { providerOf } from "@/lib/config";
@@ -23,7 +26,7 @@ type Mode = "opmerking" | "richting" | "hamer" | "vraag";
 const PREP_TIMEOUT_MS = 120_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function ArenaLive({ id }: { id: string }) {
+export function ArenaLive({ id, listen = false }: { id: string; listen?: boolean }) {
   const router = useRouter();
   const [data, setData] = useState<RunPayload | null>(null);
   const [live, setLive] = useState<Live | null>(null);
@@ -41,6 +44,9 @@ export function ArenaLive({ id }: { id: string }) {
   const [quips, setQuips] = useState<Record<string, string | undefined>>({});
   const [prepStarted] = useState(() => Date.now());
   const [showCost, setShowCost] = useState(false);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   const pausedRef = useRef(false);
   const loopingRef = useRef(false);
@@ -66,9 +72,12 @@ export function ArenaLive({ id }: { id: string }) {
   }, [id]);
 
   const voiceFor = (role: Role | undefined) => {
-    const cast = dataRef.current?.run.cast;
-    if (!role?.stemId || !cast || !dataRef.current?.keys.elevenlabs) return null;
-    if (cast.stemmen === "iedereen" || (cast.stemmen === "jury" && role.isJury)) return role.stemId;
+    const d = dataRef.current;
+    const cast = d?.run.cast;
+    if (!role || !cast || !d?.keys.elevenlabs) return null;
+    const voice = d.stemmen?.[role.id] ?? role.stemId;
+    if (!voice) return null;
+    if (cast.stemmen === "iedereen" || (cast.stemmen === "jury" && role.isJury)) return voice;
     return null;
   };
 
@@ -359,17 +368,27 @@ export function ArenaLive({ id }: { id: string }) {
     setTimeout(() => setQuips((q) => ({ ...q, [roleId]: undefined })), 5000);
   }
 
+  async function endMeeting() {
+    interrupt();
+    try {
+      await api(`/api/runs/${id}/stop`, { method: "POST" });
+      router.push(`/resultaat/${id}`);
+    } catch (e) {
+      setError(toError(e));
+    }
+  }
+
   // ---------- weergave ----------
   if (!data) {
     return (
-      <div className="flex-1 grid place-items-center p-6">
-        {error ? <ErrorNote error={error} /> : <Spinner className="h-8 w-8" />}
+      <div className="flex-1 grid place-items-center p-6 text-center">
+        {error ? <ErrorNote error={error} /> : <FunWait lines={LOADING_LINES} className="text-lg" />}
       </div>
     );
   }
 
   const { run, messages } = data;
-  if (run.status === "done") {
+  if (run.status === "done" || run.status === "stopped") {
     return (
       <ReplayPlayer
         title={run.title ?? run.question}
@@ -379,6 +398,9 @@ export function ArenaLive({ id }: { id: string }) {
         highlights={run.highlights}
         rounds={run.cast.rondes}
         goldenChair={run.debate_number === 10}
+        runId={run.id}
+        voices={data.keys.elevenlabs ? data.stemmen : undefined}
+        listen={listen}
         extra={
           <Link href={`/resultaat/${id}`} className="btn-primary !py-1.5 text-sm">
             Naar het resultaat
@@ -392,31 +414,46 @@ export function ArenaLive({ id }: { id: string }) {
   const jury = roles.find((r) => r.isJury);
   const grokRoles = roles.filter((r) => providerOf(r).naam === "Grok");
   const portraits = Object.fromEntries(roles.map((r) => [r.id, run.prep[r.id]?.portraits]));
-  const lastShown = [...messages].reverse().find((m) => (m.kind === "turn" && m.content) || m.kind === "boss");
 
-  let bubble: Bubble | null = null;
+  // Het hele gesprek tot nu toe, plus wat er nu gezegd wordt.
+  const feed: FeedItem[] = [];
+  for (const m of messages) {
+    if (m.kind === "turn" && m.content && !m.meta.streaming) {
+      const notes = [
+        m.meta.interrupted ? "onderbroken" : null,
+        m.meta.extra === "eensgezind" ? "verdacht eensgezind…" : null,
+        m.meta.answer ? "antwoordt de baas" : null,
+        m.meta.fallback ? `${m.meta.fallback.van} deed het niet, ${m.meta.fallback.naar} sprak namens deze rol` : null,
+      ].filter(Boolean);
+      feed.push({ id: m.id, who: m.role_id!, text: m.content, tag: m.tag, sources: m.sources, note: notes.join(" · ") || undefined });
+    } else if (m.kind === "boss") {
+      feed.push({ id: m.id, who: "baas", text: m.content, note: bossNote(m, roles) });
+    } else if (m.kind === "system" && m.meta.wrapUp) {
+      feed.push({ id: m.id, who: "systeem", text: "De baas rondt af. De Jury is aan zet." });
+    }
+  }
+  const liveRole = live ? roles.find((r) => r.id === live.roleId) : undefined;
+  if (live && liveRole) {
+    feed.push({
+      id: live.id,
+      who: live.roleId,
+      text: live.text,
+      tag: live.tag,
+      streaming: true,
+      waiting: turnWaitLines(liveRole),
+      note: live.meta.extra === "eensgezind" ? "verdacht eensgezind…" : undefined,
+    });
+  }
+  if (phase === "laatste_woord" && jury) {
+    feed.push({ id: "laatste-woord", who: jury.id, text: "Wil je nog iets zeggen voordat ik uitspraak doe?" });
+  }
+
   let activeId: string | null = null;
   let mood: Mood = "neutraal";
-  if (phase === "laatste_woord" && jury) {
-    activeId = jury.id;
-    bubble = { who: jury.id, text: "Wil je nog iets zeggen voordat ik uitspraak doe?" };
-  } else if (live) {
+  if (phase === "laatste_woord" && jury) activeId = jury.id;
+  else if (live) {
     activeId = live.roleId;
     mood = live.tag ? TAG_MOOD[live.tag] : "neutraal";
-    bubble = { who: live.roleId, text: live.text, tag: live.tag, streaming: true };
-  } else if (lastShown) {
-    if (lastShown.kind === "boss") bubble = { who: "baas", text: lastShown.content, note: bossNote(lastShown, roles) };
-    else {
-      activeId = paused ? null : lastShown.role_id;
-      mood = lastShown.tag ? TAG_MOOD[lastShown.tag] : "neutraal";
-      bubble = {
-        who: lastShown.role_id!,
-        text: lastShown.content,
-        tag: lastShown.tag,
-        sources: lastShown.sources,
-        note: lastShown.meta.interrupted ? "(onderbroken)" : undefined,
-      };
-    }
   }
 
   const round = live?.round ?? Math.max(1, ...messages.filter((m) => m.kind === "turn").map((m) => m.round ?? 1));
@@ -438,8 +475,8 @@ export function ArenaLive({ id }: { id: string }) {
 
   const banner =
     phase === "prep" ? (
-      <div className="flex items-center gap-3 rounded-full bg-sky border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">
-        <Spinner /> De rollen bereiden zich voor…
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-2xl bg-sky border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">
+        <FunWait lines={prepLines(roles)} />
         <button
           onClick={() => {
             setPhase("debat");
@@ -450,13 +487,18 @@ export function ArenaLive({ id }: { id: string }) {
           Niet wachten
         </button>
       </div>
-    ) : live?.meta.extra === "eensgezind" ? (
-      <div className="rounded-full bg-lilac border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">Verdacht eensgezind…</div>
     ) : phase === "oordeel" ? (
-      <div className="flex items-center gap-3 rounded-full bg-sun border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">
-        <Spinner /> De Jury schrijft het oordeel…
+      <div className="rounded-2xl bg-sun border-2 border-ink px-4 py-2 text-sm font-semibold animate-pop">
+        <FunWait lines={JURY_LINES} />
       </div>
     ) : null;
+
+  const headerExtra = grokRoles.map((r) => (
+    <span key={r.id} className="flex items-center gap-1.5 rounded-full border-2 border-ink bg-white pl-3 pr-1 py-0.5 text-xs sm:text-sm">
+      <span className="font-semibold">Grok ({firstName(r.naam)})</span>
+      <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => void setGrok(r.id, v)} />
+    </span>
+  ));
 
   const placeholder =
     phase === "laatste_woord"
@@ -467,11 +509,13 @@ export function ArenaLive({ id }: { id: string }) {
           ? "Welke kant moet het op?"
           : mode === "vraag"
             ? target
-              ? `Je vraag aan ${roles.find((r) => r.id === target)?.naam.split(" ")[0]}`
+              ? `Je vraag aan ${firstName(roles.find((r) => r.id === target)?.naam ?? "")}`
               : "Kies eerst aan wie"
             : paused
               ? "Je hebt het woord. Zeg het maar."
               : "Typ of spreek in om in te grijpen";
+
+  const menuRole = roles.find((r) => r.id === menuFor);
 
   return (
     <div className="relative flex flex-col h-[calc(100dvh-58px)]">
@@ -481,25 +525,19 @@ export function ArenaLive({ id }: { id: string }) {
         portraits={portraits}
         activeId={activeId}
         mood={mood}
-        bubble={bubble}
+        feed={feed}
         roundLabel={roundLabel}
+        headerExtra={headerExtra}
         banner={banner}
         looking={looking}
         quips={quips}
-        onRoleClick={phase === "debat" || phase === "prep" ? quip : undefined}
+        onRoleClick={(rid) => setMenuFor(menuFor === rid ? null : rid)}
         goldenChair={run.debate_number === 10}
         footer={
           <>
             <button onClick={() => setShowCost((v) => !v)} className="underline decoration-dotted underline-offset-2 hover:text-ink" title="Bekijk tokens en kosten per rol">
               {euro(run.cost_eur)} · {tokens(data.usage.total.inputTokens + data.usage.total.cachedTokens + data.usage.total.outputTokens)} tokens
             </button>
-            {grokRoles.map((r) => (
-              <span key={r.id} className="flex items-center gap-1.5">
-                <span className="hidden sm:inline">Grok ({r.naam.split(" ")[0]}):</span>
-                <span className="sm:hidden">Grok:</span>
-                <CensorToggle size="xs" value={!!r.ongezouten} onChange={(v) => void setGrok(r.id, v)} />
-              </span>
-            ))}
             {voicesOn && (
               <span className="ml-auto flex items-center gap-1">
                 Stemtempo
@@ -517,19 +555,36 @@ export function ArenaLive({ id }: { id: string }) {
           {error && <ErrorNote error={error} onClose={() => setError(null)} />}
 
           {stopPanel && phase === "debat" && (
-            <div className="rounded-2xl bg-sun border-2 border-ink p-3 flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold mr-auto">Het debat staat stil.</span>
-              <button className="btn-ghost !py-1.5" onClick={resume}>
-                Verder
-              </button>
-              <button
-                className="btn-primary !py-1.5"
-                onClick={async () => {
-                  if (await post("afronden")) resume();
-                }}
-              >
-                Afronden: naar de Jury
-              </button>
+            <div className="rounded-2xl bg-sun border-2 border-ink p-3 space-y-2 text-sm" role="dialog" aria-label="De vergadering staat stil">
+              <p className="font-semibold">De vergadering staat stil. Wat wil je?</p>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-ghost !py-1.5" onClick={resume}>
+                  ▶ Verder vergaderen
+                </button>
+                <button
+                  className="btn-primary !py-1.5"
+                  onClick={async () => {
+                    if (await post("afronden")) resume();
+                  }}
+                >
+                  ⚖️ Afronden: Jury doet uitspraak
+                </button>
+                {confirmEnd ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span>Zeker weten? Er komt dan geen uitspraak.</span>
+                    <button className="btn-ghost !py-1.5 !border-coral text-coral" onClick={endMeeting}>
+                      Ja, beëindigen
+                    </button>
+                    <button className="underline" onClick={() => setConfirmEnd(false)}>
+                      Nee
+                    </button>
+                  </span>
+                ) : (
+                  <button className="btn-ghost !py-1.5" onClick={() => setConfirmEnd(true)}>
+                    ⏹ Vergadering beëindigen
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -541,7 +596,7 @@ export function ArenaLive({ id }: { id: string }) {
                   onClick={() => setTarget(r.id)}
                   className={`text-xs rounded-full border-2 px-2.5 py-1 ${target === r.id ? "bg-ink text-cream border-ink" : "border-ink/30 bg-white"}`}
                 >
-                  {r.naam.split(" ")[0]}
+                  {firstName(r.naam)}
                 </button>
               ))}
             </div>
@@ -560,7 +615,7 @@ export function ArenaLive({ id }: { id: string }) {
               onChange={(e) => setInput(e.target.value)}
               placeholder={placeholder}
               disabled={sending || phase === "oordeel"}
-              className={`field !py-2.5 ${mode === "hamer" ? "ring-4 ring-coral/40" : ""}`}
+              className={`field !py-2.5 min-w-0 ${mode === "hamer" ? "ring-4 ring-coral/40" : ""}`}
             />
             <MicButton
               onText={(t) => {
@@ -592,7 +647,7 @@ export function ArenaLive({ id }: { id: string }) {
             </div>
           ) : (
             phase !== "oordeel" && (
-              <div className="flex flex-wrap gap-1.5 text-sm">
+              <div className="flex gap-1.5 text-sm overflow-x-auto pb-0.5 -mx-1 px-1 sm:flex-wrap sm:overflow-visible">
                 <Ctrl onClick={raiseHand} active={paused && !stopPanel && mode === "opmerking"}>
                   ✋ Hand opsteken
                 </Ctrl>
@@ -603,14 +658,14 @@ export function ArenaLive({ id }: { id: string }) {
                   🔨 Hamer
                 </Ctrl>
                 <Ctrl onClick={() => setMode(mode === "richting" ? "opmerking" : "richting")} active={mode === "richting"}>
-                  🧭 Richting geven
+                  🧭 Richting
                 </Ctrl>
                 <Ctrl onClick={() => setMode(mode === "vraag" ? "opmerking" : "vraag")} active={mode === "vraag"}>
                   ❓ Vraag aan één rol
                 </Ctrl>
                 {paused && !stopPanel && phase === "debat" && (
-                  <button onClick={resume} className="ml-auto underline text-sm">
-                    Laat ze verder praten
+                  <button onClick={resume} className="shrink-0 ml-auto underline text-sm whitespace-nowrap">
+                    ▶ Laat ze verder praten
                   </button>
                 )}
               </div>
@@ -618,6 +673,65 @@ export function ArenaLive({ id }: { id: string }) {
           )}
         </div>
       </Stage>
+
+      {menuRole && (
+        <div className="fixed inset-0 z-40" onClick={() => setMenuFor(null)}>
+          <div
+            className="absolute left-1/2 top-40 -translate-x-1/2 w-[min(92vw,320px)] rounded-2xl border-2 border-ink bg-white shadow-[4px_4px_0_0_var(--color-ink)] p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="px-2 pt-1 pb-2 text-sm font-semibold">
+              {menuRole.naam} <span className="font-normal text-ink/60">· {menuRole.isJury ? "Jury" : menuRole.functie}</span>
+            </p>
+            {menuRole.id !== activeId && (
+              <button
+                className="w-full text-left rounded-xl px-3 py-2 hover:bg-sun"
+                onClick={() => {
+                  setMenuFor(null);
+                  void quip(menuRole.id);
+                }}
+              >
+                💬 Tik aan
+              </button>
+            )}
+            <button
+              className="w-full text-left rounded-xl px-3 py-2 hover:bg-sun"
+              onClick={() => {
+                setMenuFor(null);
+                setMode("vraag");
+                setTarget(menuRole.id);
+                setTimeout(() => inputRef.current?.focus(), 50);
+              }}
+            >
+              ❓ Stel {firstName(menuRole.naam)} een vraag
+            </button>
+            <button
+              className="w-full text-left rounded-xl px-3 py-2 hover:bg-sun"
+              onClick={() => {
+                setMenuFor(null);
+                setEditing(menuRole.id);
+              }}
+            >
+              ✏️ Persona aanpassen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editing && roles.some((r) => r.id === editing) && (
+        <PersonaEditor
+          runId={run.id}
+          cast={run.cast}
+          role={roles.find((r) => r.id === editing)!}
+          prep={run.prep[editing]}
+          index={roles.findIndex((r) => r.id === editing)}
+          models={data.models}
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            await reload();
+          }}
+        />
+      )}
 
       {showCost && (
         <div className="absolute inset-x-0 bottom-0 z-40 max-h-[75%] overflow-y-auto bg-cream border-t-2 border-ink rounded-t-3xl p-5 shadow-[0_-6px_0_0_var(--color-ink)]">
@@ -646,7 +760,7 @@ function bossNote(m: Message, roles: Role[]) {
   const a = m.meta.action;
   if (a === "hamer") return "🔨 besluit";
   if (a === "richting") return "🧭 richting";
-  if (a === "vraag") return `❓ aan ${roles.find((r) => r.id === m.meta.target)?.naam.split(" ")[0] ?? ""}`;
+  if (a === "vraag") return `❓ aan ${firstName(roles.find((r) => r.id === m.meta.target)?.naam ?? "")}`;
   if (a === "laatste_woord") return "laatste woord";
   return undefined;
 }
@@ -656,7 +770,7 @@ function Ctrl({ children, onClick, active }: { children: React.ReactNode; onClic
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border-2 px-3 py-1.5 font-medium transition ${active ? "bg-ink text-cream border-ink" : "bg-white border-ink hover:bg-sun"}`}
+      className={`shrink-0 whitespace-nowrap rounded-full border-2 px-3 py-1.5 font-medium transition ${active ? "bg-ink text-cream border-ink" : "bg-white border-ink hover:bg-sun"}`}
     >
       {children}
     </button>

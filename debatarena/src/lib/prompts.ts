@@ -55,6 +55,8 @@ export function roleSystem(run: Run, role: Role, attachments: Attachment[], opts
 HET VRAAGSTUK VAN DE BAAS:
 ${run.question}
 
+CONTEXT: het gaat om Nederlandse bedrijven. Denk in euro's, de Nederlandse markt, Nederlandse wet- en regelgeving (zoals cao's, de AVG en de Belastingdienst) en Nederlandse omgangsvormen: direct en nuchter.
+
 JOUW ROL:
 Naam: ${role.naam}
 Functie: ${role.isJury ? "Jury" : role.functie}
@@ -64,11 +66,15 @@ Instructie: ${role.instructie}
 DE ANDERE DEELNEMERS:
 ${others}
 
-SPELREGELS:
-- Spreek als ${role.naam}, in de ik-vorm, in gewone spreektaal. Geen jargon, geen opsommingstekens, geen kopjes, geen markdown.
+ZO PRAAT JE (dit is een echte vergadering, geen rapport):
+- Je praat hardop aan tafel, als ${role.naam}. Spreektaal, geen schrijftaal. Korte zinnen. Zoals een Nederlander in een vergadering echt praat: direct en nuchter.
+- Reageer op de vorige spreker en noem mensen bij hun voornaam ("Nee Ella, dat klopt niet helemaal…", "Kijk Markus, …").
+- Laat merken wat je vindt: verbaasd, geïrriteerd, enthousiast, twijfelend. Een stopwoordje of een half afgebroken zin mag ("nou", "kijk", "eerlijk gezegd", "ja maar").
+- Verboden schrijftaal: borgen, uitrollen, ondermijnen, faciliteren, implementeren, optimaliseren, waarborgen, synergie, derhalve, teneinde, "combineer beide", "het grootste risico blijft". Zeg het gewoon zoals je het tegen een collega zou zeggen.${clicheOf(role)?.id === "managementtaal" ? " (Uitzondering: jij speelt juist de Managementtaalspreker, dus bij jou mag het wél, overdreven zelfs.)" : ""}
+- Geen opsommingen, geen "ten eerste/ten tweede", geen kopjes, geen markdown.
 - Geen scores en geen complimenten ("goed punt", "mooi voorstel"). Kom meteen ter zake.
-- Wees concreet: noem een concreet bezwaar of een concreet voorstel, met getallen waar het kan.
-- Reageer op wat anderen zeiden. Noem ze bij naam. Herhaal jezelf niet.
+- Wees concreet: één duidelijk bezwaar of voorstel, met een getal of voorbeeld uit de praktijk als het kan.
+- Herhaal jezelf niet en vat niet samen wat anderen al zeiden.
 - Begin elke beurt met precies één tag: [bezwaar], [akkoord] of [voorstel].
 - Gebruik je een feit uit je huiswerk, een bijlage of het web, zet dan direct erachter (bron: naam van de bron). Verzin nooit bronnen. Zonder bron is het je mening.
 - Besluiten van de baas (hamer) staan vast. Ga ervan uit. Je mag per besluit hooguit één keer een risico noemen.
@@ -114,7 +120,7 @@ export function turnInstruction({ run, role, messages, round, meta }: TurnContex
 
   if (meta.verdict) {
     lines.push(
-      `Het debat is klaar. Jij bent de Jury. Doe nu je uitspraak, in max ${voiceAll || run.cast.stemmen === "jury" ? 90 : 120} woorden: wat is de uitkomst, welke keuze adviseer je de baas en waarom, en wat blijft het grootste risico. Neem de besluiten van de baas over als vaststaand.`,
+      `Het debat is klaar. Jij bent de voorzitter/Jury en sluit de vergadering hardop af, in max ${voiceAll || run.cast.stemmen === "jury" ? 90 : 120} woorden. Praat zoals een voorzitter aan tafel: begin bijvoorbeeld met "Oké, ik heb genoeg gehoord." of "Goed, mensen." Zeg in gewone woorden wat je de baas aanraadt en waarom, noem de mensen bij naam als je hun punt overneemt ("Ella heeft gelijk dat…"), en zeg waar je nog wakker van ligt. Geen schrijftaal, geen opsomming, geen "het grootste risico blijft". Neem de besluiten van de baas over als vaststaand.`,
     );
     const fw = messages.find((m) => m.kind === "boss" && m.meta.finalWord);
     if (fw) lines.push(`De baas gaf je nog mee: "${fw.content}". Neem dat mee.`);

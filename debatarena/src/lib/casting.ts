@@ -7,7 +7,7 @@ import { CastChatSchema, CastSchema } from "./schemas";
 import { applyCliches, CLICHES } from "./cliches";
 import { availableKeys } from "./settings";
 import type { Attachment, Cast, Role } from "./types";
-import { listVoices, type Voice } from "./voices";
+import { debateVoices, type Voice } from "./voices";
 
 type RawCast = z.infer<typeof CastSchema>;
 
@@ -31,20 +31,23 @@ const SYSTEM = `Je bent de regisseur van de Debatarena: een app waarin AI-rollen
 
 Jij stelt de cast samen. Castingregels:
 - 3 of 4 debaterende rollen plus precies één Jury (isJury=true). De Jury debatteert niet mee, maar weegt af en doet aan het eind uitspraak. Geef de Jury een sterk model.
-- Altijd precies één kritische klant- of koperrol (isKritisch=true): iemand die uiteindelijk moet betalen of kopen en dus kritisch is.
+- Het is een overleg binnen het bedrijf van de baas. De debaterende rollen zijn vrijwel allemaal collega's uit dat bedrijf (bijvoorbeeld directie, operatie, financiën, marketing/verkoop, HR, iemand van de werkvloer), gekozen bij wat het vraagstuk raakt. Leid het soort bedrijf af uit het vraagstuk en de bijlages.
+- Daarnaast zit er altijd precies één klant of gast van buiten aan tafel (isKritisch=true): degene die uiteindelijk betaalt, koopt of gebruikt, en daarom kritisch is. Noem de functie zo dat duidelijk is dat het de klant/gast is (bijv. "Gast, gezin met twee kinderen", "Klant, inkoper bij een groothandel").
 - Geen overlappende perspectieven. Elke rol bewaakt een ander belang.
 - Meng de AI's: gebruik zoveel mogelijk verschillende aanbieders uit de modellijst (Claude, ChatGPT, Gemini, Grok), zodat de baas ziet hoe ze van elkaar verschillen.
 - ongezouten: standaard false (gecensureerd). Alleen true (ongecensureerd) voor een rol met een Grok-model als de baas daarom vraagt ("zonder censuur", "ongecensureerd", "ongezouten", "laat Grok los").
 - vergadercliches: standaard false en dan is cliche overal ''. Zet op true als de baas erom vraagt ("met vergaderclichés", "maak het herkenbaar", "net een echte vergadering"). Geef dan 2 tot 4 debaterende rollen elk een ander cliché uit de clichélijst dat past bij hun functie. De Jury nooit; de kritische klant liever niet.
 - Rollen geven nooit scores of complimenten. Ze komen met concrete bezwaren en concrete voorstellen. Zet dat in hun instructie.
+- Geef elke rol in de instructie ook een eigen manier van praten, zodat ze als echte mensen klinken en van elkaar verschillen: bijv. "praat kortaf en droog", "enthousiast, maakt veel vergelijkingen met thuis", "nuchter, rekent alles hardop voor", "vriendelijk maar laat zich niet afschepen".
 - Maak het leuk: rollen met karakter, maar geloofwaardig.
-- Varieer leeftijd, geslacht en afkomst. 'uiterlijk' is Engels en karikaturaal: beroep plus karakter (bijv. "stern woman in her late 50s of Moroccan-Dutch descent, reading glasses on a chain, clutching a thick procurement binder").
+- Varieer leeftijd, geslacht en afkomst. 'uiterlijk' is Engels en een grappige karikatuur: één of twee overdreven kenmerken plus een komisch attribuut van het beroep (bijv. "stern woman in her late 50s of Moroccan-Dutch descent, enormous reading glasses on a chain, clutching a comically thick procurement binder").
 - webzoeken=true voor rollen die baat hebben bij actuele feiten (markt, prijzen, regels). Anders false. Alleen modellen met "(kan webzoeken)" kunnen dat.
 - rondes: standaard 3. Alleen minder bij een heel simpele vraag.
 - stemmen: 'uit' als er geen stemmenlijst is. Anders standaard 'jury'.
-- stemId: kies uit de stemmenlijst per rol een passende stem (geslacht, leeftijd). Elke rol een andere. null als er geen lijst is.
+- stemId: kies uit de stemmenlijst per rol een passende stem (geslacht en leeftijd passend bij de naam). Elke rol een andere. Stemmen met "Nederlands" gaan voor. null als er geen lijst is.
 - bijlages: wijs elke bijlage toe aan 'iedereen' of aan de id van de ene rol waarvoor hij bedoeld is. Bij twijfel 'iedereen'.
 - id: een korte slug in kleine letters (bijv. 'inkoper', 'jury').
+- Het gaat om Nederlandse bedrijven. Rollen werken bij Nederlandse organisaties, denken in euro's en kennen de Nederlandse markt, regels en omgangsvormen. Namen passen bij Nederland (met variatie in afkomst).
 - modelKey: kies uit de modellijst.`;
 
 function context(models: ModelConfig[], voices: Voice[], attachments: Attachment[]) {
@@ -54,7 +57,7 @@ function context(models: ModelConfig[], voices: Voice[], attachments: Attachment
   const voiceList = voices.length
     ? voices
         .slice(0, 40)
-        .map((v) => `- ${v.id}: ${v.naam} (${v.omschrijving || "geen omschrijving"})`)
+        .map((v) => `- ${v.id}: ${v.naam} (${[v.gender, v.nl ? "Nederlands" : null, v.omschrijving].filter(Boolean).join(", ") || "geen omschrijving"})`)
         .join("\n")
     : "(geen stemmen beschikbaar)";
   const att = attachments.length
@@ -78,7 +81,7 @@ function slug(s: string) {
   );
 }
 
-const CRITICAL_RE = /klant|koper|inkoper|afnemer|consument|gebruiker|opdrachtgever|budgethouder/i;
+const CRITICAL_RE = /klant|gast|bezoeker|koper|inkoper|afnemer|consument|gebruiker|opdrachtgever|budgethouder/i;
 
 /** Handhaaft de castingregels, wat het model ook teruggeeft. */
 export function normalizeCast(
@@ -153,7 +156,7 @@ export function normalizeCast(
       const klant: Role = {
         id: used.has("klant") ? "klant-1" : "klant",
         naam: "Bas Verhoeven",
-        functie: "Kritische klant",
+        functie: "Klant (kritisch)",
         perspectief: "Wil waar voor zijn geld en gelooft niets op voorhand",
         instructie: "Je bent de klant die moet betalen. Stel lastige vragen over prijs, nut en risico. Geen complimenten, wel concrete bezwaren en eisen.",
         zin: "Betaalt de rekening en wil eerst bewijs zien.",
@@ -253,7 +256,7 @@ function castToRaw(c: Cast): RawCast {
 }
 
 export async function composeCast(question: string, attachments: Attachment[]) {
-  const [model, models, voices] = await Promise.all([fastModel(), availableModels(), listVoices()]);
+  const [model, models, voices] = await Promise.all([fastModel(), availableModels(), debateVoices()]);
   const { data, usage } = await generateJson(CastSchema, {
     model,
     system: SYSTEM,
@@ -270,7 +273,7 @@ export async function editCast(
   chat: { van: "baas" | "regie"; tekst: string }[],
   attachments: Attachment[],
 ) {
-  const [model, models, voices] = await Promise.all([fastModel(), availableModels(), listVoices()]);
+  const [model, models, voices] = await Promise.all([fastModel(), availableModels(), debateVoices()]);
   const history = chat
     .slice(-6)
     .map((m) => `${m.van === "baas" ? "Baas" : "Regie"}: ${m.tekst}`)

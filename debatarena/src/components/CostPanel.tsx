@@ -65,23 +65,27 @@ function Table({ title, rows, first }: { title: string; rows: UsageLine[]; first
     <div>
       <p className="font-semibold mb-1">{title}</p>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px]">
+        <table className="w-full">
           <thead>
             <tr className="text-left text-ink/50 text-xs">
               <th className="py-1 pr-2 font-medium" />
-              <th className="py-1 px-2 font-medium text-right">Erin</th>
-              <th className="py-1 px-2 font-medium text-right">Cache</th>
-              <th className="py-1 px-2 font-medium text-right">Eruit</th>
+              <th className="py-1 px-2 font-medium text-right sm:hidden">Tokens</th>
+              <th className="py-1 px-2 font-medium text-right hidden sm:table-cell">Erin</th>
+              <th className="py-1 px-2 font-medium text-right hidden sm:table-cell">Cache</th>
+              <th className="py-1 px-2 font-medium text-right hidden sm:table-cell">Eruit</th>
               <th className="py-1 pl-2 font-medium text-right">Kosten</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((l) => (
               <tr key={l.label} className="border-t border-ink/10">
-                <td className="py-1.5 pr-2 max-w-[14rem]">{first ? first(l) : l.label}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums">{l.units && !l.inputTokens ? "—" : tokens(l.inputTokens)}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums">{l.units && !l.inputTokens ? "—" : tokens(l.cachedTokens)}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums">{l.units && !l.outputTokens ? "—" : tokens(l.outputTokens)}</td>
+                <td className="py-1.5 pr-2 max-w-[11rem] sm:max-w-[16rem] break-words">{first ? first(l) : l.label}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums sm:hidden">
+                  {l.units && !l.inputTokens && !l.outputTokens ? "—" : tokens(l.inputTokens + l.cachedTokens + l.outputTokens)}
+                </td>
+                <td className="py-1.5 px-2 text-right tabular-nums hidden sm:table-cell">{l.units && !l.inputTokens ? "—" : tokens(l.inputTokens)}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums hidden sm:table-cell">{l.units && !l.inputTokens ? "—" : tokens(l.cachedTokens)}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums hidden sm:table-cell">{l.units && !l.outputTokens ? "—" : tokens(l.outputTokens)}</td>
                 <td className="py-1.5 pl-2 text-right tabular-nums font-semibold">{euro(l.costEur)}</td>
               </tr>
             ))}

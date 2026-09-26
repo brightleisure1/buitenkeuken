@@ -10,6 +10,7 @@ interface Voice {
   id: string;
   naam: string;
   omschrijving: string;
+  nl?: boolean;
 }
 
 /** Handmatige instellingen, alleen onder "Geavanceerd". */
@@ -143,6 +144,7 @@ export function CastEditor({
                   <option value="">Geen</option>
                   {voices.map((v) => (
                     <option key={v.id} value={v.id}>
+                      {v.nl ? "🇳🇱 " : ""}
                       {v.naam}
                       {v.omschrijving ? ` — ${v.omschrijving}` : ""}
                     </option>

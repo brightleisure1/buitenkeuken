@@ -223,7 +223,7 @@ function hash(s: string) {
  * - aan: geldige, unieke clichés; de Jury nooit; minstens 2 rollen (of alle als er minder zijn)
  * Rollen zonder cliché krijgen er één (vaste keuze per rol, zodat het niet steeds verspringt).
  */
-export function applyCliches(cast: Cast): Cast {
+export function applyCliches(cast: Cast, autoFill = true): Cast {
   if (!cast.cliches) return { ...cast, cliches: false, rollen: cast.rollen.map((r) => ({ ...r, cliche: null })) };
   const used = new Set<string>();
   const rollen = cast.rollen.map((r) => {
@@ -233,7 +233,8 @@ export function applyCliches(cast: Cast): Cast {
     return { ...r, cliche: ok ? r.cliche! : null };
   });
   const debaters = rollen.filter((r) => !r.isJury);
-  const want = Math.min(debaters.length, Math.max(2, Math.ceil(debaters.length / 2)));
+  // Handmatig gekozen (persona-editor): niets bijvullen.
+  const want = autoFill ? Math.min(debaters.length, Math.max(2, Math.ceil(debaters.length / 2))) : 0;
   let have = debaters.filter((r) => r.cliche).length;
   // Eerst de niet-kritische rollen, zodat de kritische klant zo scherp mogelijk blijft.
   const candidates = [...debaters.filter((r) => !r.cliche && !r.isKritisch), ...debaters.filter((r) => !r.cliche && r.isKritisch)];

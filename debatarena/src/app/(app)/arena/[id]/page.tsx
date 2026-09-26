@@ -1,6 +1,7 @@
 import { ArenaLive } from "@/components/ArenaLive";
 
-export default async function ArenaPage({ params }: PageProps<"/arena/[id]">) {
+export default async function ArenaPage({ params, searchParams }: PageProps<"/arena/[id]">) {
   const { id } = await params;
-  return <ArenaLive id={id} />;
+  const q = await searchParams;
+  return <ArenaLive id={id} listen={q.luister === "1"} />;
 }

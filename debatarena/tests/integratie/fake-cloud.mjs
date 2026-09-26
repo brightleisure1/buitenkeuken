@@ -12,6 +12,15 @@ const STORE = process.env.FAKE_STORE ?? path.join(process.cwd(), ".fake-storage"
 const JPEG = Buffer.from(fs.readFileSync(new URL("./tiny.jpg.b64", import.meta.url), "utf8").trim(), "base64");
 fs.mkdirSync(STORE, { recursive: true });
 
+/** Welke modellen elke nep-aanbieder kent (Google kent de config-namen expres niet). */
+const MODEL_LISTS = {
+  anthropic: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"],
+  openai: ["gpt-5.5", "gpt-5.4-mini", "gpt-image-1", "gpt-4o-mini-transcribe"],
+  google: ["models/gemini-2.5-pro", "models/gemini-2.5-flash", "models/gemini-2.5-flash-lite", "models/gemini-3-pro-preview", "models/gemini-3-pro-image-preview", "models/text-embedding-004"],
+  xai: ["grok-4.7", "grok-4.3", "grok-code-fast-1", "grok-2-image"],
+};
+const knows = (provider, model) => MODEL_LISTS[provider].some((id) => id.replace(/^models\//, "") === model);
+
 /** Alle AI-verzoeken, voor de test. */
 const log = [];
 let failNext = null; // { provider, status } → volgende verzoek naar die aanbieder faalt
@@ -125,8 +134,8 @@ function castFrom(user) {
     rollen: [
       rol("inkoper", "Fatima El Amrani", "Inkoper", pick("gemini"), { isKritisch: true }),
       rol("cfo", "Pieter de Groot", "CFO", pick("claude"), { webzoeken: true, cliche: wantCliches ? "parkeerder" : "" }),
-      rol("sales", "Lisa Chen", "Salesmanager", pick("grok"), { cliche: wantCliches ? "managementtaal" : "" }),
-      rol("jury", "Anneke de Wit", "Jury", pick("gpt"), { isJury: true }),
+      rol("sales", "Lisa Chen", "Marketing & Guest Experience Manager voor alle vestigingen", pick("grok"), { cliche: wantCliches ? "managementtaal" : "" }),
+      rol("jury", "Dr. Anneke de Wit", "Jury", pick("gpt"), { isJury: true }),
     ],
   };
 }
@@ -279,6 +288,10 @@ async function responses(req, res, body) {
 
 async function chat(provider, req, res, body) {
   const b = JSON.parse(body.toString() || "{}");
+  if (!knows(provider, b.model)) {
+    log.push({ provider, model: b.model, unknownModel: true });
+    return json(res, 404, { error: { message: `The model ${b.model} does not exist`, type: "invalid_request_error", code: "model_not_found" } });
+  }
   const system = textOf(b.messages?.find((m) => m.role === "system")?.content);
   const user = textOf(b.messages?.filter((m) => m.role === "user").at(-1)?.content);
   const schemaProps = b.response_format?.json_schema?.schema ? Object.keys(b.response_format.json_schema.schema.properties ?? {}) : null;
@@ -360,7 +373,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith("/storage/v1")) return storage(req, res, url, body);
 
     const provider = p.startsWith("/anthropic") ? "anthropic" : p.startsWith("/openai") ? "openai" : p.startsWith("/google") ? "google" : p.startsWith("/xai") ? "xai" : p.startsWith("/eleven") ? "elevenlabs" : null;
-    if (failNext && failNext.provider === provider && failNext.times > 0) {
+    if (failNext && failNext.provider === provider && failNext.times > 0 && (!failNext.path || p.includes(failNext.path))) {
       failNext.times--;
       return json(res, failNext.status, { error: { type: "error", message: "nepfout" } }, { "retry-after": "0" });
     }
@@ -372,9 +385,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === "/anthropic/v1/messages") return anthropic(req, res, body);
-    if (p === "/anthropic/v1/models") return json(res, 200, { data: [{ id: "claude-opus-5", type: "model", display_name: "Claude Opus 5", created_at: "2026-01-01T00:00:00Z" }], has_more: false, first_id: "claude-opus-5", last_id: "claude-opus-5" });
+    if (p === "/anthropic/v1/models") {
+      const data = MODEL_LISTS.anthropic.map((id) => ({ id, type: "model", display_name: id, created_at: "2026-01-01T00:00:00Z" }));
+      return json(res, 200, { data, has_more: false, first_id: data[0].id, last_id: data.at(-1).id });
+    }
     if (p === "/openai/v1/responses") return responses(req, res, body);
-    if (p === "/openai/v1/models" || p === "/google/models" || p === "/xai/models") return json(res, 200, { object: "list", data: [{ id: "m", object: "model", created: 0, owned_by: "x" }] });
+    if (p === "/openai/v1/models" || p === "/google/models" || p === "/xai/models") {
+      return json(res, 200, { object: "list", data: MODEL_LISTS[provider].map((id) => ({ id, object: "model", created: 0, owned_by: provider })) });
+    }
     if (p === "/openai/v1/images/generations" || p === "/openai/v1/images/edits") {
       log.push({ provider: "openai-image", path: p, bytes: body.length });
       await sleep(80);
@@ -386,11 +404,17 @@ const server = http.createServer(async (req, res) => {
     if (p === "/eleven/v1/voices") {
       return json(res, 200, {
         voices: [
-          { voice_id: "stemA", name: "Anna", labels: { gender: "female", age: "middle aged" } },
-          { voice_id: "stemB", name: "Bram", labels: { gender: "male", age: "young" } },
-          { voice_id: "stemC", name: "Carla", labels: { gender: "female", age: "old" } },
-          { voice_id: "stemD", name: "Daan", labels: { gender: "male", age: "middle aged" } },
-          { voice_id: "stemE", name: "Eva", labels: { gender: "female", age: "young" } },
+          // Standaard Engelse stemmen (die wil je niet)
+          { voice_id: "enRachel", name: "Rachel", category: "premade", labels: { gender: "female", accent: "american" } },
+          { voice_id: "enAdam", name: "Adam", category: "premade", labels: { gender: "male", accent: "american" } },
+          { voice_id: "enBella", name: "Bella", category: "premade", labels: { gender: "female", accent: "british" } },
+          // Nederlandse stemmen, op verschillende manieren herkenbaar
+          { voice_id: "nlAnna", name: "Anna", category: "professional", labels: { gender: "female", accent: "dutch", age: "middle aged" }, preview_url: "http://127.0.0.1:54321/storage/v1/object/public/audio/preview.mp3" },
+          { voice_id: "nlBram", name: "Bram", category: "cloned", labels: { gender: "male" }, verified_languages: [{ language: "nl", locale: "nl-NL" }] },
+          { voice_id: "nlCarla", name: "Carla - Nederlands", category: "generated", labels: { gender: "female", age: "old" } },
+          { voice_id: "nlDaan", name: "Daan", category: "professional", labels: { gender: "male", language: "nl" } },
+          { voice_id: "nlEva", name: "Eva", category: "professional", labels: { gender: "female" }, fine_tuning: { language: "nl" } },
+          { voice_id: "nlFrank", name: "Frank", category: "professional", labels: { gender: "male", accent: "Flemish" } },
         ],
       });
     }

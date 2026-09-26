@@ -3,7 +3,7 @@ import { MODELS } from "../src/lib/config";
 import assert from "node:assert";
 const r = (id: string, x = {}) => ({ id, naam: id + " Jansen", functie: "Marketeer", perspectief: "p", instructie: "i", zin: "z", modelKey: "claude-sterk", stemId: "v1", webzoeken: false, isJury: false, isKritisch: false, ongezouten: false, cliche: "", uiterlijk: "u", ...x });
 const raw = { titel: "Prijs", rondes: 9, stemmen: "jury" as const, vergadercliches: false, bijlages: [{ bijlageId: "att1", voor: "cfo" }], rollen: [r("jury", { isJury: true }), r("cfo", { functie: "CFO" }), r("sales"), r("hr"), r("ops"), r("extra")] };
-const voices = [{ id: "v1", naam: "A", omschrijving: "" }, { id: "v2", naam: "B", omschrijving: "" }];
+const voices = [{ id: "v1", naam: "A", omschrijving: "", nl: true, eigen: true, gender: null, preview: null }, { id: "v2", naam: "B", omschrijving: "", nl: true, eigen: true, gender: null, preview: null }];
 const c = normalizeCast(raw, { models: MODELS, voices, attachments: [{ id: "att1" } as any] });
 assert.equal(c.rollen.at(-1)!.isJury, true);
 assert.equal(c.rollen.filter(x => !x.isJury).length, 4);

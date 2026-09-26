@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { attachmentImages, attachmentsFor, runAttachments } from "@/lib/attachments";
-import { resolveModel } from "@/lib/config";
+import { PROVIDERS, resolveModel } from "@/lib/config";
 import { friendly } from "@/lib/errors";
 import { streamText } from "@/lib/llm";
 import { nextStep } from "@/lib/planner";
@@ -110,7 +110,14 @@ export const POST = handle(async (req: Request, { params }: { params: Promise<{ 
           await recordUsage(id, "beurt", r.usage, role.id);
         } else {
           const eur = await recordUsage(id, step.meta.verdict ? "uitspraak" : "beurt", r.usage, role.id);
-          const meta = { ...step.meta, streaming: false, ...(r.aborted ? { interrupted: true } : {}) };
+          const meta = {
+            ...step.meta,
+            streaming: false,
+            ...(r.aborted ? { interrupted: true } : {}),
+            ...(r.fellBack && r.usedModel
+              ? { fallback: { van: PROVIDERS[model.provider].naam, naar: PROVIDERS[r.usedModel.provider].naam, model: r.usedModel.model } }
+              : {}),
+          };
           await updateMessage(msg.id, { content: clean, sources, tag: tag ?? splitTag(raw).tag, meta, cost_eur: eur });
           send({ t: "end", message: { ...msg, content: clean, sources, tag, meta, cost_eur: eur } });
         }

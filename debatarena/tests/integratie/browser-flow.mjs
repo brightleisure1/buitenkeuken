@@ -29,12 +29,43 @@ async function noOverflow(page, label) {
   const w = await page.evaluate(() => document.documentElement.scrollWidth);
   const vw = page.viewportSize().width;
   assert.ok(w <= vw + 1, `${label}: pagina is ${w}px breed bij scherm ${vw}px`);
+  // Geen tekst die buiten zijn eigen vak loopt (behalve bewust scrollbare rijen).
+  const spill = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll("p, span, button, a, h1, h2, h3, label")) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || getComputedStyle(el).display === "inline") continue;
+      if (el.closest("[class*='overflow-x-auto'], [class*='overflow-y-auto'], [class*='truncate'], [class*='line-clamp']")) continue;
+      if (el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflowX !== "visible") out.push(el.textContent.slice(0, 40));
+      if (r.right > window.innerWidth + 1) out.push(`buiten beeld: ${el.textContent.slice(0, 40)}`);
+    }
+    return out.slice(0, 5);
+  });
+  assert.deepEqual(spill, [], `${label}: ${spill.join(" | ")}`);
 }
 
-for (const [label, viewport] of [
-  ["desktop", { width: 1280, height: 860 }],
+/** Het nieuwste bericht moet in beeld staan (meescrollen). */
+async function lastVisible(page, label) {
+  const ok = await page.evaluate(() => {
+    const bubbles = [...document.querySelectorAll(".animate-rise")].filter((e) => e.closest("[class*='overflow-y-auto']"));
+    const last = bubbles.at(-1);
+    if (!last) return true;
+    const box = last.closest("[class*='overflow-y-auto']").getBoundingClientRect();
+    const r = last.getBoundingClientRect();
+    return r.bottom <= box.bottom + 4 && r.top < box.bottom;
+  });
+  assert.ok(ok, `${label}: nieuwste bericht staat niet in beeld`);
+}
+
+const VIEWPORTS = [
+  ["groot", { width: 1440, height: 900 }],
+  ["laptop", { width: 1280, height: 720 }],
+  ["tablet", { width: 820, height: 1180 }],
   ["mobiel", { width: 390, height: 844 }],
-]) {
+  ["klein", { width: 360, height: 640 }],
+];
+const only = process.env.VIEWPORTS?.split(",");
+for (const [label, viewport] of VIEWPORTS.filter(([l]) => !only || only.includes(l))) {
   const ctx = await browser.newContext({ viewport });
   const page = await ctx.newPage();
   const errors = [];
@@ -93,15 +124,27 @@ for (const [label, viewport] of [
     await page.waitForFunction(() => !document.body.innerText.includes("🎭 De Parkeerder"));
     await sw.click();
     await page.getByText(/🎭 De /).first().waitFor();
+    // Persona aanpassen
+    await page.getByRole("button", { name: "✏️ Aanpassen" }).first().click();
+    await page.getByRole("dialog").getByLabel("Instructie en manier van praten").fill("Praat kortaf en droog. Wil eerst cijfers zien.");
+    await shot("2b-persona");
+    await noOverflow(page, "persona");
+    await page.getByRole("dialog").getByRole("button", { name: "Opslaan" }).click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
     await page.waitForTimeout(3000); // portretten komen binnen
     await shot("2-voorstel-vol");
+    await noOverflow(page, "voorstel");
   });
 
   await step(`[${label}] debat starten, beurten streamen, labels en kosten`, async () => {
     await page.getByRole("button", { name: /Start debat/ }).click();
     await page.waitForURL("**/arena/**");
     await page.getByText(/Ik ben /).first().waitFor({ timeout: 20000 });
+    await page.waitForTimeout(2500);
+    await lastVisible(page, "arena");
     await shot("3-arena");
+    assert.ok(!(await page.getByText("🎭").count()), "clichés niet zichtbaar in de arena");
+    assert.ok(await page.getByText("Anneke", { exact: true }).count(), "'Dr.' niet als voornaam");
     await page.getByRole("button", { name: /tokens/ }).click();
     await page.getByText("Tokens en kosten van dit debat").waitFor();
     await page.getByText("Per rol").waitFor();
@@ -134,7 +177,10 @@ for (const [label, viewport] of [
 
   await step(`[${label}] stoppen, afronden, laatste woord, uitspraak, resultaat`, async () => {
     await page.click("button:has-text('Stop')");
-    await page.click("button:has-text('Afronden: naar de Jury')");
+    await page.getByText("De vergadering staat stil. Wat wil je?").waitFor();
+    await shot("4b-stop");
+    await noOverflow(page, "stop");
+    await page.click("button:has-text('Afronden: Jury doet uitspraak')");
     await page.getByText("Wil je nog iets zeggen voordat ik uitspraak doe?").waitFor({ timeout: 30000 });
     await shot("5-laatste-woord");
     await page.click("button:has-text('Nee, doe maar uitspraak')");
@@ -145,6 +191,18 @@ for (const [label, viewport] of [
     await page.getByText("Per onderdeel").waitFor();
     await shot("6-resultaat-vol");
     await noOverflow(page, "resultaat");
+  });
+
+  await step(`[${label}] de hele vergadering beluisteren`, async () => {
+    const url = page.url();
+    await page.click("a:has-text('Beluister de vergadering')");
+    await page.waitForURL("**/arena/**luister=1");
+    await page.click("button:has-text('Beluister de hele vergadering')");
+    await page.getByText(/Ik ben /).first().waitFor();
+    await page.waitForTimeout(1500);
+    await lastVisible(page, "beluisteren");
+    await shot("6b-beluisteren");
+    await page.goto(url);
   });
 
   await step(`[${label}] delen: preview, anoniem, link`, async () => {

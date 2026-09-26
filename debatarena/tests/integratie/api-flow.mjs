@@ -144,6 +144,11 @@ await step("Verbindingstest per aanbieder, uitslag wordt onthouden", async () =>
   assert.match(x.data.oplossing, /OpenAI.*"xai-"/);
   const s = await call("/api/settings");
   for (const p of Object.keys(KEYS)) assert.equal(s.data.status[p].ok, true, `${p} status bewaard`);
+  assert.match(s.data.status.google.melding, /modellen beschikbaar/);
+  const byKey = Object.fromEntries(s.data.models.map((m) => [m.key, m.model]));
+  assert.equal(byKey["gemini-sterk"], "gemini-3-pro-preview", "Gemini: onbekende naam vervangen door het beste beschikbare model");
+  assert.equal(byKey["gemini-snel"], "gemini-2.5-flash", "Gemini snel: geen lite of image");
+  assert.equal(byKey["claude-sterk"], "claude-opus-5", "bestaande namen blijven staan");
   const st = await call("/api/settings/status");
   assert.equal(st.data.aiKey, true);
 });
@@ -186,6 +191,7 @@ await step("Stel samen: gemengde AI's, clichés, stemmen en bijlages", async () 
   assert.ok(debaters.filter((x) => x.cliche).length >= 2, "minstens twee clichés");
   assert.ok(!cast.rollen.find((x) => x.isJury).cliche, "Jury speelt geen cliché");
   assert.equal(new Set(cast.rollen.map((x) => x.stemId)).size, cast.rollen.length, "iedereen een andere stem");
+  assert.ok(cast.rollen.every((x) => x.stemId?.startsWith("nl")), `alleen Nederlandse stemmen: ${cast.rollen.map((x) => x.stemId)}`);
   assert.equal(cast.bijlages[run.attachments[0]], "cfo");
   assert.ok(!cast.rollen.some((x) => x.ongezouten), "Grok standaard gecensureerd");
   const gem = cast.rollen.find((x) => x.modelKey.startsWith("gemini"));
@@ -212,6 +218,35 @@ await step("Achtergrond: portretten (3 stemmingen) en huiswerk met bronnen", asy
   assert.equal(img.status, 200);
   const kinds = new Set(d.usage.perKind.map((k) => k.label));
   assert.ok(kinds.has("Portretten") && kinds.has("Huiswerk") && kinds.has("Team samenstellen"), [...kinds].join(","));
+});
+
+await step("Stemmen: Nederlandse stemmen herkend, eigen keuze mogelijk, stem voor de baas", async () => {
+  const v = await call("/api/voices");
+  assert.equal(v.data.voices.length, 9);
+  assert.deepEqual(v.data.voices.filter((x) => x.nl).map((x) => x.id).sort(), ["nlAnna", "nlBram", "nlCarla", "nlDaan", "nlEva", "nlFrank"]);
+  assert.ok(v.data.inUse.every((id) => id.startsWith("nl")), "automatisch alleen Nederlandse");
+  const pick = await call("/api/voices", { method: "POST", json: { ids: ["nlAnna", "nlBram"] } });
+  assert.deepEqual(pick.data.inUse.sort(), ["nlAnna", "nlBram"]);
+  const back = await call("/api/voices", { method: "POST", json: { ids: [] } });
+  assert.equal(back.data.inUse.length, 6);
+  const r = await call(`/api/runs/${run.id}`);
+  const stemmen = r.data.stemmen;
+  assert.ok(stemmen.baas, "de baas heeft een stem");
+  assert.equal(new Set(Object.values(stemmen)).size, Object.keys(stemmen).length, "iedereen een eigen stem");
+});
+
+await step("Persona aanpassen: naam, instructie en stem", async () => {
+  const r = await call(`/api/runs/${run.id}`);
+  const cast = r.data.run.cast;
+  const rollen = cast.rollen.map((x) => (x.id === "cfo" ? { ...x, naam: "Pieter de Groot", instructie: "Praat kortaf en droog.", stemId: "nlDaan" } : x));
+  const p = await call(`/api/runs/${run.id}`, { method: "PATCH", json: { handmatig: true, cast: { ...cast, rollen } } });
+  const cfo = p.data.run.cast.rollen.find((x) => x.id === "cfo");
+  assert.equal(cfo.instructie, "Praat kortaf en droog.");
+  assert.equal(cfo.stemId, "nlDaan");
+  const portrait = await call(`/api/runs/${run.id}/portrait`, { method: "POST", json: { roleId: "cfo" } });
+  assert.equal(portrait.status, 200);
+  await waitFor(async () => (await call(`/api/runs/${run.id}`)).data.run.prep.cfo.portraitStatus === "klaar", "nieuw portret");
+  run.cast = p.data.run.cast;
 });
 
 await step("Aanpassen via chat: Grok ongecensureerd en 3 rondes", async () => {
@@ -288,14 +323,32 @@ await step("Hand opsteken midden in een beurt: tekst tot dan toe wordt bewaard a
   await call(`/api/runs/${run.id}/boss`, { method: "POST", json: { action: "opmerking", text: "Denk aan de contracten tot juni" } });
 });
 
+await step("Model valt uit: een ander model neemt het over", async () => {
+  const grok = run.cast.rollen.find((x) => x.modelKey.startsWith("grok"));
+  await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "xai", status: 500, times: 50, path: "/chat" }) });
+  await call(`/api/runs/${run.id}/boss`, { method: "POST", json: { action: "vraag", text: "Wat vind jij?", target: grok.id } });
+  const t = await turn(run.id);
+  await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "xai", status: 500, times: 0 }) });
+  const end = t.events.find((e) => e.t === "end");
+  assert.ok(end, `beurt lukte toch: ${JSON.stringify(t.events.find((e) => e.t === "error"))}`);
+  assert.equal(end.message.meta.fallback?.van, "Grok");
+  assert.notEqual(end.message.meta.fallback?.naar, "Grok");
+  assert.equal(end.message.role_id, grok.id, "de vervanger sprak namens de Grok-rol");
+});
+
 await step("Prompts: Grok ongecensureerd, clichés, prompt caching", async () => {
   const log = await fakeLog();
+  assert.ok(!log.some((l) => l.unknownModel), "geen verzoeken met een onbekende modelnaam");
+  assert.ok(log.some((l) => l.provider === "google" && l.model === "gemini-3-pro-preview"), "Gemini met de juiste naam");
   const turns = log.filter((l) => /Ronde \d van/.test(l.user ?? ""));
-  const grokTurns = turns.filter((l) => l.provider === "xai");
-  assert.ok(grokTurns.length > 0, "Grok heeft gesproken");
-  assert.ok(grokTurns.every((l) => l.system.includes("ONGEZOUTEN MODUS")), "Grok krijgt de ongecensureerde instructie");
-  assert.ok(turns.filter((l) => l.provider !== "xai").every((l) => !l.system.includes("ONGEZOUTEN MODUS")), "anderen niet");
+  const grokRole = run.cast.rollen.find((x) => x.modelKey.startsWith("grok"));
+  const isGrokRole = (l) => l.system.includes(`Naam: ${grokRole.naam}`);
+  const grokTurns = turns.filter(isGrokRole);
+  assert.ok(grokTurns.some((l) => l.provider === "xai"), "Grok heeft gesproken");
+  assert.ok(grokTurns.every((l) => l.system.includes("ONGEZOUTEN MODUS")), "de Grok-persona is ongecensureerd, ook als een vervanger spreekt");
+  assert.ok(turns.filter((l) => !isGrokRole(l)).every((l) => !l.system.includes("ONGEZOUTEN MODUS")), "andere persona's niet");
   assert.ok(turns.some((l) => l.system.includes("JE VERGADERCLICHÉ")), "cliché in de rolinstructie");
+  assert.ok(turns.every((l) => l.system.includes("ZO PRAAT JE") && l.system.includes("Nederlandse bedrijven")), "spreektaal en Nederlandse context");
   const claude = turns.filter((l) => l.provider === "anthropic");
   assert.ok(claude.length && claude.every((l) => l.hasCache), "Claude-beurten gebruiken cache_control");
   const gpt = log.filter((l) => l.provider === "openai" && l.stream && /Ronde/.test(l.user ?? ""));
@@ -345,7 +398,7 @@ await step("Tokens en kosten per debat kloppen", async () => {
 });
 
 await step("Stem: ElevenLabs-audio wordt per zin gecachet", async () => {
-  const body = { runId: run.id, messageId: run.verdictId, idx: 0, text: "Mijn uitspraak.", voiceId: "stemA" };
+  const body = { runId: run.id, messageId: run.verdictId, idx: 0, text: "Mijn uitspraak.", voiceId: "nlAnna" };
   const r = await fetch(`${APP}/api/tts`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify(body) });
   assert.equal(r.headers.get("content-type"), "audio/mpeg");
   assert.equal((await r.arrayBuffer()).byteLength, 2048);
@@ -354,6 +407,18 @@ await step("Stem: ElevenLabs-audio wordt per zin gecachet", async () => {
   assert.equal(again.status, 302, "tweede keer uit de cache");
   const u = (await call(`/api/runs/${run.id}`)).data.usage;
   assert.ok(u.perKind.some((k) => k.label === "Stemmen"));
+});
+
+await step("De hele vergadering als mp3", async () => {
+  const r = await fetch(`${APP}/api/runs/${run.id}/audio`, { headers: { cookie } });
+  assert.equal(r.headers.get("content-type"), "audio/mpeg");
+  assert.match(r.headers.get("content-disposition") ?? "", /attachment/);
+  const size = (await r.arrayBuffer()).byteLength;
+  const msgs = (await call(`/api/runs/${run.id}`)).data.messages.filter((m) => (m.kind === "turn" || m.kind === "boss") && m.content);
+  assert.equal(size, msgs.length * 2048, "één stuk per bericht, in volgorde");
+  assert.ok(msgs.every((m) => m.audio.length), "alle audio is nu bewaard");
+  const said = (await fakeLog()).filter((l) => l.provider === "elevenlabs");
+  assert.ok(said.every((l) => !/\*[^*]+\*/.test(l.text)), "regieaanwijzingen niet uitgesproken");
 });
 
 await step("Hoogtepunten worden op de achtergrond gekozen", async () => {
@@ -402,19 +467,51 @@ await step("Team bewaren en hergebruiken: direct klaar, portretten hergebruikt",
   run.second = r.data.run.id;
 });
 
+await step("Vergadering beëindigen zonder uitspraak, en later alsnog laten oordelen", async () => {
+  const c = await call("/api/compose", { method: "POST", json: { question: "Snel een tweede vergadering" } });
+  const id = c.data.run.id;
+  await call(`/api/runs/${id}/start`, { method: "POST" });
+  await turn(id);
+  const s = await call(`/api/runs/${id}/stop`, { method: "POST" });
+  assert.equal(s.data.status, "stopped");
+  const next = await turn(id);
+  assert.equal(next.json.step.type, "done", "na stoppen praat niemand meer");
+  const list = await call("/api/runs");
+  assert.equal(list.data.runs.find((x) => x.id === id).status, "stopped");
+  const r = await call(`/api/runs/${id}/result`, { method: "POST" });
+  assert.equal(r.status, 200);
+  assert.equal((await call(`/api/runs/${id}`)).data.run.status, "done");
+  await call(`/api/runs/${id}`, { method: "DELETE" });
+});
+
 await step("Eenmalige storing: de app probeert het vanzelf opnieuw", async () => {
   await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "anthropic", status: 529, times: 1 }) });
   const r = await call(`/api/runs/${run.id}/quip`, { method: "POST", json: { roleId: "cfo" } });
   assert.equal(r.status, 200);
 });
 
-await step("Aanhoudende storing: foutmelding in gewone taal met oplossing", async () => {
-  await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "anthropic", status: 429, times: 5 }) });
+await step("Aanhoudende storing bij één aanbieder: een ander neemt het over", async () => {
+  await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "anthropic", status: 429, times: 50 }) });
   const r = await call(`/api/runs/${run.id}/quip`, { method: "POST", json: { roleId: "cfo" } });
-  assert.equal(r.status, 429);
-  assert.match(r.data.error, /te druk/);
-  assert.ok(r.data.oplossing);
   await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider: "anthropic", status: 429, times: 0 }) });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+});
+
+await step("Alles faalt: foutmelding in gewone taal met oplossing", async () => {
+  for (const provider of ["anthropic", "openai", "google", "xai"]) {
+    await fetch(`${FAKE}/__fail`, { method: "POST", body: JSON.stringify({ provider, status: 429, times: 0 }) });
+  }
+  // De nepwolk onthoudt één storing tegelijk; zet ze na elkaar en laat alles falen via een foute sleutel.
+  for (const [provider, key] of Object.entries({ anthropic: "sk-ant-fout" + "x".repeat(30), openai: "sk-proj-fout" + "x".repeat(30), google: "AIzafout" + "x".repeat(31), xai: "xai-fout" + "x".repeat(30) })) {
+    await call("/api/settings", { method: "POST", json: { [provider]: key } });
+  }
+  const r = await call(`/api/runs/${run.id}/quip`, { method: "POST", json: { roleId: "cfo" } });
+  assert.ok(r.status >= 400, `status ${r.status}`);
+  assert.ok(r.data.error && r.data.oplossing, JSON.stringify(r.data));
+  assert.match(r.data.oplossing, /probeerden ook/);
+  for (const [provider, key] of Object.entries(KEYS)) {
+    if (provider !== "elevenlabs") await call("/api/settings", { method: "POST", json: { [provider]: key } });
+  }
 });
 
 await step("Inspreken via OpenAI als de browser het niet kan", async () => {
